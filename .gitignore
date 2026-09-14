@@ -1,0 +1,27 @@
+# Сборки и IDE
+.gradle/
+.idea/
+build/
+app/build/
+local.properties
+.kotlin/
+
+# Тяжёлые данные (восстановимы тулзой/установщиком, в git не кладём)
+*.db
+DB/
+*.wav
+*.mp3
+*.ogg
+*.opus
+AiGenda/
+imports/
+
+# Клон движка Vagdhenu + веса + артефакты прогонов (ставится кнопкой из gui)
+tools/dbcomposer/vagdhenu/
+tools/dbcomposer/wav/
+tools/dbcomposer/sb_ogg/
+tools/dbcomposer/__pycache__/
+shard_*.json
+manifest_*.json
+vag_results.json
+test_res.json
