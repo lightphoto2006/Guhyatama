@@ -1,12 +1,12 @@
 {
   "catalogVersion": 1,
   "apk": {
-    "versionCode": 7,
-    "versionName": "1.2.1",
-    "url": "https://github.com/lightphoto2006/Guhyatama/releases/download/v1.2.1/Guhyatama-1.2.1.apk",
-    "size": 17546021,
-    "sha256": "779de134bfde426272451434046c4f92b0f6abadddc91dbd50c2b9a48d9bb8ff",
-    "notes": "Что нового:\n— обновление книг из приложения (Настройки → Обновления): скачивание и установка новых версий без потери закладок, заметок и вопросов."
+    "versionCode": 8,
+    "versionName": "1.2.2",
+    "url": "https://github.com/lightphoto2006/Guhyatama/releases/download/v1.2.2/Guhyatama-1.2.2.apk",
+    "size": 17562405,
+    "sha256": "9f9b1915e3a912f37ceed49c2ef8e3994997357c635a45eec0d34f278efdb10a",
+    "notes": "Что нового:\n— управление аудио книг: удаление звука в Настройках, перезапись при повторном импорте пака (чинятся сдвоенные стихи); удаление книги теперь чистит и её аудио."
   },
   "books": [],
   "audio": []
