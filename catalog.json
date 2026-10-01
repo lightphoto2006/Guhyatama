@@ -1,12 +1,12 @@
 {
   "catalogVersion": 1,
   "apk": {
-    "versionCode": 10,
-    "versionName": "1.2.4",
-    "url": "https://github.com/lightphoto2006/Guhyatama/releases/download/v1.2.4/Guhyatama-1.2.4.apk",
+    "versionCode": 11,
+    "versionName": "1.2.5",
+    "url": "https://github.com/lightphoto2006/Guhyatama/releases/download/v1.2.5/Guhyatama-1.2.5.apk",
     "size": 17578789,
-    "sha256": "1320bff65f8164e139d6131e3ce56771a2ef452031bddd52422ee54b605e5437",
-    "notes": "Что нового:\n— старое аудио (до манифестов) показывается строкой «Ранее импортированное аудио» — удаляется и вытесняется новыми паками."
+    "sha256": "1f3152c7017ae73b5be74cff24453d3b7016e3c06fb36c3344dc228c763be39d",
+    "notes": "Что нового:\n— в Обновлениях отдельная секция «Аудио»: паки качаются и ставятся из каталога."
   },
   "books": [],
   "audio": []
