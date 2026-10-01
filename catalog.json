@@ -1,12 +1,12 @@
 {
   "catalogVersion": 1,
   "apk": {
-    "versionCode": 11,
-    "versionName": "1.2.5",
-    "url": "https://github.com/lightphoto2006/Guhyatama/releases/download/v1.2.5/Guhyatama-1.2.5.apk",
+    "versionCode": 12,
+    "versionName": "1.2.6",
+    "url": "https://github.com/lightphoto2006/Guhyatama/releases/download/v1.2.6/Guhyatama-1.2.6.apk",
     "size": 17578789,
-    "sha256": "1f3152c7017ae73b5be74cff24453d3b7016e3c06fb36c3344dc228c763be39d",
-    "notes": "Что нового:\n— в Обновлениях отдельная секция «Аудио»: паки качаются и ставятся из каталога."
+    "sha256": "f2b96878b112cf5f0919790c438ce84ed4b3f2bca78c6ef3be785c2a8dcea302",
+    "notes": "Что нового:\n— починены тормоза и зависания на больших комментариях с ударениями (Молитвы Кунти и др.)."
   },
   "books": [],
   "audio": []
