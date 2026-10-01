@@ -1,12 +1,12 @@
 {
   "catalogVersion": 1,
   "apk": {
-    "versionCode": 12,
-    "versionName": "1.2.6",
-    "url": "https://github.com/lightphoto2006/Guhyatama/releases/download/v1.2.6/Guhyatama-1.2.6.apk",
+    "versionCode": 13,
+    "versionName": "1.2.7",
+    "url": "https://github.com/lightphoto2006/Guhyatama/releases/download/v1.2.7/Guhyatama-1.2.7.apk",
     "size": 17578789,
-    "sha256": "f2b96878b112cf5f0919790c438ce84ed4b3f2bca78c6ef3be785c2a8dcea302",
-    "notes": "Что нового:\n— починены тормоза и зависания на больших комментариях с ударениями (Молитвы Кунти и др.)."
+    "sha256": "d308d124bfe2fdc846a10605fd050eeae525908a4ecea6945d41f81a89b79463",
+    "notes": "Что нового:\n— чистка ложных цитат Кунти (каунтейа и чужие молитвы больше не числятся цитированием Молитв); к фиксу тормозов из 1.2.6."
   },
   "books": [],
   "audio": []
