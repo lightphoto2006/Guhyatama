@@ -1,12 +1,12 @@
 {
   "catalogVersion": 1,
   "apk": {
-    "versionCode": 19,
-    "versionName": "1.2.13",
-    "url": "https://github.com/lightphoto2006/Guhyatama/releases/download/v1.2.13/Guhyatama-1.2.13.apk",
-    "size": 17737676,
-    "sha256": "0188f1824e26b76a9a899f86af302b3eb5325c301af54abcdc39d21ba729f4b7",
-    "notes": "Что нового:\n— лекции по Бхакти-расамрита-синдху (новый тип SBRS); чистка титулов."
+    "versionCode": 20,
+    "versionName": "1.2.14",
+    "url": "https://github.com/lightphoto2006/Guhyatama/releases/download/v1.2.14/Guhyatama-1.2.14.apk",
+    "size": 17595177,
+    "sha256": "7d3430c5cb0c79e4757df19b877d1e576f350ec1ee774ef4a4a7948ff3b9318c",
+    "notes": "Что нового:\n— поиск по книге; стабильный порядок лекций."
   },
   "books": [
     {
@@ -329,19 +329,19 @@
     {
       "key": "Syamakunda_BRS",
       "title": "Лекции Шьямакунды прабху по БРС (рус)",
-      "version": 1,
-      "url": "https://api.github.com/repos/lightphoto2006/Guhyatama-files/releases/assets/606202773",
-      "notes": "Первая публикация. Лекции привязаны к стихам БРС.",
+      "version": 2,
+      "url": "https://api.github.com/repos/lightphoto2006/Guhyatama-files/releases/assets/606413494",
+      "notes": "Волны с именами (пустые включены), +6 лекций, без привязки осталась 1.",
       "lang": "rus",
       "auth": "github",
-      "size": 12857344,
-      "sha256": "09e93ba6ff96aeebea42a9afdb3e991ea50b71a81d7c34e37f1e93cd3bbfa4c3",
+      "size": 13209600,
+      "sha256": "cc858edb368b6888803271c2c1852bc4facd751fa2170e02b9e69cb1959d6d36",
       "fp": [
         {
           "t": "sbrs",
           "g": 1,
-          "v": 246,
-          "vg": 246
+          "v": 252,
+          "vg": 252
         }
       ]
     }
