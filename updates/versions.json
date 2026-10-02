@@ -1,0 +1,68 @@
+{
+  "apk": {
+    "versionCode": 15,
+    "versionName": "1.2.9",
+    "url": "https://github.com/lightphoto2006/Guhyatama/releases/download/v1.2.9/Guhyatama-1.2.9.apk",
+    "size": 17710050,
+    "sha256": "5c8d8580a8e0230ddb7ad533b882b157c564f7d57d73a56cc2eecc6bd97f7c25",
+    "notes": "Что нового:\n— книги и аудио качаются прямо из приложения (закрытое хранилище)."
+  },
+  "books": {
+    "Prabhupada_rus": {
+      "title": "Книги Шрилы Прабхупады (рус)",
+      "lang": "rus",
+      "file": "Prabhupada_rus.db",
+      "version": 1,
+      "url": "https://api.github.com/repos/lightphoto2006/Guhyatama-files/releases/assets/603137196",
+      "notes": "Первая публикация в каталоге. Полная русская библиотека.",
+      "auth": "github"
+    },
+    "Prabhupada_eng": {
+      "title": "Prabhupada books (eng)",
+      "lang": "eng",
+      "file": "Prabhupada_eng.db",
+      "version": 1,
+      "url": "https://api.github.com/repos/lightphoto2006/Guhyatama-files/releases/assets/603170778",
+      "notes": "First catalog release. Full English library.",
+      "auth": "github"
+    },
+    "Acharyi_eng": {
+      "title": "Книги ачарьев (eng)",
+      "lang": "eng",
+      "file": "Acharyi_eng.db",
+      "version": 1,
+      "url": "https://api.github.com/repos/lightphoto2006/Guhyatama-files/releases/assets/605847835",
+      "notes": "Первая публикация в каталоге.",
+      "auth": "github"
+    },
+    "Syamakunda_CC": {
+      "title": "Лекции Шьямакунды прабху по ЧЧ (рус)",
+      "lang": "rus",
+      "file": "Syamakunda_CC.db",
+      "version": 2,
+      "url": "https://api.github.com/repos/lightphoto2006/Guhyatama-files/releases/assets/605848620",
+      "notes": "Исправлена опечатка: «они в неправильном направлении» (ЧЧ 1.5.179-235).",
+      "auth": "github"
+    }
+  },
+  "audio": {
+    "BG_Audio": {
+      "title": "Аудио: Бхагавад-гита",
+      "lang": "rus",
+      "file": "BG_Audio.db",
+      "version": 1,
+      "url": "https://api.github.com/repos/lightphoto2006/Guhyatama-files/releases/assets/605850731",
+      "notes": "Первая публикация в каталоге.",
+      "auth": "github"
+    },
+    "SBA_Canto1": {
+      "title": "Аудио: ШБ, Песнь 1",
+      "lang": "rus",
+      "file": "SBA Canto-1.db",
+      "version": 1,
+      "url": "https://api.github.com/repos/lightphoto2006/Guhyatama-files/releases/assets/605882974",
+      "notes": "Первая публикация в каталоге. Opus 24k.",
+      "auth": "github"
+    }
+  }
+}
