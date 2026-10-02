@@ -1,13 +1,81 @@
 {
   "catalogVersion": 1,
   "apk": {
-    "versionCode": 14,
-    "versionName": "1.2.8",
-    "url": "https://github.com/lightphoto2006/Guhyatama/releases/download/v1.2.8/Guhyatama-1.2.8.apk",
-    "size": 17578789,
-    "sha256": "d3c1ec46793e8652fc5156691c879f1c3155776fe134ab3e39184d8af1544d45",
-    "notes": "Что нового:\n— разделы цитат показывают правильное направление (что цитируется / где цитируется); плюс резолв ссылок из TXT-книг."
+    "versionCode": 15,
+    "versionName": "1.2.9",
+    "url": "https://github.com/lightphoto2006/Guhyatama/releases/download/v1.2.9/Guhyatama-1.2.9.apk",
+    "size": 17710050,
+    "sha256": "5c8d8580a8e0230ddb7ad533b882b157c564f7d57d73a56cc2eecc6bd97f7c25",
+    "notes": "Что нового:\n— книги и аудио качаются прямо из приложения (закрытое хранилище)."
   },
-  "books": [],
-  "audio": []
+  "books": [
+    {
+      "key": "Prabhupada_rus",
+      "title": "Книги Шрилы Прабхупады (рус)",
+      "version": 1,
+      "url": "https://api.github.com/repos/lightphoto2006/Guhyatama-files/releases/assets/603137196",
+      "notes": "Первая публикация в каталоге. Полная русская библиотека.",
+      "lang": "rus",
+      "auth": "github",
+      "size": 153735168,
+      "sha256": "b411bac2be1adce65f6617c3df0717dbe3186bf4b3ef2367ba285ea2b52ddc83"
+    },
+    {
+      "key": "Prabhupada_eng",
+      "title": "Prabhupada books (eng)",
+      "version": 1,
+      "url": "https://api.github.com/repos/lightphoto2006/Guhyatama-files/releases/assets/603170778",
+      "notes": "First catalog release. Full English library.",
+      "lang": "eng",
+      "auth": "github",
+      "size": 293826560,
+      "sha256": "0f3077e03f3bc8f3e265fd73fcd72d7814fceb355a5f08811bdaa4e69ee24216"
+    },
+    {
+      "key": "Acharyi_eng",
+      "title": "Книги ачарьев (eng)",
+      "version": 1,
+      "url": "https://api.github.com/repos/lightphoto2006/Guhyatama-files/releases/assets/605847835",
+      "notes": "Первая публикация в каталоге.",
+      "lang": "eng",
+      "auth": "github",
+      "size": 4489216,
+      "sha256": "ed598a9c745ed8fc6183609796b8e0a554ab2cf438b8b72039b991401423c269"
+    },
+    {
+      "key": "Syamakunda_CC",
+      "title": "Лекции Шьямакунды прабху по ЧЧ (рус)",
+      "version": 2,
+      "url": "https://api.github.com/repos/lightphoto2006/Guhyatama-files/releases/assets/605848620",
+      "notes": "Исправлена опечатка: «они в неправильном направлении» (ЧЧ 1.5.179-235).",
+      "lang": "rus",
+      "auth": "github",
+      "size": 10539008,
+      "sha256": "0c3557950c60ebe47fa33a73aefe85837a6277178025bfd6c6abb800c7400ed6"
+    }
+  ],
+  "audio": [
+    {
+      "key": "BG_Audio",
+      "title": "Аудио: Бхагавад-гита",
+      "version": 1,
+      "url": "https://api.github.com/repos/lightphoto2006/Guhyatama-files/releases/assets/605850731",
+      "notes": "Первая публикация в каталоге.",
+      "lang": "rus",
+      "auth": "github",
+      "size": 131887104,
+      "sha256": "7f11380e0035289347eb18df15636e16a730f11ba636bc5e7ca44c56c5260ac6"
+    },
+    {
+      "key": "SBA_Canto1",
+      "title": "Аудио: ШБ, Песнь 1",
+      "version": 1,
+      "url": "https://api.github.com/repos/lightphoto2006/Guhyatama-files/releases/assets/605882974",
+      "notes": "Первая публикация в каталоге. Opus 24k.",
+      "lang": "rus",
+      "auth": "github",
+      "size": 48357376,
+      "sha256": "0f182a2dae73f49e61b2f36369f86d42464fd6da49f0abdfce4c5ce6faac3f51"
+    }
+  ]
 }
