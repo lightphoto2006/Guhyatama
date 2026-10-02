@@ -1,12 +1,12 @@
 {
   "catalogVersion": 1,
   "apk": {
-    "versionCode": 18,
-    "versionName": "1.2.12",
-    "url": "https://github.com/lightphoto2006/Guhyatama/releases/download/v1.2.12/Guhyatama-1.2.12.apk",
-    "size": 17595177,
-    "sha256": "6e07a47e3410fa04d4e9445fd6c078793bb55b3a414d75652e184efcd2bb06ca",
-    "notes": "Что нового:\n— раздельные кнопки обновления приложения и книг; усыновление чинится (типы с дефисом/цифрами); диагностика совпадений."
+    "versionCode": 19,
+    "versionName": "1.2.13",
+    "url": "https://github.com/lightphoto2006/Guhyatama/releases/download/v1.2.13/Guhyatama-1.2.13.apk",
+    "size": 17737676,
+    "sha256": "0188f1824e26b76a9a899f86af302b3eb5325c301af54abcdc39d21ba729f4b7",
+    "notes": "Что нового:\n— лекции по Бхакти-расамрита-синдху (новый тип SBRS); чистка титулов."
   },
   "books": [
     {
@@ -309,19 +309,39 @@
     {
       "key": "Syamakunda_CC",
       "title": "Лекции Шьямакунды прабху по ЧЧ (рус)",
-      "version": 2,
-      "url": "https://api.github.com/repos/lightphoto2006/Guhyatama-files/releases/assets/605848620",
-      "notes": "Исправлена опечатка: «они в неправильном направлении» (ЧЧ 1.5.179-235).",
+      "version": 3,
+      "url": "https://api.github.com/repos/lightphoto2006/Guhyatama-files/releases/assets/606200632",
+      "notes": "Убраны кракозябры-шрифты в начале 9 лекций.",
       "lang": "rus",
       "auth": "github",
-      "size": 10539008,
-      "sha256": "0c3557950c60ebe47fa33a73aefe85837a6277178025bfd6c6abb800c7400ed6",
+      "adopt": false,
+      "size": 10469376,
+      "sha256": "fdf966fadd9d509faccf072e1530e5165334146f2fc7655140ffd28cd71d4bc1",
       "fp": [
         {
           "t": "scc",
           "g": 1,
           "v": 180,
           "vg": 180
+        }
+      ]
+    },
+    {
+      "key": "Syamakunda_BRS",
+      "title": "Лекции Шьямакунды прабху по БРС (рус)",
+      "version": 1,
+      "url": "https://api.github.com/repos/lightphoto2006/Guhyatama-files/releases/assets/606202773",
+      "notes": "Первая публикация. Лекции привязаны к стихам БРС.",
+      "lang": "rus",
+      "auth": "github",
+      "size": 12857344,
+      "sha256": "09e93ba6ff96aeebea42a9afdb3e991ea50b71a81d7c34e37f1e93cd3bbfa4c3",
+      "fp": [
+        {
+          "t": "sbrs",
+          "g": 1,
+          "v": 246,
+          "vg": 246
         }
       ]
     }
