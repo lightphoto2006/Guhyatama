@@ -1,12 +1,12 @@
 {
   "catalogVersion": 1,
   "apk": {
-    "versionCode": 17,
-    "versionName": "1.2.11",
-    "url": "https://github.com/lightphoto2006/Guhyatama/releases/download/v1.2.11/Guhyatama-1.2.11.apk",
-    "size": 17578793,
-    "sha256": "bb757995d314fac15fb69feb91b17471c5dce0ec9a06de5f924a65b248350f07",
-    "notes": "Что нового:\n— усыновление старых импортов и диагностика несовпадений."
+    "versionCode": 18,
+    "versionName": "1.2.12",
+    "url": "https://github.com/lightphoto2006/Guhyatama/releases/download/v1.2.12/Guhyatama-1.2.12.apk",
+    "size": 17595177,
+    "sha256": "6e07a47e3410fa04d4e9445fd6c078793bb55b3a414d75652e184efcd2bb06ca",
+    "notes": "Что нового:\n— раздельные кнопки обновления приложения и книг; усыновление чинится (типы с дефисом/цифрами); диагностика совпадений."
   },
   "books": [
     {
