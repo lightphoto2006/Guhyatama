@@ -1,12 +1,12 @@
 {
   "catalogVersion": 1,
   "apk": {
-    "versionCode": 26,
-    "versionName": "1.2.20",
-    "url": "https://github.com/lightphoto2006/Guhyatama/releases/download/v1.2.20/Guhyatama-1.2.20.apk",
+    "versionCode": 27,
+    "versionName": "1.2.21",
+    "url": "https://github.com/lightphoto2006/Guhyatama/releases/download/v1.2.21/Guhyatama-1.2.21.apk",
     "size": 17611561,
-    "sha256": "5a86f213034c05348376a0457eb3f418048e670177079b14b31cd45aaa18b1cc",
-    "notes": "Что нового:\n— центрирование текста на прошивках вроде ColorOS."
+    "sha256": "ccb565d082dff12b19e3a556aa0b938724203ddd43ca9a7f0554e0c93aa7034b",
+    "notes": "Что нового:\n— глифы у края экрана не режутся."
   },
   "books": [
     {
@@ -349,13 +349,14 @@
     {
       "key": "Acharyi_rus",
       "title": "Книги ачарий (рус)",
-      "version": 4,
-      "url": "https://api.github.com/repos/lightphoto2006/Guhyatama-files/releases/assets/607450300",
-      "notes": "Строго по главам (70), без нумерованных кусков.",
+      "version": 5,
+      "url": "https://api.github.com/repos/lightphoto2006/Guhyatama-files/releases/assets/607505825",
+      "notes": "Транслит: ш вместо щ (кршна, шри, лакшми).",
       "lang": "rus",
       "auth": "github",
+      "adopt": false,
       "size": 2969600,
-      "sha256": "eb253b022a5c00a1127b44774b176480ccf211f5a0b635005553e08284091d32",
+      "sha256": "c4ea0642d4b8c79d98026707e84a0e1d262e5fdcbae367e15f235df80aeb9dad",
       "fp": [
         {
           "t": "gc",
