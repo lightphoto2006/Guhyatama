@@ -1,12 +1,12 @@
 {
   "catalogVersion": 1,
   "apk": {
-    "versionCode": 25,
-    "versionName": "1.2.19",
-    "url": "https://github.com/lightphoto2006/Guhyatama/releases/download/v1.2.19/Guhyatama-1.2.19.apk",
+    "versionCode": 26,
+    "versionName": "1.2.20",
+    "url": "https://github.com/lightphoto2006/Guhyatama/releases/download/v1.2.20/Guhyatama-1.2.20.apk",
     "size": 17611561,
-    "sha256": "20959d1d6c824f0ddd59377070d530472e4f41e8d34ce9f0fcf51c5b6d607807",
-    "notes": "Что нового:\n— проза не жирная; обновления показываются первыми, установленные сворачиваются."
+    "sha256": "5a86f213034c05348376a0457eb3f418048e670177079b14b31cd45aaa18b1cc",
+    "notes": "Что нового:\n— центрирование текста на прошивках вроде ColorOS."
   },
   "books": [
     {
