@@ -1,12 +1,12 @@
 {
   "catalogVersion": 1,
   "apk": {
-    "versionCode": 20,
-    "versionName": "1.2.14",
-    "url": "https://github.com/lightphoto2006/Guhyatama/releases/download/v1.2.14/Guhyatama-1.2.14.apk",
+    "versionCode": 21,
+    "versionName": "1.2.15",
+    "url": "https://github.com/lightphoto2006/Guhyatama/releases/download/v1.2.15/Guhyatama-1.2.15.apk",
     "size": 17595177,
-    "sha256": "7d3430c5cb0c79e4757df19b877d1e576f350ec1ee774ef4a4a7948ff3b9318c",
-    "notes": "Что нового:\n— поиск по книге; стабильный порядок лекций."
+    "sha256": "b338f59deba9b5462c455deb8088ca094fc457053eb160ccd090ce9d892fe155",
+    "notes": "Что нового:\n— пропавшие лекции-дубли (несколько лекций на один стих) больше не теряются."
   },
   "books": [
     {
@@ -309,9 +309,9 @@
     {
       "key": "Syamakunda_CC",
       "title": "Лекции Шьямакунды прабху по ЧЧ (рус)",
-      "version": 3,
+      "version": 4,
       "url": "https://api.github.com/repos/lightphoto2006/Guhyatama-files/releases/assets/606200632",
-      "notes": "Убраны кракозябры-шрифты в начале 9 лекций.",
+      "notes": "Техническое переимпортирование (файл тот же): лекции-дубли одного стиха больше не затирают друг друга.",
       "lang": "rus",
       "auth": "github",
       "adopt": false,
@@ -329,9 +329,9 @@
     {
       "key": "Syamakunda_BRS",
       "title": "Лекции Шьямакунды прабху по БРС (рус)",
-      "version": 2,
+      "version": 3,
       "url": "https://api.github.com/repos/lightphoto2006/Guhyatama-files/releases/assets/606413494",
-      "notes": "Волны с именами (пустые включены), +6 лекций, без привязки осталась 1.",
+      "notes": "Техническое переимпортирование: все 252 лекции на месте (дубли одного стиха больше не теряются).",
       "lang": "rus",
       "auth": "github",
       "size": 13209600,
