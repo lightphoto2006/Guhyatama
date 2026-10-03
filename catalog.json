@@ -4,9 +4,9 @@
     "versionCode": 29,
     "versionName": "1.2.23",
     "url": "https://github.com/lightphoto2006/Guhyatama/releases/download/v1.2.23/Guhyatama-1.2.23.apk",
-    "size": 20062629,
-    "sha256": "b324c231f74ac4416bc755d55c81a5fef0bc505ac6b2bd1da4b642610dab8849",
-    "notes": "Что нового:\n— аудио ШБ заиграло (ExoPlayer вместо MediaPlayer)."
+    "size": 20127573,
+    "sha256": "8045e5ad96076b38dd481b121ecf3cc9aec5113100b84132e6fbf72a21aa5a96",
+    "notes": "Что нового:\n— аудио ШБ заиграло (ExoPlayer вместо MediaPlayer);\n— озвучка шлок больше не прилипает к лекциям БРС/ЧЧ (чужое аудио из лекций вычищается при импорте — переимпортируй пак ШБ)."
   },
   "books": [
     {
