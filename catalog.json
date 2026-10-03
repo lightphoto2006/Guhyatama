@@ -1,12 +1,12 @@
 {
   "catalogVersion": 1,
   "apk": {
-    "versionCode": 23,
-    "versionName": "1.2.17",
-    "url": "https://github.com/lightphoto2006/Guhyatama/releases/download/v1.2.17/Guhyatama-1.2.17.apk",
+    "versionCode": 24,
+    "versionName": "1.2.18",
+    "url": "https://github.com/lightphoto2006/Guhyatama/releases/download/v1.2.18/Guhyatama-1.2.18.apk",
     "size": 17611565,
-    "sha256": "599f59a93cdc901b84a738d1c1ad9b5cbb5ea290717992e11e5c116e775d3d6e",
-    "notes": "Что нового:\n— единое направление цитат + инкрементные книги-патчи."
+    "sha256": "641671a98c95b8420db1fe409b0546c7aec10fc06b2a3066ba234aad5493c2e1",
+    "notes": "Что нового:\n— растущие базы: обновления докачиваются дельтами, а не целиком."
   },
   "books": [
     {
@@ -347,11 +347,11 @@
       ]
     },
     {
-      "key": "GopalaChampu_rus",
-      "title": "Гопала-чампу (рус)",
+      "key": "Acharyi_rus",
+      "title": "Книги ачарий (рус)",
       "version": 1,
-      "url": "https://api.github.com/repos/lightphoto2006/Guhyatama-files/releases/assets/607374032",
-      "notes": "Первая публикация. 70 глав, ссылки на Брахма-самхиту активны.",
+      "url": "https://api.github.com/repos/lightphoto2006/Guhyatama-files/releases/assets/607382241",
+      "notes": "Первая публикация: Гопала-чампу. Дальше база растёт дельтами.",
       "lang": "rus",
       "auth": "github",
       "size": 5181440,
