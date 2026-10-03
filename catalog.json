@@ -1,12 +1,12 @@
 {
   "catalogVersion": 1,
   "apk": {
-    "versionCode": 28,
-    "versionName": "1.2.22",
-    "url": "https://github.com/lightphoto2006/Guhyatama/releases/download/v1.2.22/Guhyatama-1.2.22.apk",
-    "size": 17611561,
-    "sha256": "511d4efefc81d3acf72610601ffb133c9fdaadbd59c0e82ff1dd8a07062d2ba6",
-    "notes": "Что нового:\n— центр/края на ColorOS; тихая диагностика усыновления."
+    "versionCode": 29,
+    "versionName": "1.2.23",
+    "url": "https://github.com/lightphoto2006/Guhyatama/releases/download/v1.2.23/Guhyatama-1.2.23.apk",
+    "size": 20062629,
+    "sha256": "b324c231f74ac4416bc755d55c81a5fef0bc505ac6b2bd1da4b642610dab8849",
+    "notes": "Что нового:\n— аудио ШБ заиграло (ExoPlayer вместо MediaPlayer)."
   },
   "books": [
     {
@@ -115,13 +115,14 @@
     {
       "key": "Prabhupada_eng",
       "title": "Prabhupada books (eng)",
-      "version": 1,
-      "url": "https://api.github.com/repos/lightphoto2006/Guhyatama-files/releases/assets/607512857",
-      "notes": "First catalog release. Full English library.",
+      "version": 2,
+      "url": "https://api.github.com/repos/lightphoto2006/Guhyatama-files/releases/assets/607548569",
+      "notes": "Похудела вдвое: обложки ужаты (тексты те же).",
       "lang": "eng",
       "auth": "github",
-      "size": 293826560,
-      "sha256": "0f3077e03f3bc8f3e265fd73fcd72d7814fceb355a5f08811bdaa4e69ee24216",
+      "adopt": false,
+      "size": 158236672,
+      "sha256": "8085a1f75da2b28e964b16fb6baad0035a9ae11e7f897836e6eb35796a7964c1",
       "fp": [
         {
           "t": "bg72",
