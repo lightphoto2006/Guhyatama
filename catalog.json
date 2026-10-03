@@ -1,12 +1,12 @@
 {
   "catalogVersion": 1,
   "apk": {
-    "versionCode": 34,
-    "versionName": "1.2.28",
-    "url": "https://github.com/lightphoto2006/Guhyatama/releases/download/v1.2.28/Guhyatama-1.2.28.apk",
-    "size": 20079017,
-    "sha256": "7965442c69e88181331a14ac90e8fea0698dae29a4f94a155c1cb3d3c812798c",
-    "notes": "Что нового:\n— найден и исправлен настоящий источник падения на OPPO (и не только):\n  служебные теги TextView валились в IllegalArgumentException — убраны совсем;\n— диалог о падении теперь короткий и копируется одним сообщением."
+    "versionCode": 35,
+    "versionName": "1.2.29",
+    "url": "https://github.com/lightphoto2006/Guhyatama/releases/download/v1.2.29/Guhyatama-1.2.29.apk",
+    "size": 20079013,
+    "sha256": "505f29b7529c52d0a663a3a87c53ac9a9f481296bc5f328cafa1de51a1656933",
+    "notes": "Что нового:\n— выравнивание без дыр: переносы теперь подбираются по всему абзацу (Knuth-Plass), слова поднимаются/опускаются вместо растянутых пробелов."
   },
   "books": [
     {
