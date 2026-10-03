@@ -349,19 +349,19 @@
     {
       "key": "Acharyi_rus",
       "title": "Книги ачарий (рус)",
-      "version": 3,
-      "url": "https://api.github.com/repos/lightphoto2006/Guhyatama-files/releases/assets/607424731",
-      "notes": "+главы 21 и 34 (были без заголовков).",
+      "version": 4,
+      "url": "https://api.github.com/repos/lightphoto2006/Guhyatama-files/releases/assets/607450300",
+      "notes": "Строго по главам (70), без нумерованных кусков.",
       "lang": "rus",
       "auth": "github",
-      "size": 3477504,
-      "sha256": "23e903819a8e5911e3320e924d563704b7f630c5e48e32a4078b07f5a0f1e23d",
+      "size": 2969600,
+      "sha256": "eb253b022a5c00a1127b44774b176480ccf211f5a0b635005553e08284091d32",
       "fp": [
         {
           "t": "gc",
           "g": 1,
-          "v": 744,
-          "vg": 744
+          "v": 70,
+          "vg": 70
         }
       ]
     }
