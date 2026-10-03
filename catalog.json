@@ -349,19 +349,19 @@
     {
       "key": "Acharyi_rus",
       "title": "Книги ачарий (рус)",
-      "version": 2,
-      "url": "https://api.github.com/repos/lightphoto2006/Guhyatama-files/releases/assets/607406872",
-      "notes": "Чампу: главы с титулами, стихи отдельно, ссылки на Самхиту.",
+      "version": 3,
+      "url": "https://api.github.com/repos/lightphoto2006/Guhyatama-files/releases/assets/607424731",
+      "notes": "+главы 21 и 34 (были без заголовков).",
       "lang": "rus",
       "auth": "github",
-      "size": 3473408,
-      "sha256": "63da3f406aa436fa8723583ac1285b437a3fdd1e9fab5cbc118ce5632bd998da",
+      "size": 3477504,
+      "sha256": "23e903819a8e5911e3320e924d563704b7f630c5e48e32a4078b07f5a0f1e23d",
       "fp": [
         {
           "t": "gc",
           "g": 1,
-          "v": 743,
-          "vg": 743
+          "v": 744,
+          "vg": 744
         }
       ]
     }
