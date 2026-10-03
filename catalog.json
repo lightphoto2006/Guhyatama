@@ -1,12 +1,12 @@
 {
   "catalogVersion": 1,
   "apk": {
-    "versionCode": 24,
-    "versionName": "1.2.18",
-    "url": "https://github.com/lightphoto2006/Guhyatama/releases/download/v1.2.18/Guhyatama-1.2.18.apk",
-    "size": 17756291,
-    "sha256": "5df8f31a660e951c1149baac7f8f308317c16d027bd88f2bf1cb41a72522533f",
-    "notes": "Что нового:\n— ссылки «Брахма-самхита 5.x» и полные имена книг стали активными; длинные главы ачарьев не режутся."
+    "versionCode": 25,
+    "versionName": "1.2.19",
+    "url": "https://github.com/lightphoto2006/Guhyatama/releases/download/v1.2.19/Guhyatama-1.2.19.apk",
+    "size": 17611561,
+    "sha256": "20959d1d6c824f0ddd59377070d530472e4f41e8d34ce9f0fcf51c5b6d607807",
+    "notes": "Что нового:\n— проза не жирная; обновления показываются первыми, установленные сворачиваются."
   },
   "books": [
     {
