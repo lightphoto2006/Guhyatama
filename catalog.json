@@ -1,12 +1,12 @@
 {
   "catalogVersion": 1,
   "apk": {
-    "versionCode": 22,
-    "versionName": "1.2.16",
-    "url": "https://github.com/lightphoto2006/Guhyatama/releases/download/v1.2.16/Guhyatama-1.2.16.apk",
-    "size": 17595177,
-    "sha256": "eb66b6976c859f417bbf8884ab0b51bc7541e772d9a1055029836cee676b6d1b",
-    "notes": "Что нового:\n— голые номера в лекциях ищутся в своём произведении."
+    "versionCode": 23,
+    "versionName": "1.2.17",
+    "url": "https://github.com/lightphoto2006/Guhyatama/releases/download/v1.2.17/Guhyatama-1.2.17.apk",
+    "size": 17611565,
+    "sha256": "599f59a93cdc901b84a738d1c1ad9b5cbb5ea290717992e11e5c116e775d3d6e",
+    "notes": "Что нового:\n— единое направление цитат + инкрементные книги-патчи."
   },
   "books": [
     {
@@ -343,6 +343,25 @@
           "g": 1,
           "v": 252,
           "vg": 252
+        }
+      ]
+    },
+    {
+      "key": "GopalaChampu_rus",
+      "title": "Гопала-чампу (рус)",
+      "version": 1,
+      "url": "https://api.github.com/repos/lightphoto2006/Guhyatama-files/releases/assets/607374032",
+      "notes": "Первая публикация. 70 глав, ссылки на Брахма-самхиту активны.",
+      "lang": "rus",
+      "auth": "github",
+      "size": 5181440,
+      "sha256": "6086a36bae80e3b5f8d38ce98c38f82a7a7b1789f22d84997169cae6cbb9d4f6",
+      "fp": [
+        {
+          "t": "gc",
+          "g": 1,
+          "v": 1241,
+          "vg": 1241
         }
       ]
     }
