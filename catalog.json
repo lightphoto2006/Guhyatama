@@ -4,9 +4,9 @@
     "versionCode": 24,
     "versionName": "1.2.18",
     "url": "https://github.com/lightphoto2006/Guhyatama/releases/download/v1.2.18/Guhyatama-1.2.18.apk",
-    "size": 17611565,
-    "sha256": "641671a98c95b8420db1fe409b0546c7aec10fc06b2a3066ba234aad5493c2e1",
-    "notes": "Что нового:\n— растущие базы: обновления докачиваются дельтами, а не целиком."
+    "size": 17756291,
+    "sha256": "5df8f31a660e951c1149baac7f8f308317c16d027bd88f2bf1cb41a72522533f",
+    "notes": "Что нового:\n— ссылки «Брахма-самхита 5.x» и полные имена книг стали активными; длинные главы ачарьев не режутся."
   },
   "books": [
     {
@@ -349,19 +349,19 @@
     {
       "key": "Acharyi_rus",
       "title": "Книги ачарий (рус)",
-      "version": 1,
-      "url": "https://api.github.com/repos/lightphoto2006/Guhyatama-files/releases/assets/607382241",
-      "notes": "Первая публикация: Гопала-чампу. Дальше база растёт дельтами.",
+      "version": 2,
+      "url": "https://api.github.com/repos/lightphoto2006/Guhyatama-files/releases/assets/607406872",
+      "notes": "Чампу: главы с титулами, стихи отдельно, ссылки на Самхиту.",
       "lang": "rus",
       "auth": "github",
-      "size": 5181440,
-      "sha256": "6086a36bae80e3b5f8d38ce98c38f82a7a7b1789f22d84997169cae6cbb9d4f6",
+      "size": 3473408,
+      "sha256": "63da3f406aa436fa8723583ac1285b437a3fdd1e9fab5cbc118ce5632bd998da",
       "fp": [
         {
           "t": "gc",
           "g": 1,
-          "v": 1241,
-          "vg": 1241
+          "v": 743,
+          "vg": 743
         }
       ]
     }
