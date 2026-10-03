@@ -1,12 +1,12 @@
 {
   "catalogVersion": 1,
   "apk": {
-    "versionCode": 21,
-    "versionName": "1.2.15",
-    "url": "https://github.com/lightphoto2006/Guhyatama/releases/download/v1.2.15/Guhyatama-1.2.15.apk",
+    "versionCode": 22,
+    "versionName": "1.2.16",
+    "url": "https://github.com/lightphoto2006/Guhyatama/releases/download/v1.2.16/Guhyatama-1.2.16.apk",
     "size": 17595177,
-    "sha256": "b338f59deba9b5462c455deb8088ca094fc457053eb160ccd090ce9d892fe155",
-    "notes": "Что нового:\n— пропавшие лекции-дубли (несколько лекций на один стих) больше не теряются."
+    "sha256": "eb66b6976c859f417bbf8884ab0b51bc7541e772d9a1055029836cee676b6d1b",
+    "notes": "Что нового:\n— голые номера в лекциях ищутся в своём произведении."
   },
   "books": [
     {
@@ -329,13 +329,14 @@
     {
       "key": "Syamakunda_BRS",
       "title": "Лекции Шьямакунды прабху по БРС (рус)",
-      "version": 3,
-      "url": "https://api.github.com/repos/lightphoto2006/Guhyatama-files/releases/assets/606413494",
-      "notes": "Техническое переимпортирование: все 252 лекции на месте (дубли одного стиха больше не теряются).",
+      "version": 4,
+      "url": "https://api.github.com/repos/lightphoto2006/Guhyatama-files/releases/assets/607134393",
+      "notes": "025 устроена по номеру; голые ссылки ищутся в БРС.",
       "lang": "rus",
       "auth": "github",
+      "adopt": false,
       "size": 13209600,
-      "sha256": "cc858edb368b6888803271c2c1852bc4facd751fa2170e02b9e69cb1959d6d36",
+      "sha256": "450e948d1fc5ebf3a0407f2a30b0631f0897c89add3c083566ae1ceee4dc6936",
       "fp": [
         {
           "t": "sbrs",
