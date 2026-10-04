@@ -1,12 +1,12 @@
 {
   "catalogVersion": 1,
   "apk": {
-    "versionCode": 40,
-    "versionName": "1.2.34",
-    "url": "https://github.com/lightphoto2006/Guhyatama/releases/download/v1.2.34/Guhyatama-1.2.34.apk",
+    "versionCode": 41,
+    "versionName": "1.2.35",
+    "url": "https://github.com/lightphoto2006/Guhyatama/releases/download/v1.2.35/Guhyatama-1.2.35.apk",
     "size": 20079017,
-    "sha256": "9e4dd10f5f7130f19ffa9ca25d308668d1e78350ec4ac42c8e0b2e8e8a4ce39e",
-    "notes": "Что нового:\n— выделение больше не слетает: доводка не трогает текст при активном выделении;\n— Настройки: кнопки импорта (только PDF/DOCX) переехали в раздел «Импорт книг»."
+    "sha256": "3bc46343c2bf787c88462c191180727f356ce1a8233b7791fc89c566acb54605",
+    "notes": "Что нового:\n— выравнивание на ColorOS включается всегда (больше не зависит от зонда);\n— диагностика: кнопка в Настройках показывает путь доводки и сверку строк."
   },
   "books": [
     {
