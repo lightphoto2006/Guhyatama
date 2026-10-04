@@ -1,12 +1,12 @@
 {
   "catalogVersion": 1,
   "apk": {
-    "versionCode": 36,
-    "versionName": "1.2.30",
-    "url": "https://github.com/lightphoto2006/Guhyatama/releases/download/v1.2.30/Guhyatama-1.2.30.apk",
+    "versionCode": 37,
+    "versionName": "1.2.31",
+    "url": "https://github.com/lightphoto2006/Guhyatama/releases/download/v1.2.31/Guhyatama-1.2.31.apk",
     "size": 20079017,
-    "sha256": "2b99d4466a6fcf6d49818491f87456750fe0410a1282b74b1a4edfedfa4ff743",
-    "notes": "Что нового:\n— переносы с настоящими дефисами: точки переноса из источника (дефисы и мягкие дефисы '&' из HTML) участвуют в подборе строк, перенос рисует дефис, одиночные буквы на краях не остаются."
+    "sha256": "ba2726b9b02056e3e5df47cb30e1e38bba910abcc13651302f850789da07512e",
+    "notes": "Что нового:\n— выравнивание: убраны разрывы слов внутри строк (первая граница абзаца больше не теряется, строки целятся чуть уже края с запасом)."
   },
   "books": [
     {
