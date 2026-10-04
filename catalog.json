@@ -1,12 +1,12 @@
 {
   "catalogVersion": 1,
   "apk": {
-    "versionCode": 41,
-    "versionName": "1.2.35",
-    "url": "https://github.com/lightphoto2006/Guhyatama/releases/download/v1.2.35/Guhyatama-1.2.35.apk",
-    "size": 20079017,
-    "sha256": "3bc46343c2bf787c88462c191180727f356ce1a8233b7791fc89c566acb54605",
-    "notes": "Что нового:\n— выравнивание на ColorOS включается всегда (больше не зависит от зонда);\n— диагностика: кнопка в Настройках показывает путь доводки и сверку строк."
+    "versionCode": 42,
+    "versionName": "1.2.36",
+    "url": "https://github.com/lightphoto2006/Guhyatama/releases/download/v1.2.36/Guhyatama-1.2.36.apk",
+    "size": 20062633,
+    "sha256": "aafe1507af71634a4ab6c3d67084bd7de73e01af4aa2af93d767ee6688b740fe",
+    "notes": "Что нового:\n— движок отображения возвращён к 1.2.23: ручная доводка выравнивания удалена полностью, тексты ставятся напрямую без подмен;\n— все изменения интерфейса и настроек сохранены."
   },
   "books": [
     {
