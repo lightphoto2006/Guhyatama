@@ -1,12 +1,12 @@
 {
   "catalogVersion": 1,
   "apk": {
-    "versionCode": 39,
-    "versionName": "1.2.33",
-    "url": "https://github.com/lightphoto2006/Guhyatama/releases/download/v1.2.33/Guhyatama-1.2.33.apk",
+    "versionCode": 40,
+    "versionName": "1.2.34",
+    "url": "https://github.com/lightphoto2006/Guhyatama/releases/download/v1.2.34/Guhyatama-1.2.34.apk",
     "size": 20079017,
-    "sha256": "104e98a9f5fc7b21c78289e91846c6f8bdc7527827eb58d9d0be71dd11033cb6",
-    "notes": "Что нового:\n— выравнивание стало самопроверяющимся: после доводки приложение сверяет строки с движком и при расхождении откатывается на исходный текст (рваный край вместо рваных слов); диагноз — в Настройках."
+    "sha256": "9e4dd10f5f7130f19ffa9ca25d308668d1e78350ec4ac42c8e0b2e8e8a4ce39e",
+    "notes": "Что нового:\n— выделение больше не слетает: доводка не трогает текст при активном выделении;\n— Настройки: кнопки импорта (только PDF/DOCX) переехали в раздел «Импорт книг»."
   },
   "books": [
     {
