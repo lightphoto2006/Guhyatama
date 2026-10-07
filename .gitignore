@@ -25,3 +25,13 @@ shard_*.json
 manifest_*.json
 vag_results.json
 test_res.json
+
+# machine-local / never commit
+__pycache__/
+*.pyc
+*.keystore
+*.apk
+mail_cloud_docs/
+tools/dbcomposer/ai_gui.json
+tools/dbcomposer/audio_gui.json
+tools/dbcomposer/lectures_gui.json
