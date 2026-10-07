@@ -1,3 +1,5 @@
+import java.util.Properties
+
 plugins {
     id("com.android.application")
     id("org.jetbrains.kotlin.android")
@@ -7,6 +9,15 @@ plugins {
     id("org.jetbrains.kotlin.plugin.serialization")
 }
 
+// Токен приватных релизов — ТОЛЬКО из local.properties (в .gitignore, в git не попадает).
+// В APK уезжает как BuildConfig.GITHUB_FILES_TOKEN; в исходниках его быть не должно.
+val localProps = Properties().apply {
+    val f = rootProject.file("local.properties")
+    if (f.exists()) f.inputStream().use { load(it) }
+}
+val githubFilesToken: String = localProps.getProperty("githubFilesToken", "")
+    .replace("\\", "\\\\").replace("\"", "\\\"")
+
 android {
     namespace = "com.vedalibrary.app"
     compileSdk = 35
@@ -15,9 +26,10 @@ android {
         applicationId = "com.vedalibrary.app"
         minSdk = 26
         targetSdk = 35
-        versionCode = 1
-        versionName = "1.0.0"
+        versionCode = 45
+        versionName = "1.2.39"
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
+        buildConfigField("String", "GITHUB_FILES_TOKEN", "\"$githubFilesToken\"")
     }
     buildTypes {
         release {
@@ -34,7 +46,7 @@ android {
         targetCompatibility = JavaVersion.VERSION_17
     }
     kotlinOptions { jvmTarget = "17" }
-    buildFeatures { compose = true }
+    buildFeatures { compose = true; buildConfig = true }
     // Baseline Profiles + R8 уже включены через release above
 }
 
@@ -70,6 +82,15 @@ dependencies {
     // PDF import: текст извлекаем через pdfbox-android
     implementation("com.tom-roush:pdfbox-android:2.0.4.0")
 
+    // Аудио: ExoPlayer (MediaPlayer не умеет Opus-in-Ogg паки ШБ)
+    implementation("androidx.media3:media3-exoplayer:1.5.0")
+
     // Backup/restore: SAF + kotlinx-serialization для JSON
     implementation("org.jetbrains.kotlinx:kotlinx-serialization-json:1.7.3")
+}
+
+// Схемы Room: пишутся при сборке в app/schemas/ — по ним проверяются миграции
+// (MigrationTestHelper) и ловятся расхождения схем до релиза, а не на устройствах
+ksp {
+    arg("room.schemaLocation", "$projectDir/schemas")
 }

@@ -1,2 +1,7 @@
 <?xml version="1.0" encoding="utf-8"?>
-<paths><cache-path name="cache" path="." /><files-path name="files" path="." /></paths>
+<!-- FileProvider отдаёт ТОЛЬКО папку скачанных обновлений (APK-установка).
+     Раньше здесь были cache-path "." и files-path "." — grant-URI позволял
+     читать всё приватное хранилище приложения. -->
+<paths>
+    <external-files-path name="ext-updates" path="Download/updates/" />
+</paths>
