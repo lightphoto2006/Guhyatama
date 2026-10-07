@@ -1,0 +1,34 @@
+{
+  "apk": {
+    "versionCode": 3,
+    "versionName": "1.2.0",
+    "url": "https://github.com/lightphoto2006/Guhyatama/releases/download/v1.2.0/Guhyatama-1.2.0.apk",
+    "size": 17529637,
+    "sha256": "4795e93d772799e02ba903604ea96f2fe6e82d5e1e99aacdcddd85814f0ce6ce",
+    "notes": "Что нового:\n— ..."
+  },
+  "books": {
+    "Prabhupada_rus": {
+      "title": "Книги Прабхупады (рус)",
+      "lang": "rus",
+      "file": "Prabhupada_rus.db",
+      "version": 2,
+      "url": "https://ХОСТ/Prabhupada_rus-v1.db",
+      "delta": {
+        "file": "Prabhupada_rus-delta-v2.db",
+        "url": "https://ХОСТ/Prabhupada_rus-delta-v2.db",
+        "from": 1
+      },
+      "notes": ""
+    },
+    "Prabhupada_eng": {
+      "title": "Prabhupada books (eng)",
+      "lang": "eng",
+      "file": "Prabhupada_eng.db",
+      "version": 1,
+      "url": "https://ХОСТ/Prabhupada_eng-v1.db",
+      "notes": ""
+    }
+  },
+  "audio": {}
+}

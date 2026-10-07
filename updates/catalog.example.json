@@ -1,0 +1,13 @@
+{
+  "catalogVersion": 1,
+  "apk": {
+    "versionCode": 7,
+    "versionName": "1.2.1",
+    "url": "https://github.com/lightphoto2006/Guhyatama/releases/download/v1.2.1/Guhyatama-1.2.1.apk",
+    "size": 17546021,
+    "sha256": "779de134bfde426272451434046c4f92b0f6abadddc91dbd50c2b9a48d9bb8ff",
+    "notes": "Что нового:\n— ..."
+  },
+  "books": [],
+  "audio": []
+}
