@@ -1,0 +1,14 @@
+{
+  "_comment": "py lectures_build.py build lectures.json lectures_clean.db --force. Папка = ОДНА книга, файл = ОДНА лекция, порядок — по (песнь, глава, текст) из имени файла",
+  "out": "lectures_clean.db",
+  "book": {
+    "title": "Чайтанья Чаритамрита. Лекции",
+    "type": "SCC",
+    "author": "Шьямакунда прабху",
+    "cover_file": "cover.jpg"
+  },
+  "files": [
+    { "docx": "001 (2.3.1-36).docx" },
+    { "docx": "338 (1.6.82-120) Величие Адвайты Ачарьи.docx" }
+  ]
+}

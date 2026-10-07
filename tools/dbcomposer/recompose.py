@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 """
-dbcomposer — чистка и пересборка Gitabase .db для Гухьятамы.
+dbcomposer — чистка и пересборка библиотечных .db для Гухьятамы.
 Только стандартная библиотека Python (sqlite3, json, os). Базы-источники не трогаем (только чтение).
 
   py recompose.py inspect SOURCE.db [--type BG] [--book 1]
@@ -25,19 +25,20 @@ import re
 import sqlite3
 import sys
 
-TOOLS_VERSION = "2026-09-12e"
+import dbcommon
+
+TOOLS_VERSION = "2026-09-13a"
 
 APP_TABLES = ('books', 'chapters', 'songs', 'textnums', 'texts',
               'textrefs', 'images', 'image_nums')
 # lettersbytopic: связка «тема -> письма» (rec_id = txt_no писем); копируем целиком,
 # если в сборку входит хотя бы одна книга писем (LTRS/LTR) — приложение сматчит позже
-LINK_TABLES = ('lettersbytopic',)
-SKIP_TABLES = ('textindex', 'textindex_content', 'textindex_segments',
-               'textindex_segdir', 'meanings', 'eind', 'links')
+# (обработка — в build()).
 
 
 def connect_ro(path):
-    return sqlite3.connect("file:%s?mode=ro" % path, uri=True)
+    """Read-only соединение; путь percent-кодируется (dbcommon.connect_ro)."""
+    return dbcommon.connect_ro(path)
 
 
 def table_cols(con, table):
@@ -74,21 +75,8 @@ def jpeg_size(data):
 
 
 def img_bytes(raw):
-    """Контент images: base64-текст в BLOB или сырой JPEG -> байты JPEG (или None)."""
-    if not raw:
-        return None
-    if isinstance(raw, str):
-        raw = raw.encode('ascii', 'ignore')
-    import base64 as _b64
-    try:
-        data = _b64.b64decode(raw, validate=False)
-        if len(data) >= 100:
-            return data
-    except Exception:
-        pass
-    if len(raw) >= 100 and raw[:2] == b'\xff\xd8':
-        return bytes(raw)
-    return None
+    """Контент images: сырой JPEG/PNG или base64-текст -> байты (или None)."""
+    return dbcommon.img_bytes(raw)
 
 
 def image_info(src, book_id, limit=2000):
@@ -155,10 +143,17 @@ def chapter_verses(src, book_id, limit=5000):
 
 
 def find_verses(src, book_id, kind='all', search='', limit=1000):
-    """Строки textnums (+preview) для просмотра. kind: all|error|dup|empty|orphan.
+    """Строки textnums (+preview) для просмотра. kind: all|error|dup|empty|orphan|gallery.
     Возвращает [{'song','ch_no','txt_no','preview'}]."""
     con = connect_ro(src)
     try:
+        if kind == 'gallery':
+            rows = con.execute(
+                "SELECT song,ch_no,txt_no,preview FROM textnums WHERE book_id=?",
+                (book_id,)).fetchall()
+            return [{'song': str(r[0]), 'ch_no': str(r[1]), 'txt_no': str(r[2]),
+                     'preview': (r[3] or '')[:90]}
+                    for r in rows if is_gallery(r[3])][:limit]
         if kind == 'error':
             q = ("SELECT song,ch_no,txt_no,preview FROM textnums WHERE book_id=? AND "
                  "(song LIKE '%@ERROR%' OR ch_no LIKE '%@ERROR%' OR txt_no LIKE '%@ERROR%') LIMIT ?")
@@ -209,8 +204,36 @@ def safe_int(v):
             return 0
 
 
+def ch_number(v):
+    """number для chapters: числа -> int (как раньше), нечисловое -> исходная строка.
+
+    Раньше всё нечисловое сваливалось в 0 (safe_int) — разные главы («Intro»,
+    «А») становились дублями (song,0) и терялись. None -> 0, как и раньше."""
+    if v is None:
+        return 0
+    r = safe_int(v)
+    if r != 0:
+        return r
+    s = str(v).strip()
+    if s in ('', '0', '0.0'):
+        return 0
+    try:
+        float(s)
+        return r  # числовое, но float->0 (напр. «0») — оставляем int
+    except ValueError:
+        return s
+
+
 def is_blank(v):
     return v is None or (isinstance(v, str) and v.strip() == '')
+
+
+def is_gallery(preview):
+    """Строка-галерея (не стих!): подпись «Иллюстрации…», картинки — в comment/images.
+    В приложении становилась бы фейковым стихом первым в главе. Введения глав
+    («Осмотр Армий…») и краткие содержания под правило НЕ подпадают.
+    Эталон один на все инструменты — dbcommon.is_gallery (сверено с приложением)."""
+    return dbcommon.is_gallery(preview)
 
 
 def books_row(con, old_bid):
@@ -261,9 +284,14 @@ def inspect_data(src):
                 nimg = con.execute("SELECT COUNT(*) FROM image_nums WHERE bid=?", (bid,)).fetchone()[0]
             except Exception:
                 nimg = 0
+            ngal = sum(1 for (p,) in con.execute(
+                "SELECT preview FROM textnums WHERE book_id=?", (bid,)).fetchall()
+                if is_gallery(p))
             junk = []
             if nerr:
                 junk.append("@ERROR: %d" % nerr)
+            if ngal:
+                junk.append("галерей-строк: %d" % ngal)
             if nempty:
                 junk.append("пустых: %d" % nempty)
             if ndup:
@@ -363,7 +391,7 @@ def load_topic_map(src_cons, tspec):
             continue
         for rec, s, c in rows:
             if rec:
-                cmap.setdefault(str(rec), []).append((str(s), str(c)))
+                cmap.setdefault(dbcommon.nkey(rec), []).append((str(s), str(c)))
         if cmap:
             break
     if not cmap:
@@ -372,23 +400,158 @@ def load_topic_map(src_cons, tspec):
 
 
 def pattern_to_regex(pattern):
-    """'BG{ch}.{txt}.mp3' -> regex с группами song/ch/txt."""
+    """'BG{ch}.{txt}.mp3' -> regex с группами song/ch/txt.
+    '{ext}' = любое из mp3|ogg|opus (смешанные папки: mp3 первой песни + opus новых)."""
     out = []
     i = 0
-    for m in re.finditer(r'\{(song|ch|txt)\}', pattern):
+    for m in re.finditer(r'\{(song|ch|txt|ext)\}', pattern):
         out.append(re.escape(pattern[i:m.start()]))
-        out.append('(?P<%s>.+?)' % m.group(1))
+        name = m.group(1)
+        if name == 'ext':
+            out.append(r'(?P<ext>mp3|ogg|opus)')
+        else:
+            out.append('(?P<%s>.+?)' % name)
         i = m.end()
     out.append(re.escape(pattern[i:]))
     return re.compile(''.join(out) + '$')
 
 
+# Типы книг для выбора в GUI (аудио и переименования)
+AUDIO_TYPES = ["SB", "BG", "CC", "ISO", "NOD", "NOI", "TLC", "KB", "BS", "TQK",
+               "SCC", "SSB", "SBG", "LTR", "LTRS", "TLKS", "LSB", "LBG", "LCC"]
+# Трёхуровневые имена (песнь.глава.стих) — остальным хватает глава.стих
+SONG_TYPES = {"SB", "SCC", "SSB", "SBG"}
+AUDIO_EXTS = ["mp3", "ogg", "opus", "any"]
+
+
+def default_audio_pattern(btype, ext="mp3"):
+    """Шаблон по типу: SB{song}.{ch}.{txt}.mp3, BG{ch}.{txt}.mp3.
+    ext='any' -> хвост {ext} (папка со смешанными mp3/ogg/opus)."""
+    b = (btype or "BG").upper()
+    tail = ".{ext}" if (ext or "").lower() == "any" else "." + (ext or "mp3").lower()
+    if b in SONG_TYPES:
+        return "%s{song}.{ch}.{txt}%s" % (b, tail)
+    return "%s{ch}.{txt}%s" % (b, tail)
+
+
+def id3v2_len(data):
+    """Длина ID3v2-шапки (0 если нет): 10 байт + synchsafe-размер (+10 футра при флаге)."""
+    if len(data) < 10 or data[:3] != b'ID3':
+        return 0
+    size = ((data[6] & 0x7F) << 21) | ((data[7] & 0x7F) << 14) | \
+        ((data[8] & 0x7F) << 7) | (data[9] & 0x7F)
+    total = 10 + size
+    if data[5] & 0x10:
+        total += 10
+    return total if total < len(data) else 0
+
+
+def strip_mp3_edges(data, first):
+    """Убрать служебное, мешающее склейке: у первого файла чистим только хвост,
+    у остальных — голову (ID3v2) и хвост (ID3v1). Возвращает None если не MP3."""
+    if len(data) < 128:
+        return None
+    body = data
+    if not first:
+        n = id3v2_len(body)
+        if n > 0:
+            body = body[n:]
+        if not (len(body) > 2 and body[0] == 0xFF and (body[1] & 0xE0) == 0xE0):
+            return None
+    if len(body) >= 128 and body[-128:-125] == b'TAG':
+        body = body[:-128]
+    return body if len(body) >= 128 else None
+
+
+def merge_mp3(parts):
+    """Склейка кусков одного кодера простым конкатенированием кадров.
+    Декодеры играют цепочку подряд (как стрим); длительность покажет первую часть."""
+    out = []
+    for i, data in enumerate(parts):
+        body = strip_mp3_edges(data, i == 0)
+        if body is None:
+            return None
+        out.append(body)
+    blob = b''.join(out)
+    return blob if 100 <= len(blob) <= 8 * 1024 * 1024 else None
+
+
+def verse_map_for_audio(dst, spec, btype):
+    """{(song, ch): [txt_no...]} книги нужного типа: сначала из собираемой базы,
+    иначе из verse_source {file, type|book_id}. None — склеивать не по чему."""
+    want = (btype or '').upper()
+    try:
+        cands = dst.execute("SELECT _id FROM books WHERE type=?", (btype,)).fetchall()
+        if not cands:
+            cands = dst.execute(
+                "SELECT _id FROM books WHERE UPPER(type)=?",
+                (want,)).fetchall()
+        if cands:
+            best, bestn = None, -1
+            for (bid,) in cands:
+                n = dst.execute("SELECT COUNT(*) FROM textnums WHERE book_id=?",
+                                (bid,)).fetchone()[0]
+                if n > bestn:
+                    best, bestn = bid, n
+            rows = dst.execute(
+                "SELECT song,ch_no,txt_no FROM textnums WHERE book_id=? ORDER BY _id",
+                (best,)).fetchall()
+            m = {}
+            for s, c, t in rows:
+                m.setdefault((str(s), str(c)), []).append(str(t))
+            return m
+    except Exception:
+        pass
+    vs = (spec.get('audio_pack') or {}).get('verse_source')
+    if isinstance(vs, dict) and vs.get('file') and os.path.exists(vs['file']):
+        try:
+            con = connect_ro(vs['file'])
+            try:
+                if 'book_id' in vs:
+                    bids = [(int(vs['book_id']),)]
+                else:
+                    t = vs.get('type', btype)
+                    bids = con.execute(
+                        "SELECT _id FROM books WHERE type=? OR UPPER(type)=?",
+                        (t, str(t).upper())).fetchall()
+                best, bestn = None, -1
+                for (bid,) in bids:
+                    n = con.execute("SELECT COUNT(*) FROM textnums WHERE book_id=?",
+                                    (bid,)).fetchone()[0]
+                    if n > bestn:
+                        best, bestn = bid, n
+                if best is None:
+                    return None
+                rows = con.execute(
+                    "SELECT song,ch_no,txt_no FROM textnums WHERE book_id=? ORDER BY _id",
+                    (best,)).fetchall()
+                m = {}
+                for s, c, t in rows:
+                    m.setdefault((str(s), str(c)), []).append(str(t))
+                return m
+            finally:
+                con.close()
+        except Exception:
+            return None
+    return None
+
+
+def _mixkey(tup):
+    """Ключ сортировки для смешанных int/str (номера файлов бывают кодами вроде 1CC96):
+    числа — числами, строки — строками, без TypeError."""
+    return tuple((0, x) if isinstance(x, int) else (1, str(x)) for x in tup)
+
+
 def pack_audio(dst, spec, report):
-    """Секция spec["audio_pack"]: {"dir": "...", "book_type": "BG",
-    "pattern": "BG{ch}.{txt}.mp3"}. Кладёт MP3/OGG в таблицу verse_audio
-    (book_type, song, ch_no, txt_no, content, mime). Приложение при импорте
-    такого файла раскладывает их по книгам этого типа (rus+eng).
-    OGG/Opus (Vagdhenu): магия OggS, mime audio/ogg."""
+    """Секция spec["audio_pack"]: {"dir": "...", "book_type": "SB",
+    "pattern": "SB{song}.{ch}.{txt}.mp3"[, "verse_source": {"file": "...", "type": "SB"}]}.
+    Папка сканируется рекурсивно (подпапки глав вида "SB 1.1" — нормально).
+    Кладёт MP3/OGG в таблицу verse_audio (book_type, song, ch_no, txt_no, content, mime).
+    Сдвоенные стихи («28-29») склеиваются из поштучных файлов по книге
+    (таблица textnums собираемой базы или verse_source); каких файлов не хватило —
+    в отчёте, такие стихи пропускаются. Без книги — старый режим «файл = стих».
+    Приложение при импорте такого файла раскладывает их по книгам этого типа (rus+eng).
+    OGG/Opus (.ogg/.opus): магия OggS, mime audio/ogg (диапазоны из ogg не клеим)."""
     ap = spec.get('audio_pack')
     if not ap:
         return
@@ -405,8 +568,30 @@ def pack_audio(dst, spec, report):
     dst.execute("CREATE TABLE IF NOT EXISTS verse_audio(book_type TEXT, song TEXT, ch_no TEXT, txt_no TEXT, content BLOB, mime TEXT)")
     dst.execute("DELETE FROM verse_audio")
     matched = skipped = total_kb = 0
+    merged_n = 0
     leftovers = []
-    for f in sorted(os.listdir(d)):
+    missing = []
+
+    def nkey(s):
+        try:
+            return int(str(s))
+        except Exception:
+            return str(s)
+
+    # 1. читаем и проверяем файлы: {(song, ch, txt): (kind, data, fname)}.
+    # Папка сканируется РЕКУРСИВНО (главы лежат в подпапках вида "SB 1.1");
+    # сопоставление — по имени файла
+    files = {}
+    subdirs = set()
+
+    def walk_files():
+        for root, _, fns in os.walk(d):
+            if os.path.abspath(root) != os.path.abspath(d):
+                subdirs.add(os.path.relpath(root, d))
+            for f in sorted(fns):
+                yield root, f
+
+    for root, f in walk_files():
         low = f.lower()
         if low.endswith('.mp3'):
             kind = 'mp3'
@@ -420,7 +605,7 @@ def pack_audio(dst, spec, report):
             if len(leftovers) < 5:
                 leftovers.append(f)
             continue
-        p = os.path.join(d, f)
+        p = os.path.join(root, f)
         try:
             if os.path.getsize(p) < 5 * 1024 or os.path.getsize(p) > 8 * 1024 * 1024:
                 skipped += 1
@@ -429,48 +614,140 @@ def pack_audio(dst, spec, report):
                 data = fh.read()
             if kind == 'mp3':
                 ok = data[:3] == b'ID3' or (len(data) > 2 and data[0] == 0xFF and (data[1] & 0xE0) == 0xE0)
-                mime = 'audio/mpeg'
             else:
                 ok = data[:4] == b'OggS'
-                mime = 'audio/ogg'
             if not ok:
                 skipped += 1
                 continue
             g = m.groupdict()
-            dst.execute(
-                "INSERT INTO verse_audio(book_type,song,ch_no,txt_no,content,mime)"
-                " VALUES (?,?,?,?,?,?)",
-                (btype, g.get('song') or '1', g.get('ch') or '', g.get('txt') or '',
-                 data, mime))
-            matched += 1
-            total_kb += len(data) // 1024
+            key = (nkey(g.get('song') or '1'), nkey(g.get('ch') or ''), nkey(g.get('txt') or ''))
+            if key in files:
+                skipped += 1
+                continue
+            files[key] = (kind, data, f)
         except Exception:
             skipped += 1
-    report.append("audio %s: файлов %d, %d КБ, пропущено %d%s" % (
-        btype, matched, total_kb, skipped,
-        (" (напр. %s)" % ", ".join(leftovers)) if leftovers else ""))
+
+    def put_row(song, ch, txt, data, mime):
+        dst.execute(
+            "INSERT INTO verse_audio(book_type,song,ch_no,txt_no,content,mime)"
+            " VALUES (?,?,?,?,?,?)",
+            (btype, str(song), str(ch), str(txt), data, mime))
+
+    vmap = verse_map_for_audio(dst, spec, btype)
+    miss_single = 0
+    if vmap is None:
+        # нет книги для сверки — старый режим «файл = стих»
+        for (song, ch, txt), (kind, data, f) in sorted(files.items(), key=lambda kv: _mixkey(kv[0])):
+            put_row(song, ch, txt, data,
+                    'audio/mpeg' if kind == 'mp3' else 'audio/ogg')
+            matched += 1
+            total_kb += len(data) // 1024
+        report.append("audio %s: файлов %d, %d КБ, пропущено %d%s (без книги: без склейки)" % (
+            btype, matched, total_kb, skipped,
+            (" (напр. %s)" % ", ".join(leftovers)) if leftovers else ""))
+        return
+
+    # 2. идём по стихам книги: одиночные — как есть, диапазоны — склейкой
+    used = set()
+    for (song, ch), txts in vmap.items():
+        for txt in txts:
+            m = re.match(r"^(\d+)\s*[-–—]\s*(\d+)$", str(txt).strip())
+            if m is None:
+                key = (nkey(song), nkey(ch), nkey(txt))
+                if key in files:
+                    kind, data, f = files[key]
+                    put_row(song, ch, txt, data,
+                            'audio/mpeg' if kind == 'mp3' else 'audio/ogg')
+                    used.add(key)
+                    matched += 1
+                    total_kb += len(data) // 1024
+                else:
+                    miss_single += 1
+                continue
+            a, b = int(m.group(1)), int(m.group(2))
+            if b < a or b - a + 1 > 32:
+                missing.append("%s.%s.%s (странный диапазон)" % (song, ch, txt))
+                continue
+            # готовый файл ровно под диапазон (SB1.19.9-10.mp3) — берём как есть
+            rk = (nkey(song), nkey(ch), nkey(txt))
+            if rk in files:
+                kind, data, f = files[rk]
+                put_row(song, ch, txt, data,
+                        'audio/mpeg' if kind == 'mp3' else 'audio/ogg')
+                used.add(rk)
+                matched += 1
+                total_kb += len(data) // 1024
+                continue
+            parts = []
+            lacks = []
+            for n in range(a, b + 1):
+                k = (nkey(song), nkey(ch), n)
+                if k in files:
+                    parts.append(files[k] + (n,))
+                else:
+                    lacks.append(str(n))
+            if lacks:
+                missing.append("%s.%s.%s: нет %s" % (song, ch, txt, ",".join(lacks)))
+                continue
+            if any(p[0] != 'mp3' for p in parts):
+                missing.append("%s.%s.%s: диапазон из ogg не клеим" % (song, ch, txt))
+                continue
+            blob = merge_mp3([p[1] for p in parts])
+            if blob is None:
+                missing.append("%s.%s.%s: не склеилось" % (song, ch, txt))
+                continue
+            put_row(song, ch, txt, blob, 'audio/mpeg')
+            for p in parts:
+                used.add((nkey(song), nkey(ch), p[3]))
+            merged_n += 1
+            matched += 1
+            total_kb += len(blob) // 1024
+    for key, (kind, data, f) in sorted(files.items(), key=lambda kv: _mixkey(kv[0])):
+        if key not in used and f not in leftovers:
+            leftovers.append(f)
+    subnote = "" if not subdirs else " (подпапок: %d)" % len(subdirs)
+    report.append("audio %s: стихов %d (склеено диапазонов %d, нет одиночных файлов %d), %d КБ, пропущено файлов %d%s%s" % (
+        btype, matched, merged_n, miss_single, total_kb, skipped, subnote,
+        (" (напр. %s)" % ", ".join(leftovers[:5])) if leftovers else ""))
+    if missing:
+        report.append("audio %s: без звука осталось %d: %s" % (
+            btype, len(missing), "; ".join(missing[:10])) +
+            ("…" if len(missing) > 10 else ""))
 
 
 def build(spec_path, out_path, force=False):
+    """Сборка в <out>.tmp с атомарной подменой: старый рабочий файл НЕ трогаем,
+    пока новая сборка не доделана и не проверена (раньше os.remove шёл до
+    валидации входа — упавшая сборка стоила пользователя последнего выхода)."""
     with open(spec_path, encoding='utf-8') as f:
         spec = json.load(f)
     if os.path.exists(out_path) and not force:
         return "OUT уже есть: %s (добавь --force)" % out_path
-    if os.path.exists(out_path):
-        os.remove(out_path)
 
     drop_err = spec.get('drop_error_rows', True)
     drop_empty = spec.get('drop_empty_verses', True)
     dedupe = spec.get('dedupe', True)
     drop_empty_ch = spec.get('drop_empty_chapters', False)
 
-    dst = sqlite3.connect(out_path)
+    out_dir = os.path.dirname(os.path.abspath(out_path)) or "."
+    if not os.path.isdir(out_dir):
+        return "Нет папки для выхода: %s" % out_dir
+    tmp_path = out_path + ".tmp"
+    if os.path.exists(tmp_path):
+        try:
+            os.remove(tmp_path)
+        except OSError as e:
+            return "Не удалить временный файл %s: %s" % (tmp_path, e)
+
+    dst = sqlite3.connect(tmp_path)
     report = []
     # схема: копируем DDL нужных таблиц из первого источника, где они есть
     made = set()
     src_cons = {}
     result = None
     try:
+        # сначала — вся валидация входа: старый выход ещё не тронут
         for bspec in spec.get('books', []):
             sf = bspec['file']
             if sf not in src_cons:
@@ -486,9 +763,8 @@ def build(spec_path, out_path, force=False):
                         if copy_table_schema(dst, con, t):
                             made.add(t)
                             report.append("схема %s: из %s" % (t, os.path.basename(sf)))
-                    except Exception:
-                        pass
-        # схемы «плавают»: донор схемы может быть уже нужных колонок — досаживаем
+                    except Exception as e:
+                        report.append("схема %s: НЕ создана (%s)" % (t, e))
         # столбцы, которые есть хотя бы в одном источнике (ALTER TABLE ADD COLUMN)
         for t in APP_TABLES:
             if t not in made:
@@ -501,7 +777,9 @@ def build(spec_path, out_path, force=False):
                     continue
                 for c in scols:
                     if c not in base:
-                        dst.execute('ALTER TABLE "%s" ADD COLUMN "%s"' % (t, c))
+                        # идентификатор из чужого схемы — экранируем кавычки
+                        dst.execute('ALTER TABLE "%s" ADD COLUMN "%s"'
+                                    % (t, c.replace('"', '""')))
                         base.add(c)
         for t in made:
             dst.execute("DELETE FROM %s" % t)
@@ -512,6 +790,7 @@ def build(spec_path, out_path, force=False):
         included_types = set()
         seen_src = set()
         cover_recs = []
+        merged_info = []
         for bspec in spec.get('books', []):
             con = src_cons[bspec['file']]
             sel = "SELECT _id,title,author,type FROM books WHERE "
@@ -570,21 +849,27 @@ def build(spec_path, out_path, force=False):
                         ch_rows = [(s, n, t) for s, n, t in tch]
                 if merge_map is None:
                     excl_ch = set(
-                        (str(s), str(n)) for s, n in bspec.get('exclude_chapters', []))
+                        (dbcommon.nkey(s), dbcommon.nkey(n))
+                        for s, n in bspec.get('exclude_chapters', []))
                     ch_rows = [(s, n, t) for s, n, t in con.execute(
                         "SELECT song,number,title FROM chapters WHERE book_id=? ORDER BY song,number",
                         (old_bid,)).fetchall()
-                        if (str(s), str(n)) not in excl_ch]
+                        if (dbcommon.nkey(s), dbcommon.nkey(n)) not in excl_ch]
                 else:
                     excl_ch = set(
-                        (str(s), str(n)) for s, n in bspec.get('exclude_chapters', []))
+                        (dbcommon.nkey(s), dbcommon.nkey(n))
+                        for s, n in bspec.get('exclude_chapters', []))
                     ch_rows = [(s, n, t) for s, n, t in ch_rows
-                               if (str(s), str(n)) not in excl_ch]
+                               if (dbcommon.nkey(s), dbcommon.nkey(n)) not in excl_ch]
+                nonnum_ch = 0
                 for song, num, ctitle in ch_rows:
                     next_ch += 1
+                    cnum = ch_number(num)
+                    if isinstance(cnum, str):
+                        nonnum_ch += 1
                     dst.execute(
                         "INSERT INTO chapters(_id,book_id,song,number,title) VALUES (?,?,?,?,?)",
-                        (next_ch, nb, str(song), safe_int(num), ctitle))
+                        (next_ch, nb, str(song), cnum, ctitle))
 
                 # песни (имена разделов-тем!)
                 if merge_map is None:
@@ -596,8 +881,8 @@ def build(spec_path, out_path, force=False):
                             dst.execute(
                                 "INSERT INTO songs(book_id,song,songname) VALUES (?,?,?)",
                                 (nb, str(s), sname))
-                    except Exception:
-                        pass
+                    except Exception as e:
+                        report.append("songs %s: пропуск (%s)" % (btype, e))
                 else:
                     for s, sname in tsongs:
                         dst.execute(
@@ -619,22 +904,36 @@ def build(spec_path, out_path, force=False):
                     "SELECT _id,song,ch_no,txt_no,preview FROM textnums WHERE book_id=? ORDER BY song,ch_no,_id",
                     (old_bid,)).fetchall()
                 excl_v = set(
-                    (str(s), str(c), str(t)) for s, c, t in bspec.get('exclude_verses', []))
+                    (dbcommon.nkey(s), dbcommon.nkey(c), dbcommon.nkey(t))
+                    for s, c, t in bspec.get('exclude_verses', []))
                 # стихи исключённых глав тоже уходят (иначе сироты)
                 excl_ch = set(
-                    (str(s), str(n)) for s, n in bspec.get('exclude_chapters', []))
+                    (dbcommon.nkey(s), dbcommon.nkey(n))
+                    for s, n in bspec.get('exclude_chapters', []))
                 seen_keys = set()
                 kept_new_keys = set()
                 kept_full = set()
                 kept_raw = set()
-                kept = dropped_err = dropped_empty = dropped_dup = dropped_excl = fixed_song = merged = 0
+                kept = dropped_err = dropped_empty = dropped_dup = dropped_excl = 0
+                dropped_gal = 0
+                gal_coords = set()
+                fixed_song = merged = 0
                 remap = {}
                 for old_tid, song, ch, txt, preview in tn_rows:
-                    if (str(song), str(ch), str(txt)) in excl_v or (str(song), str(ch)) in excl_ch:
+                    # сравнения — через nkey: '028' обязан матчиться с '28'
+                    if (dbcommon.nkey(song), dbcommon.nkey(ch), dbcommon.nkey(txt)) in excl_v or \
+                            (dbcommon.nkey(song), dbcommon.nkey(ch)) in excl_ch:
                         dropped_excl += 1
                         continue
                     if drop_err and any('@ERROR' in str(x) for x in (song, ch, txt)):
                         dropped_err += 1
+                        continue
+                    # Строки-галереи («Иллюстрации…»): не стихи, в приложении давали
+                    # фейковый первый стих главы. Картинки едут через images/image_nums
+                    if is_gallery(preview):
+                        dropped_gal += 1
+                        gal_coords.add((dbcommon.nkey(song), dbcommon.nkey(ch),
+                                        dbcommon.nkey(txt)))
                         continue
                     t = con.execute(
                         "SELECT sanskrit,translit,translit_srch,transl1,transl2,comment FROM texts WHERE _id=?",
@@ -647,7 +946,7 @@ def build(spec_path, out_path, force=False):
                     # координаты назначения: merge — топики письма (дубль под каждой темой),
                     # иначе свои (с ремонтом пустого song)
                     if merge_map is not None:
-                        targets = merge_map.get(str(txt)) or []
+                        targets = merge_map.get(dbcommon.nkey(txt)) or []
                         if not targets:
                             targets = [(OTHER_SONG, '1')]
                             if not other_used[0]:
@@ -666,15 +965,16 @@ def build(spec_path, out_path, force=False):
                             fixed_song += 1
                         targets = [(ns, nc)]
                     for ns, nc in targets:
-                        key = (ns, nc, str(txt))
+                        key = (dbcommon.nkey(ns), dbcommon.nkey(nc), dbcommon.nkey(txt))
                         if dedupe and key in seen_keys:
                             dropped_dup += 1
                             continue
                         seen_keys.add(key)
-                        kept_new_keys.add((ns, nc))
+                        kept_new_keys.add((dbcommon.nkey(ns), dbcommon.nkey(nc)))
                         kept_full.add(key)
-                        kept_raw.add((str(song), str(ch), str(txt)))
-                        remap.setdefault((str(song), str(ch), str(txt)), []).append((ns, nc))
+                        raw_key = (dbcommon.nkey(song), dbcommon.nkey(ch), dbcommon.nkey(txt))
+                        kept_raw.add(raw_key)
+                        remap.setdefault(raw_key, []).append((ns, nc))
                         next_tn += 1
                         dst.execute(
                             "INSERT INTO textnums(_id,book_id,song,ch_no,txt_no,preview) VALUES (?,?,?,?,?,?)",
@@ -683,18 +983,20 @@ def build(spec_path, out_path, force=False):
                             "INSERT INTO texts(_id,sanskrit,translit,translit_srch,transl1,transl2,comment)"
                             " VALUES (?,?,?,?,?,?,?)", (next_tn,) + tuple(t))
                         kept += 1
-                        if merge_map is not None and (ns, nc) != (str(song), str(ch)):
+                        if merge_map is not None and \
+                                (dbcommon.nkey(ns), dbcommon.nkey(nc)) != \
+                                (dbcommon.nkey(song), dbcommon.nkey(ch)):
                             merged += 1
 
                 # пустые главы — по флагу (по НОВЫМ координатам: работает и для merge)
                 if drop_empty_ch:
                     dst.execute("DELETE FROM chapters WHERE book_id=?", (nb,))
                     for song, num, ctitle in ch_rows:
-                        if (str(song), str(num)) in kept_new_keys:
+                        if (dbcommon.nkey(song), dbcommon.nkey(num)) in kept_new_keys:
                             next_ch += 1
                             dst.execute(
                                 "INSERT INTO chapters(_id,book_id,song,number,title) VALUES (?,?,?,?,?)",
-                                (next_ch, nb, str(song), safe_int(num), ctitle))
+                                (next_ch, nb, str(song), ch_number(num), ctitle))
                     if other_used[0]:
                         next_ch += 1
                         dst.execute(
@@ -711,23 +1013,30 @@ def build(spec_path, out_path, force=False):
                     report.append("  обложка %s: убрана из удаляемых (%s)" % (btype, cover_keep))
                 dropped_img = 0
                 try:
+                    # лимита больше нет: обрезка была молчаливой (терялись книги с
+                    # >5000 строками картинок) — читаем всё, превышение в отчёт
                     img_rows = con.execute(
-                        "SELECT sid,cid,tnum,text_id,image_id,type,desc,kind FROM image_nums WHERE bid=? LIMIT 5000",
+                        "SELECT sid,cid,tnum,text_id,image_id,type,desc,kind FROM image_nums WHERE bid=?",
                         (old_bid,)).fetchall()
+                    if len(img_rows) > 5000:
+                        report.append("  картинки %s: строк %d (внимание: больше прежнего лимита 5000 — все взяты)"
+                                      % (btype, len(img_rows)))
                     want_images = set()
                     for sid, cid, tnum, text_id, image_id, itype, desc, kind in img_rows:
                         if not image_id or image_id in drop_img:
                             dropped_img += 1
                             continue
                         # строка без привязки (пустые sid/cid — обложечные) всегда остаётся;
-                        # привязанная — только если её стих дожил
+                        # привязанная — только если её стих дожил; картинки галерей
+                        # (их строки-галереи выкинуты выше) едут без привязки к стиху
                         bound = bool(str(sid) or str(cid))
-                        if bound and (str(sid), str(cid), str(tnum)) not in kept_full and \
-                                (str(sid), str(cid), str(tnum)) not in kept_raw:
+                        coords = (dbcommon.nkey(sid), dbcommon.nkey(cid), dbcommon.nkey(tnum))
+                        if bound and coords not in kept_full and \
+                                coords not in kept_raw and coords not in gal_coords:
                             dropped_img += 1
                             continue
-                        if merge_map is not None and bound:
-                            newcoords = remap.get((str(sid), str(cid), str(tnum)), [])
+                        if merge_map is not None and bound and coords not in gal_coords:
+                            newcoords = remap.get(coords, [])
                             if not newcoords:
                                 dropped_img += 1
                                 continue
@@ -757,7 +1066,10 @@ def build(spec_path, out_path, force=False):
                         if bspec.get('cover_file'):
                             with open(bspec['cover_file'], 'rb') as f:
                                 cbytes = f.read()
-                            ciid = 'COVER_' + re.sub(r'[^A-Za-z0-9_-]', '_', btype)[:20]
+                            # id включает номер книги в ЭТОЙ сборке: две книги одного
+                            # типа больше не схлопываются в одну обложку (раньше
+                            # INSERT OR IGNORE молча оставлял обложку первой)
+                            ciid = 'COVER_%d_%s' % (nb, re.sub(r'[^A-Za-z0-9_-]', '_', btype)[:20])
                             dst.execute("INSERT OR IGNORE INTO images(image_id,content) VALUES (?,?)",
                                         (ciid, cbytes))
                         else:
@@ -771,8 +1083,12 @@ def build(spec_path, out_path, force=False):
                     except Exception as e:
                         report.append("  обложка %s: ОШИБКА %s" % (btype, e))
 
-                report.append("Книга '%s' [%s]: стихов %d (song-починено: %d; мусор: err=%d empty=%d dup=%d excl=%d; картинок выкинуто: %d)" % (
-                    (title or '')[:45], btype, kept, fixed_song, dropped_err, dropped_empty, dropped_dup, dropped_excl, dropped_img))
+                report.append("Книга '%s' [%s]: стихов %d (song-починено: %d; мусор: err=%d empty=%d dup=%d excl=%d gal=%d; картинок выкинуто: %d%s%s)" % (
+                    (title or '')[:45], btype, kept, fixed_song, dropped_err, dropped_empty, dropped_dup, dropped_excl, dropped_gal, dropped_img,
+                    ("; по темам разложено: %d" % merged) if merge_map is not None else "",
+                    ("; нечисловых глав: %d" % nonnum_ch) if nonnum_ch else ""))
+                if merge_map is not None:
+                    merged_info.append((nb, title))
 
         # textrefs: только исходящие от включённых типов (входящие без книг-целей приложение покажет текстом)
         nrefs = 0
@@ -800,10 +1116,17 @@ def build(spec_path, out_path, force=False):
                              d.get('refbySong'), d.get('refbyChapter'), d.get('refbyTextNo'), d.get('refbyText'),
                              d.get('refbyLevels'), d.get('refbyScroll'), d.get('refbyChapterName')))
                         nrefs += 1
-            except Exception:
-                pass
+            except Exception as e:
+                # молчаливый except стоил файлу ВСЕХ кросс-ссылок — теперь в отчёте
+                report.append("textrefs %s: пропуск (%s)" % (os.path.basename(sf), e))
         report.append("textrefs исходящих: %d" % nrefs)
-        pack_audio(dst, spec, report)
+        # Аудио не должно валить всю сборку: ошибка пака — строкой в отчёт, книги целы
+        try:
+            pack_audio(dst, spec, report)
+        except Exception as e:
+            import traceback as _tb
+            report.append("audio ОШИБКА (книги собраны, пак пропущен): %s" % e)
+            report.append(_tb.format_exc(limit=3))
         if cover_recs:
             dst.execute("CREATE TABLE IF NOT EXISTS covers(book_id INTEGER, image_id TEXT)")
             dst.execute("DELETE FROM covers")
@@ -830,7 +1153,8 @@ def build(spec_path, out_path, force=False):
                 for sf, cols in donors:
                     for c in cols:
                         if c not in base:
-                            dst.execute('ALTER TABLE "lettersbytopic" ADD COLUMN "%s"' % c)
+                            dst.execute('ALTER TABLE "lettersbytopic" ADD COLUMN "%s"'
+                                        % c.replace('"', '""'))
                             base.add(c)
                 seen_lbt = set()
                 n0 = 0
@@ -852,10 +1176,29 @@ def build(spec_path, out_path, force=False):
                         report.append("lettersbytopic %s: пропуск (%s)" % (os.path.basename(sf), e))
                 report.append("lettersbytopic: %d (по %d файлам)" % (n0, len(donors)))
         dst.commit()
+        # проверка merge чтением результата: темы должны быть с письмами, иначе в приложении пусто
+        for nb_, title_ in merged_info:
+            try:
+                nsg = dst.execute("SELECT COUNT(*) FROM songs WHERE book_id=?", (nb_,)).fetchone()[0]
+                nch = dst.execute("SELECT COUNT(*) FROM chapters WHERE book_id=?", (nb_,)).fetchone()[0]
+                ntn = dst.execute("SELECT COUNT(*) FROM textnums WHERE book_id=?", (nb_,)).fetchone()[0]
+                nempty = dst.execute(
+                    """SELECT COUNT(*) FROM chapters c WHERE c.book_id=? AND NOT EXISTS
+                       (SELECT 1 FROM textnums n WHERE n.book_id=c.book_id
+                        AND CAST(n.song AS TEXT)=CAST(c.song AS TEXT)
+                        AND CAST(n.ch_no AS TEXT)=CAST(c.number AS TEXT))""", (nb_,)).fetchone()[0]
+                report.append("проверка merge '%s': групп %d, глав %d (пустых %d), писем %d" % (
+                    (title_ or '')[:40], nsg, nch, nempty, ntn))
+            except Exception as e:
+                report.append("проверка merge '%s': %s" % ((title_ or '')[:40], e))
         try:
             report.append("integrity: %s" % dst.execute("PRAGMA integrity_check").fetchone()[0])
         except Exception as e:
             report.append("integrity: %s" % e)
+        dst.close()
+        dst = None
+        # атомарная подмена: старый выход остаётся на месте, пока новый не готов
+        os.replace(tmp_path, out_path)
         result = "\n".join(report)
     finally:
         for con in src_cons.values():
@@ -863,11 +1206,15 @@ def build(spec_path, out_path, force=False):
                 con.close()
             except Exception:
                 pass
-        dst.close()
-        if result is None and os.path.exists(out_path):
-            # сборка провалилась — не оставляем битый/пустой огарзок OUT
+        if dst is not None:
             try:
-                os.remove(out_path)
+                dst.close()
+            except Exception:
+                pass
+        if result is None and os.path.exists(tmp_path):
+            # сборка провалилась — убираем только временный файл; СТАРЫЙ выход цел
+            try:
+                os.remove(tmp_path)
             except OSError:
                 pass
     return result
@@ -881,15 +1228,19 @@ SPEC_EXAMPLE = """{
   "dedupe": true,
   "drop_empty_chapters": false,
   "books": [
-    {"file": "gitabase_texts_rus.db", "book_id": 1, "title": "Бхагавад Гита"},
-    {"file": "gitabase_texts_rus.db", "type": "SB"},
-    {"file": "gitabase_songs_rus.db", "book_id": 1}
+    {"file": "texts_rus.db", "book_id": 1, "title": "Бхагавад Гита"},
+    {"file": "texts_rus.db", "type": "SB"},
+    {"file": "songs_rus.db", "book_id": 1}
   ]
 }
 """
 
 
 def main(argv):
+    try:
+        sys.stdout.reconfigure(encoding="utf-8", errors="replace")
+    except Exception:
+        pass
     if len(argv) < 3 or argv[1] not in ('inspect', 'build', 'spec'):
         print(__doc__)
         print(SPEC_EXAMPLE)
