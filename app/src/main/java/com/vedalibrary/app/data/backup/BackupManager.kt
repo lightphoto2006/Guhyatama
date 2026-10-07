@@ -36,18 +36,26 @@ class BackupManager @Inject constructor(
         out.bufferedWriter().use { it.write(json.encodeToString(exportAll())) }
     }
 
-    /** Восстановление одним батчем в транзакции (без N round-trip'ов) */
+    /** Восстановление одним батчем в транзакции (без N round-trip'ов).
+     *  Идемпотентно: дубли пропускаются, теги резолвятся по имени — повторное
+     *  восстановление того же файла ничего не удваивает. Ошибки не глотаем —
+     *  исключение вызывающий показывает пользователю. */
     suspend fun importFrom(inp: InputStream): String = withContext(Dispatchers.IO) {
         val b = json.decodeFromString<NotesBackup>(inp.bufferedReader().readText())
         val h = b.highlights.map { it.copy(id = 0) }
         val n = b.notes.map { it.copy(id = 0) }
-        val t = b.tags.map { it.copy(id = 0) }
+        // Теги идут СО СВОИМИ id: DAO маппит «старый id → существующий/новый»
+        // и переносит по нему ссылки verse_tags (с reset(id=0) ссылки превращались
+        // в сирот на чужие id, а повторный restore падал на PK и откатывался)
+        val t = b.tags
         val c = b.cards.map { it.copy(id = 0) }
         val q = b.questions.map { it.copy(id = 0) }
-        try {
-            db.library().importBackupData(h, n, t, c, b.links, q)
-        } catch (_: Exception) { }
-        "Восстановлено записей: ${h.size + n.size + t.size + c.size + b.links.size + q.size}"
+        val (added, skipped) = db.library().importBackupData(h, n, t, c, b.links, q)
+        when {
+            added == 0 && skipped > 0 -> "Уже всё на месте — дубли не добавлялись: $skipped"
+            else -> "Восстановлено: +$added новых" +
+                    if (skipped > 0) ", пропущено дублей: $skipped" else ""
+        }
     }
 
     private suspend fun exportAll(): NotesBackup {

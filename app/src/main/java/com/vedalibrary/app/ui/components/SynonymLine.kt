@@ -11,7 +11,7 @@ import androidx.compose.ui.text.AnnotatedString
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontStyle
 import androidx.compose.ui.text.font.FontWeight
-import com.vedalibrary.app.ui.theme.ReadSerif
+import com.vedalibrary.app.ui.theme.ReadFont
 import androidx.compose.ui.text.withStyle
 import androidx.compose.ui.unit.sp
 
@@ -39,7 +39,9 @@ fun SynonymLine(entry: String, fontSizeSp: Float, onWordClick: (String) -> Unit,
     ClickableText(
         text = annotated,
         modifier = modifier,
-        style = LocalTextStyle.current.copy(fontSize = fontSizeSp.sp, color = MaterialTheme.colorScheme.onSurface, fontFamily = ReadSerif),
+        // lineHeight в 1.2× — шаг строк пословника как у обычного текста TextView
+        // (темовый M3 lineHeight заметно выше: строки «дышили» сильнее обычных)
+        style = LocalTextStyle.current.copy(fontSize = fontSizeSp.sp, lineHeight = (fontSizeSp * 1.2f).sp, color = MaterialTheme.colorScheme.onSurface, fontFamily = ReadFont),
         onClick = { off ->
             annotated.getStringAnnotations("word", off, off).firstOrNull()?.let { onWordClick(it.item) }
         }

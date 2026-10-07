@@ -10,15 +10,18 @@ object VerseShare {
         "BG" to "БГ", "SB" to "ШБ", "CC" to "ЧЧ", "ISO" to "Шри Ишопанишад",
         "NOD" to "Нектар преданности", "NOI" to "Нектар наставлений",
         "TLC" to "Учение Шри Чайтаньи", "KB" to "Кришна", "BS" to "Брахма-самхита",
-        "TQK" to "Учение царицы Кунти"
+        "TQK" to "Учение царицы Кунти",
+        "SCC" to "ЧЧ", "SSB" to "ШБ", "SBG" to "БГ", "SBRS" to "БРС"
     )
 
-    /** Ключ (song, chapter, txt) из id ".../song/ch/txt" — только для стихов Gitabase (chapterId содержит /ch-) */
+    /** Ключ (song, chapter, txt) из id ".../song/ch/txt" — только для стихов из .db (chapterId содержит /ch-).
+     *  Суффикс дублей (~2 у лекций одного стиха) отрезаем: ключ — адрес стиха, не строки. */
     fun verseKey(verse: Verse): Triple<String, String, String>? {
         if (!verse.chapterId.contains("/ch-")) return null
         val parts = verse.id.split("/")
         if (parts.size < 4) return null
-        return Triple(parts[parts.size - 3], parts[parts.size - 2], parts[parts.size - 1])
+        val txt = parts[parts.size - 1].substringBefore("~")
+        return Triple(parts[parts.size - 3], parts[parts.size - 2], txt.ifBlank { parts[parts.size - 1] })
     }
 
     /** Ключ обратной ссылки textrefs: ext:BG/1/2/13 (song/ch/txt) */
@@ -26,6 +29,14 @@ object VerseShare {
         val k = verseKey(verse) ?: return null
         val code = book?.id?.split("-")?.getOrNull(1)?.uppercase() ?: return null
         return "ext:$code/${k.first}/${k.second}/${k.third}"
+    }
+
+    /** Номер главы числом, включая 0 (Введение — первая).
+     *  chapterNum() даёт null для 0 — для сортировки соседей это неверно (Введение уходило в конец) */
+    fun chapterNumInt(chapterId: String): Int {
+        val tail = chapterId.substringAfterLast("ch-", "")
+        if (tail.isEmpty()) return 999
+        return tail.split("-").getOrNull(1)?.toIntOrNull() ?: 999
     }
 
     /** Номер главы из Chapter.id (".../ch-1-2" -> "2"), null для прозы */
@@ -51,6 +62,35 @@ object VerseShare {
         val rus = book?.language == "rus"
         return if (code == "SB") (if (rus) "Песнь $song" else "Canto $song")
         else (if (rus) "Часть $song" else "Part $song")
+    }
+
+    /** Книги лекций Шьямакунды: в списках показываем только названия лекций (без тела) */
+    fun isLectureBook(bookId: String?): Boolean =
+        bookId?.split("-")?.getOrNull(1)?.uppercase() in setOf("SCC", "SSB", "SBG", "SBRS")
+
+    /** Прозаические книги (целая глава — один кусок): перевод обычным начертанием,
+     *  как тела лекций, а не жирным (жирный — только для коротких переводов стихов) */
+    private val PROSE_TYPES = setOf("GC")
+    fun isProseBook(bookId: String?): Boolean =
+        bookId?.split("-")?.getOrNull(1)?.uppercase() in PROSE_TYPES
+
+    /** Книги, где number — номер лекции/письма, а не стиха: диапазоны («34-35»)
+     *  считать строками. Лекции обоих авторов + письма + беседы */
+    fun isLectureLike(bookId: String?): Boolean {
+        val t = bookId?.split("-")?.getOrNull(1)?.uppercase() ?: return false
+        return t in setOf(
+            "SCC", "SSB", "SBG", "SBRS", "LBG", "LSB", "LCC", "LISO", "LTRS", "LTR", "TLKS"
+        )
+    }
+
+    /** Сколько стихов в строке с номером: сдвоенные («23-24») раскрываются в 2.
+     *  Мусор вида «1CC96» и пустое — 1. Диапазоны шире 500 — тоже 1 (опечатка, не стихи) */
+    private val RANGE_RE = Regex("""^(\d+)\s*[-–—]\s*(\d+)$""")
+    fun verseCountOf(number: String): Int {
+        val m = RANGE_RE.matchEntire(number.trim()) ?: return 1
+        val (a, b) = m.destructured
+        val n = b.toInt() - a.toInt() + 1
+        return if (n in 1..500) n else 1
     }
 
     /** Название без технического суффикса импорта ("Шримад Бхагаватам [SB]" -> "Шримад Бхагаватам") */

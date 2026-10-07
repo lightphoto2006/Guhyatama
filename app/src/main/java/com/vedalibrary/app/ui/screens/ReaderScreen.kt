@@ -11,6 +11,7 @@ import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.lazy.grid.items
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.layout.onSizeChanged
 import androidx.compose.ui.platform.LocalDensity
@@ -43,17 +44,30 @@ fun ReaderScreen(
         "justify" -> androidx.compose.ui.text.style.TextAlign.Justify
         else -> androidx.compose.ui.text.style.TextAlign.Start
     }
-    var openSong by remember { mutableStateOf<String?>(null) }
+    // Раскрытый раздел переживает пересоздание экрана (поворот, возврат «назад» в chapters, а не в songs)
+    var openSong by rememberSaveable { mutableStateOf<String?>(null) }
+    // Системное «назад» из глав — в песни, а не из книги (уровень-предательски терялся)
+    androidx.activity.compose.BackHandler(enabled = openSong != null) { openSong = null }
     val ctx = androidx.compose.ui.platform.LocalContext.current
     val clipScope = rememberCoroutineScope()
-    val shownChapters = remember(chapters, groups, openSong) {
-        if (groups.isEmpty()) chapters
-        else groups.firstOrNull { it.song == openSong }?.chapters ?: emptyList()
-    }
-    val songTitle = remember(groups, openSong) {
-        if (openSong == null) null else groups.firstOrNull { it.song == openSong }?.title
-    }
     val counts by vm.verseCounts.collectAsState(emptyMap())
+    // Мусор исходников (пустая «21. Заключение» в русской ЧЧ): главы без стихов прячем,
+    // группы из одних пустых глав — тоже. Пока счётчики едут — показываем всё как есть
+    val visibleGroups = remember(groups, counts) {
+        if (counts.isEmpty()) groups
+        else groups.mapNotNull { g ->
+            val vis = g.chapters.filter { (counts[it.id] ?: 0) > 0 }
+            if (vis.isEmpty()) null else g.copy(chapters = vis)
+        }
+    }
+    val shownChapters = remember(chapters, groups, visibleGroups, openSong, counts) {
+        val list = if (groups.isEmpty()) chapters
+        else visibleGroups.firstOrNull { it.song == openSong }?.chapters ?: emptyList()
+        if (counts.isEmpty()) list else list.filter { (counts[it.id] ?: 0) > 0 }
+    }
+    val songTitle = remember(visibleGroups, openSong) {
+        if (openSong == null) null else visibleGroups.firstOrNull { it.song == openSong }?.title
+    }
     // Кнопки громкости — шрифт списков (только пока открыт этот экран)
     val volOwner = remember { Any() }
     DisposableEffect(Unit) {
@@ -62,24 +76,42 @@ fun ReaderScreen(
     }
     val eng = book?.language == "eng"
     Scaffold(topBar = {
-        // Компактная шапка: название + кубик + шестерёнка, без пустого места
-        Row(
-            Modifier.fillMaxWidth()
-                .windowInsetsPadding(WindowInsets.statusBars)
-                .padding(horizontal = 12.dp, vertical = 4.dp),
-            verticalAlignment = androidx.compose.ui.Alignment.CenterVertically
+        // Как шапка главы: строки по центру + ряд кнопок. Вторая строка (книга) —
+        // кнопка «назад» к разделам (отдельной строки со стрелкой больше нет)
+        Column(
+            Modifier.fillMaxWidth().padding(start = 12.dp, end = 12.dp, top = 8.dp),
+            horizontalAlignment = androidx.compose.ui.Alignment.CenterHorizontally
         ) {
             val bookTitle = book?.title
                 ?.let { com.vedalibrary.app.ui.components.VerseShare.cleanTitle(it) }
                 ?.takeIf { it.isNotBlank() } ?: "Книга"
             Text(
                 songTitle ?: bookTitle,
-                maxLines = 2, minLines = 1, overflow = TextOverflow.Ellipsis,
-                style = MaterialTheme.typography.titleMedium,
-                modifier = Modifier.weight(1f)
+                maxLines = 3, overflow = TextOverflow.Ellipsis,
+                textAlign = androidx.compose.ui.text.style.TextAlign.Center,
+                style = MaterialTheme.typography.titleMedium
             )
-            TextButton(onClick = { book?.let { vm.randomInBook(onVerse) } }) { Text("🎲") }
-            IconButton(onClick = onSettings) { Text("⚙️", style = MaterialTheme.typography.titleLarge) }
+            val sub = songTitle?.let { bookTitle }
+            if (sub != null) {
+                Text(
+                    sub,
+                    maxLines = 1, overflow = TextOverflow.Ellipsis,
+                    textAlign = androidx.compose.ui.text.style.TextAlign.Center,
+                    style = MaterialTheme.typography.labelLarge,
+                    modifier = Modifier.clickable { openSong = null }.padding(vertical = 2.dp)
+                )
+            }
+            Row(verticalAlignment = androidx.compose.ui.Alignment.CenterVertically) {
+                TextButton(
+                    onClick = { book?.let { vm.randomInBook(onVerse) } },
+                    contentPadding = PaddingValues(horizontal = 8.dp, vertical = 0.dp)
+                ) { Text("🎲") }
+                Text(
+                    "⚙️",
+                    style = MaterialTheme.typography.titleMedium,
+                    modifier = Modifier.clickable { onSettings() }.padding(8.dp)
+                )
+            }
         }
     }) { pad ->
         // Книга без глав (единственный фейковый раздел «Текст»): сразу список стихов
@@ -125,9 +157,10 @@ fun ReaderScreen(
                     }
                 }
             }
-            // Песни/темы/годы (верхний уровень многоуровневых книг)
-            if (groups.isNotEmpty() && openSong == null) {
-                items(groups, key = { "song-${it.song}" }) { g ->
+            // Песни/темы/годы (верхний уровень многоуровневых книг).
+            // Пустые группы (один мусор без стихов) уже выкинуты в visibleGroups
+            if (visibleGroups.isNotEmpty() && openSong == null) {
+                items(visibleGroups, key = { "song-${it.song}" }) { g ->
                     SectionCard(
                         title = g.title,
                         subtitle = if (g.showCount) (if (eng) "Chapters: ${g.chapters.size}" else "Глав: ${g.chapters.size}") else null,
@@ -136,22 +169,13 @@ fun ReaderScreen(
                     )
                 }
             } else {
-                // Главы (для песен — с возвратом к списку песней)
-                if (openSong != null) {
-                    item(span = { GridItemSpan(maxLineSpan) }, key = "back-songs") {
-                        val backTitle = book?.title
-                            ?.let { com.vedalibrary.app.ui.components.VerseShare.cleanTitle(it) }
-                            ?.takeIf { it.isNotBlank() } ?: "К разделам"
-                        TextButton(onClick = { openSong = null }, modifier = Modifier.fillMaxWidth()) {
-                            Text("← $backTitle")
-                        }
-                    }
-                }
+                // Главы открытого раздела (назад — тап по названию книги в шапке)
                 items(shownChapters, key = { it.id }) { ch ->
                     SectionCard(
                         title = ch.title,
                         subtitle = if (eng) "Verses: ${counts[ch.id] ?: 0}" else "Стихов: ${counts[ch.id] ?: 0}",
-                        onClick = { onChapter(ch.id) },
+                        // Глава из одной лекции (Введение) — сразу в неё, без списка
+                        onClick = { vm.openChapterOrVerse(ch.id, onVerse, onChapter) },
                         modifier = tileMod()
                     )
                 }

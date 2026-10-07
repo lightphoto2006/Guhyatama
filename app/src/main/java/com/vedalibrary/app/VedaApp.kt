@@ -1,17 +1,9 @@
 package com.vedalibrary.app
 
 import android.app.Application
-import android.app.NotificationChannel
-import android.app.NotificationManager
 import dagger.hilt.android.HiltAndroidApp
 
+/** Канал «Стих дня» (daily-verse) удалён: уведомления нигде не отправляются,
+ *  вместе с каналом убрано разрешение POST_NOTIFICATIONS. */
 @HiltAndroidApp
-class VedaApp : Application() {
-    override fun onCreate() {
-        super.onCreate()
-        val nm = getSystemService(NotificationManager::class.java)
-        nm.createNotificationChannel(
-            NotificationChannel("daily-verse", "Стих дня", NotificationManager.IMPORTANCE_DEFAULT)
-        )
-    }
-}
+class VedaApp : Application()

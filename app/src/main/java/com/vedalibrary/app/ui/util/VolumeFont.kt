@@ -3,24 +3,23 @@ package com.vedalibrary.app.ui.util
 /**
  * Кнопки громкости меняют шрифт — но только на экранах чтения.
  * Экран регистрирует обработчик при показе и снимает при уходе.
- * Владелец-токен: при быстрой навигации старый экран снимается ПОСЛЕ того,
- * как новый зарегистрировался — чужой clear тогда не гасит новый handler
- * (иначе громкость работает раз через раз).
+ * Стек владельцев вместо единственного слота: вложенные/параллельно
+ * составленные экраны не гасят друг другу — сверху всегда последний
+ * зарегистрированный, а чужой clear снимает только свою запись
+ * (у синглтона при быстрой навигации старый экран снимал ПОСЛЕ нового —
+ * чужой clear гасил новый handler, «громкость работала раз через раз»,
+ * а при возврате «назад» обработчик терялся совсем).
  */
 object VolumeFont {
-    private var owner: Any? = null
-    var handler: ((Int) -> Unit)? = null
-        private set
+    private val stack = ArrayList<Pair<Any, (Int) -> Unit>>()
+    val handler: ((Int) -> Unit)? get() = stack.lastOrNull()?.second
 
     fun set(owner: Any, h: (Int) -> Unit) {
-        this.owner = owner
-        handler = h
+        stack.removeAll { it.first === owner }
+        stack.add(owner to h)
     }
 
     fun clear(owner: Any) {
-        if (this.owner === owner) {
-            this.owner = null
-            handler = null
-        }
+        stack.removeAll { it.first === owner }
     }
 }

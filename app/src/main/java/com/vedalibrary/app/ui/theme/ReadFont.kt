@@ -10,15 +10,15 @@ import androidx.core.content.res.ResourcesCompat
 import com.vedalibrary.app.R
 
 /**
- * Noto Serif для читаемых текстов: полное покрытие IAST-диакритики
- * (ā ī ū ṛ ṃ ḥ ṅ ñ ṇ ṭ ḍ ś ṣ) + кириллица. Без него системный Roboto подменяет
- * отсутствующие глифы запасным шрифтом — отсюда «жирные» буквы с точками.
+ * Шрифт чтения — DejaVu Sans (проверенная читалка электронных книг):
+ * отличная кириллица + IAST-диакритика (ā ī ū ṛ ṃ ḥ...), читается крупным кеглем.
+ * Три настоящих начертания (regular/bold/oblique), жирность в пословнике — настоящим болдом.
  * UI-хром (заголовки, кнопки, меню) остаётся системным.
  */
-val ReadSerif = FontFamily(
-    Font(R.font.noto_serif_regular, FontWeight.Normal),
-    Font(R.font.noto_serif_bold, FontWeight.Bold),
-    Font(R.font.noto_serif_italic, FontWeight.Normal, FontStyle.Italic)
+val ReadFont = FontFamily(
+    Font(R.font.dejavu_sans, FontWeight.Normal),
+    Font(R.font.dejavu_sans_bold, FontWeight.Bold),
+    Font(R.font.dejavu_sans_italic, FontWeight.Normal, FontStyle.Italic)
 )
 
 private val typefaceCache = mutableMapOf<Boolean, Typeface?>()
@@ -26,9 +26,13 @@ private val typefaceCache = mutableMapOf<Boolean, Typeface?>()
 /** Typeface для TextView (HtmlText). Кэшируется на процесс. */
 @Synchronized
 fun readTypeface(ctx: Context, bold: Boolean): Typeface? {
-    typefaceCache[bold]?.let { return it }
+    // containsKey: неудачная загрузка (null) тоже кэшируется, без повторных попыток
+    if (typefaceCache.containsKey(bold)) return typefaceCache[bold]
     val tf = try {
-        ResourcesCompat.getFont(ctx.applicationContext, if (bold) R.font.noto_serif_bold else R.font.noto_serif_regular)
+        ResourcesCompat.getFont(
+            ctx.applicationContext,
+            if (bold) R.font.dejavu_sans_bold else R.font.dejavu_sans
+        )
     } catch (_: Exception) { null }
     typefaceCache[bold] = tf
     return tf

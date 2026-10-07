@@ -11,6 +11,7 @@ import com.vedalibrary.app.data.local.GeneralNote
 import com.vedalibrary.app.data.local.VerseRow
 import com.vedalibrary.app.data.local.VerseText
 import com.vedalibrary.app.data.settings.ReaderSettings
+import com.vedalibrary.app.ui.components.GbHtml
 import com.vedalibrary.app.ui.components.VerseShare
 import dagger.hilt.android.lifecycle.HiltViewModel
 import dagger.hilt.android.qualifiers.ApplicationContext
@@ -25,7 +26,7 @@ import javax.inject.Inject
 class LibraryViewModel @Inject constructor(
     private val db: AppDatabase,
     val settings: com.vedalibrary.app.data.settings.ReaderSettings,
-    private val gdb: com.vedalibrary.app.data.gitabase.GitabaseDbImporter,
+    private val gdb: com.vedalibrary.app.data.library.LibraryDbImporter,
     @ApplicationContext private val ctx: Context
 ) : ViewModel() {
     val books: Flow<List<Book>> = db.library().booksFlow()
@@ -121,12 +122,12 @@ class LibraryViewModel @Inject constructor(
     val bookmarkedBooks: Flow<List<String>> = db.library().bookmarkedBooks()
     fun deleteBook(id: String) = viewModelScope.launch {
         try {
-            db.library().deleteVersesOfBook(id)
-            db.library().deleteChaptersOfBook(id)
-            db.library().deleteIllustrationsOfBook(id)
-            db.library().deleteRefsFrom(id)
-            db.library().deleteBookmarksOfBook(id)
-            db.library().deleteBookRow(id)
+            db.library().deleteBookCascade(id)
+            // Аудио своей книги — иначе файлы оставались сиротами (этот путь
+            // раньше их не чистил, в отличие от Настроек; теперь везде одно)
+            try { gdb.deleteAudioOfBook(id) } catch (_: Exception) { }
+        } catch (e: kotlinx.coroutines.CancellationException) {
+            throw e
         } catch (_: Exception) { }
         coverCache.remove(id)
         // JPEG-иллюстрации лежат файлами — чистим каталог, иначе утечка места
@@ -136,17 +137,17 @@ class LibraryViewModel @Inject constructor(
         } catch (_: Exception) { }
     }
     /** Путь к первой иллюстрации книги — миниатюра карточки (обложек в .db нет).
-     *  Результат кэшируется на жизнь VM; инвалидируется при удалении книги. */
+     *  Кэшируются только НАЙДЕННЫЕ пути: негатив не кэшируется, иначе обложка,
+     *  добавленная после первой загрузки, не появится до пересоздания VM.
+     *  Инвалидация — при удалении книги. */
     private val coverCache = mutableMapOf<String, String?>()
     suspend fun coverPath(bookId: String): String? {
-        if (coverCache.containsKey(bookId)) {
-            val hit = coverCache[bookId]
-            if (hit == null || java.io.File(hit).exists()) return hit
-        }
+        val hit = coverCache[bookId]
+        if (hit != null && java.io.File(hit).exists()) return hit
         val path = try {
             db.library().firstIllustration(bookId)?.imagePath?.takeIf { java.io.File(it).exists() }
         } catch (_: Exception) { null }
-        coverCache[bookId] = path
+        if (path != null) coverCache[bookId] = path else coverCache.remove(bookId)
         return path
     }
     /** Открыть закладку книги: отдать наружу для навигации */
@@ -157,6 +158,8 @@ class LibraryViewModel @Inject constructor(
      *  Один раз на установку; новые импорты уже чистые. */
     fun backfillPuaIfNeeded() = viewModelScope.launch {
         try {
+            // Ремонт языка лекций Шьямакунды (импортированы как eng): идемпотентно, каждый запуск
+            try { withContext(Dispatchers.IO) { db.library().fixLectureLang() } } catch (_: Exception) { }
             val done = ctx.backfillPrefs.data.map { it[PUA_DONE] ?: false }.first()
             if (done) return@launch
             withContext(Dispatchers.IO) { gdb.backfillPua() }
@@ -174,34 +177,166 @@ class SearchViewModel @Inject constructor(
     val settings: com.vedalibrary.app.data.settings.ReaderSettings,
     @ApplicationContext private val ctx: Context
 ) : ViewModel() {
-    data class Hit(val item: VerseItem)
+    data class Hit(val item: VerseItem, val snippet: String, val field: String? = null)
     private val _r = MutableStateFlow(emptyList<Hit>())
     val results: StateFlow<List<Hit>> = _r
-    /** Запрос/скоп/язык живут в VM — возврат «назад» восстанавливает выдачу, а не чистый экран */
-    val query = MutableStateFlow("")
-    val scope = MutableStateFlow("all")
-    val langFilter = MutableStateFlow("all")
+    /** Запрос/скоп/язык живут в VM — возврат «назад» восстанавливает выдачу, а не чистый экран.
+     *  Снаружи — read-only StateFlow + сеттеры (публичный MutableStateFlow позволял
+     *  писать в состояние минуя логику VM) */
+    private val _query = MutableStateFlow("")
+    val query: StateFlow<String> = _query
+    private val _scope = MutableStateFlow("all")
+    val scope: StateFlow<String> = _scope
+    /** Язык выдачи — тот же сохранённый фильтр, что на главной (cycleBookLang):
+     *  одна кнопка в поиске меняет язык сразу везде */
+    val langFilter: StateFlow<String> = settings.bookLang
+        .stateIn(viewModelScope, SharingStarted.Eagerly, "all")
+    /** Книга для scope «В книге» (null = везде) */
+    private val _bookFilter = MutableStateFlow<String?>(null)
+    val bookFilter: StateFlow<String?> = _bookFilter
+    fun setQuery(v: String) { _query.value = v }
+    fun setScope(v: String) { _scope.value = v }
+    fun cycleLang() = viewModelScope.launch { settings.cycleBookLang() }
+    fun setBookFilter(v: String?) { _bookFilter.value = v }
+    val allBooks: kotlinx.coroutines.flow.Flow<List<com.vedalibrary.app.data.local.Book>> =
+        db.library().booksFlow()
     private val H_KEY = stringPreferencesKey("history")
     val history: StateFlow<List<String>> = ctx.searchStore.data
         .map { (it[H_KEY] ?: "").split("\n").filter { s -> s.isNotBlank() } }
         .stateIn(viewModelScope, SharingStarted.Lazily, emptyList())
 
-    fun search() = viewModelScope.launch {
+    /** Пайплайн поиска: debounce — быстрая печать не гоняет запросы (старый
+     *  ответ мог затереть более новый), distinctUntilChanged — повторная
+     *  установка того же значения FTS не перезапускает. История сюда НЕ пишется
+     *  (см. submitHistory): префиксы при наборе её засоряли. */
+    init {
+        combine(query, scope, bookFilter) { q, sc, b -> Triple(q, sc, b) }
+            .debounce(250)
+            .distinctUntilChanged()
+            .onEach { (q, sc, b) -> runSearch(q, sc, b) }
+            .launchIn(viewModelScope)
+    }
+
+    /** FTS: запрос целиком в кавычки-фразу — дефис (в FTS это оператор NOT),
+     *  скобки, звёздочки и кавычки становятся литералом: «Шримад-Бхагаватам»
+     *  ищется нормально, а не роняет запрос в тихо пустую выдачу.
+     *  Как в DictViewModel (там кавычки уже показали себя). */
+    private fun ftsQuery(q: String, column: String?): String? {
+        val clean = q.replace("\"", "").trim()
+        if (clean.isEmpty()) return null
+        val phrase = "\"$clean\""
+        return if (column == null) phrase else "$column:$phrase"
+    }
+
+    private suspend fun runSearch(qRaw: String, sc: String, b: String?) {
+        val q = qRaw.trim()
+        if (q.length < 2) { _r.value = emptyList(); return }
+        val col = when (sc) {
+            "sanskrit" -> "sanskrit"; "verse" -> "text"; "purport" -> "purport"; else -> null
+        }
+        val fts = ftsQuery(q, col) ?: return
+        try {
+            // Без лимитов и квот: выдаём все совпадения («везде» = все книги).
+            // Сниппет считается один раз в VM: поиск/подсветка не гоняют plain()
+            // на рекомпозиции. Билд hit'ов — в Default: toItem/plain тяжёлые
+            // (fromHtml на каждую строку), main держит только эмиссии.
+            val rows = if (b != null) db.library().searchLightBook(fts, b)
+            else db.library().searchLight(fts)
+            suspend fun build(list: List<com.vedalibrary.app.data.local.SearchRow>): List<Hit> =
+                withContext(Dispatchers.Default) {
+                    list.map { r ->
+                        val vr = VerseRow(
+                            r.id, r.chapterId, r.bookId, r.number, r.text,
+                            r.translation, r.synonyms, r.bookTitle, r.bookLang
+                        )
+                        val field = pickField(r, col, q)
+                        Hit(vr.toItem(), searchSnippet(fieldText(r, field) ?: r.text, q), field)
+                    }
+                }
+            // Первый экран сразу (40 строк), остальное подтягивается следом:
+            // тяжёлые лекции/переводы не держат первый показ результатов
+            val first = build(rows.take(40))
+            _r.value = first
+            if (rows.size > 40) _r.value = first + build(rows.drop(40))
+        } catch (e: kotlinx.coroutines.CancellationException) {
+            throw e
+        } catch (_: Exception) {
+            _r.value = emptyList()
+        }
+    }
+
+    private fun fieldText(r: com.vedalibrary.app.data.local.SearchRow, field: String?): String? =
+        when (field) {
+            "sanskrit" -> r.sanskrit
+            "text" -> r.text
+            "purport" -> r.purport
+            "synonyms" -> r.synonyms
+            "translation" -> r.translation
+            else -> r.translation ?: r.text
+        }
+
+    private val fieldOrder = listOf("text", "translation", "purport", "synonyms", "sanskrit")
+
+    /** Поле, где FTS реально нашёл слово: колонка scope, иначе первое поле
+     *  с совпадением (иначе сниппет «зачастую без этого слова»). Быстрый проход
+     *  (contains ignoreCase) — обычный случай; fold-поиск (per-char NFKC на
+     *  строках в 2 КБ) — только фолбэком: он и был причиной лага первых
+     *  результатов на секунды. Имя поля уезжает в ?hp=: экран стиха мотает
+     *  сразу в секцию с найденным словом, а не в первое вхождение в другом поле. */
+    private fun pickField(r: com.vedalibrary.app.data.local.SearchRow, col: String?, q: String): String? =
+        when (col) {
+            "sanskrit" -> "sanskrit"
+            "text" -> "text"
+            "purport" -> "purport"
+            else -> fieldOrder.firstOrNull { f ->
+                val t = fieldText(r, f); !t.isNullOrBlank() && t.contains(q, true)
+            } ?: fieldOrder.firstOrNull { f ->
+                val t = fieldText(r, f); !t.isNullOrBlank() && GbHtml.containsFold(t, q)
+            } ?: "translation"
+        }
+
+    /** Сниппет вокруг ПЕРВОГО совпадения: ~2 строки контекста до строки со словом,
+     *  строка слова и ~1 строка после (≈4 экран-строки, слово всегда видно).
+     *  Сырые поля с тегами (<i>, <br/>, </blockquote>) чистим через plain() —
+     *  иначе теги показывались текстом самой выдачи. «пада-\nсеванам» склеиваем,
+     *  серии пробельных (табы/переносы строк таблиц) схлопываем. Совпадение ищем
+     *  быстрым indexOf; fold/highlightRanges (NFKC на каждом символе) — только
+     *  фолбэк для диакритики в запросе. */
+    private fun searchSnippet(src: String?, q: String): String {
+        val raw = src ?: return ""
+        val stripped = if (raw.indexOf('<') >= 0) GbHtml.plain(raw) else raw
+        val t = stripped.replace(GbHtml.brokenHyphenRe, "-")
+            .replace(Regex("""[\s ]+"""), " ").trim()
+        if (t.isEmpty()) return ""
+        var st = t.indexOf(q, ignoreCase = true)
+        var en = if (st >= 0) st + q.length else -1
+        if (st < 0) {
+            val r = GbHtml.highlightRanges(t, q).firstOrNull()
+            if (r != null) { st = r.first; en = r.last + 1 }
+        }
+        if (st < 0 || en < 0) return t.take(220) // совпадения в поле нет — контекст начала (как раньше)
+        var start = (st - 110).coerceAtLeast(0)
+        var end = (en + 60).coerceAtMost(t.length)
+        if (start > 0) {
+            val sp = t.indexOf(' ', start)
+            if (sp in (start + 1) until st) start = sp + 1
+        }
+        if (end < t.length) {
+            val sp = t.lastIndexOf(' ', end)
+            if (sp > en) end = sp
+        }
+        return (if (start > 0) "…" else "") + t.substring(start, end) +
+                (if (end < t.length) "…" else "")
+    }
+
+    /** История — только по явному действию: IME-поиск, тап по результату
+     *  или по строке истории. На каждой клавише не пишем (kr/kri/krish…). */
+    fun submitHistory() {
         val q = query.value.trim()
-        if (q.length < 2) return@launch
-        val sc = scope.value
-        // scope как в Gitabase: sanskrit/verse/purport — маппим на FTS-запрос
-        val fts = when (sc) { "sanskrit" -> "sanskrit:$q"; "verse" -> "text:$q"; "purport" -> "purport:$q"; else -> q }
-        _r.value = try {
-            db.library().searchLight(fts).map { Hit(it.toItem()) }
-        } catch (_: Exception) { emptyList() }
-        saveHistory(q)
+        if (q.length < 2) return
+        viewModelScope.launch { saveHistory(q) }
     }
-    fun dictionary(word: String) = viewModelScope.launch {
-        _r.value = try {
-            db.library().dictLight(word).map { Hit(it.toItem()) }
-        } catch (_: Exception) { emptyList() }
-    }
+
     fun clearHistory() = viewModelScope.launch { ctx.searchStore.edit { it[H_KEY] = "" } }
     private suspend fun saveHistory(q: String) {
         if (q.length < 2) return
@@ -216,11 +351,19 @@ class SearchViewModel @Inject constructor(
 
 private val Context.searchStore by preferencesDataStore("search_history")
 
-/** Строка списков: лёгкие поля + готовая подпись (считается один раз в VM, а не на рекомпозицию) */
-data class VerseItem(val row: VerseRow, val ref: String)
+/** Строка списков: лёгкие поля + готовая подпись (считается один раз в VM, а не на рекомпозицию).
+ *  full — plain-текст без обрезки для выдачи/списков (лекции не дают: там в ref название) */
+data class VerseItem(val row: VerseRow, val ref: String, val full: String = "")
 
 private fun VerseRow.toItem() =
-    VerseItem(this, VerseShare.refLight(bookLang, bookId, chapterId, number))
+    if (VerseShare.isLectureBook(bookId))
+        // Лекции: в списках только название («Лекция №29 по стихам…»), нумерация — в подписи
+        VerseItem(this, com.vedalibrary.app.ui.components.GbHtml.plain(text).take(160))
+    else VerseItem(
+        this,
+        VerseShare.refLight(bookLang, bookId, chapterId, number),
+        com.vedalibrary.app.ui.components.GbHtml.plain(translation ?: text)
+    )
 
 @HiltViewModel
 class ReaderViewModel @Inject constructor(
@@ -248,10 +391,19 @@ class ReaderViewModel @Inject constructor(
         } else emptyList()
     }.stateIn(viewModelScope, SharingStarted.Lazily, emptyList())
     val illustrations = flow { emit(try { db.library().illustrations(bookId) } catch (_: Exception) { emptyList() }) }.stateIn(viewModelScope, SharingStarted.Lazily, emptyList())
-    /** Число стихов по главам — подписи плиток и диагностика пустоты */
+    /** Число стихов по главам — подписи плиток («Стихов: 44»).
+     *  Сдвоенные номера («23-24») раскрываются в два стиха — иначе плитка врёт.
+     *  У лекций/писем number — не номер стиха, там считаем строками как раньше */
     val verseCounts: StateFlow<Map<String, Int>> = flow {
         emit(try {
-            db.library().verseCounts(bookId).associate { it.cid to it.n }
+            if (VerseShare.isLectureLike(bookId)) {
+                db.library().verseCounts(bookId).associate { it.cid to it.n }
+            } else {
+                val rows = db.library().verseNumbers(bookId)
+                rows.groupBy({ it.cid }, { it.num }).mapValues { (_, ns) ->
+                    ns.sumOf { VerseShare.verseCountOf(it) }
+                }
+            }
         } catch (_: Exception) { emptyMap() })
     }.stateIn(viewModelScope, SharingStarted.Lazily, emptyMap())
     /** Книга из единственного фейкового раздела «Текст» (нет глав): стихи показываем сразу, без плитки */
@@ -266,6 +418,15 @@ class ReaderViewModel @Inject constructor(
         if (c == null) emptyList()
         else try { db.library().versesLight(c.id).map { it.toItem() } } catch (_: Exception) { emptyList() }
     }.stateIn(viewModelScope, SharingStarted.Lazily, emptyList())
+    /** Тап по плитке главы: глава с единственной лекцией (Введение и т.п.)
+     *  открывается сразу, без списка из одного пункта. Иначе — экран главы. */
+    fun openChapterOrVerse(chapterId: String, onVerse: (String) -> Unit, onChapter: (String) -> Unit) =
+        viewModelScope.launch {
+            try {
+                val ids = withContext(Dispatchers.IO) { db.library().verseIds(chapterId) }
+                if (ids.size == 1) onVerse(ids[0]) else onChapter(chapterId)
+            } catch (_: Exception) { onChapter(chapterId) }
+        }
     /** Текст для копирования стиха (плоский режим): полный стих грузится один раз по тапу */
     fun copyVerse(verseId: String, put: (String) -> Unit) = viewModelScope.launch {
         try {
@@ -311,12 +472,24 @@ class ChapterViewModel @Inject constructor(
     /** Стартовая позиция скролла (переход по закладке) */
     val startIndex: Int = saved.get<Int>("index") ?: 0
     val startOffset: Int = saved.get<Int>("offset") ?: 0
+    /** Якорь закладки применяется ОДИН раз — при первом входе. При возврате
+     *  «назад» со стиха и после поворота нужна последняя позиция, иначе
+     *  возврат прыгал бы обратно на закладку и терял место чтения */
+    var anchorPending: Boolean = startIndex != 0 || startOffset != 0
+        private set
     /** Последняя позиция (уход на стих и возврат «назад» — в то же место, а не наверх) */
     var lastIndex: Int = startIndex
         private set
     var lastOffset: Int = startOffset
         private set
+    fun anchorDone() { anchorPending = false }
     fun savePos(i: Int, o: Int) {
+        if (anchorPending) {
+            // Якорь ещё не долетел (список грузится из базы) — 0,0 ничего не значит;
+            // собственная прокрутка пользователя важнее якоря
+            if (i == 0 && o == 0) return
+            anchorPending = false
+        }
         lastIndex = i
         lastOffset = o
     }
@@ -366,6 +539,27 @@ class ChapterViewModel @Inject constructor(
             put(com.vedalibrary.app.ui.components.VerseShare.copyTextLight(r))
         } catch (_: Exception) { }
     }
+    /** Соседние НЕПУСТЫЕ главы книги в числовом порядке (для свайпа между главами).
+     *  Свайп влево в конце списка — первая глава следующей песни, и т.д. */
+    val neighborChapters: StateFlow<Pair<String?, String?>> = flow {
+        val c = chDef.await()
+        if (c == null) return@flow emit(null to null)
+        emit(try {
+            val raw = db.library().chapters(c.bookId)
+            val counts = try {
+                db.library().verseCounts(c.bookId).associate { it.cid to it.n }
+            } catch (_: Exception) { emptyMap() }
+            val chs = raw.filter { (counts[it.id] ?: 0) > 0 }.sortedWith(compareBy(
+                { val s = VerseShare.chapterSong(it.id); if (s?.toIntOrNull() == null) 1 else 0 },
+                { VerseShare.chapterSong(it.id)?.toIntOrNull() ?: 999 },
+                { VerseShare.chapterNumInt(it.id) },
+                { it.index }
+            ))
+            val ci = chs.indexOfFirst { it.id == chapterId }
+            if (ci < 0) null to null
+            else chs.getOrNull(ci - 1)?.id to chs.getOrNull(ci + 1)?.id
+        } catch (_: Exception) { null to null })
+    }.stateIn(viewModelScope, SharingStarted.Lazily, null to null)
     /** Закладка книги (одна на книгу). Подсвечена, если стоит на эту главу. */
     val bookmark: StateFlow<com.vedalibrary.app.data.local.Bookmark?> =
         flow {
@@ -373,12 +567,13 @@ class ChapterViewModel @Inject constructor(
             if (c == null) emit(null)
             else db.library().bookmarkFlow(c.bookId).collect { emit(it) }
         }.stateIn(viewModelScope, SharingStarted.Lazily, null)
-    /** Запомнить позицию скролла главы */
+    /** Закладка главы: ★ всегда ПЕРЕПИСЫВАЕТ позицию на текущую (и на первом
+     *  нажатии, и на повторных — просто запоминаем, где читатель сейчас).
+     *  Замена атомарная (@Transaction), не delete+insert двумя запросами. */
     fun saveChapterBookmark(index: Int, offset: Int) = viewModelScope.launch {
         try {
             val c = chDef.await() ?: return@launch
-            db.library().deleteBookmarksOfBook(c.bookId)
-            db.library().insertBookmark(
+            db.library().replaceBookmark(
                 com.vedalibrary.app.data.local.Bookmark(
                     bookId = c.bookId, verseId = null, chapterId = chapterId,
                     scrollIndex = index, scrollOffset = offset
@@ -405,11 +600,32 @@ class VerseDetailViewModel @Inject constructor(
         val raw = saved.get<String>("hl") ?: ""
         try { android.net.Uri.decode(raw) } catch (_: Exception) { raw }
     }
+    /** Поле подсказка из поиска (?hp=): в какой секции FTS нашёл слово
+     *  (sanskrit/text/synonyms/translation/purport) — целимся в НЕЁ, иначе
+     *  первое вхождение hl в соседнем поле уводит скролл мимо */
+    val highlightField: String = run {
+        val raw = saved.get<String>("hp") ?: ""
+        try { android.net.Uri.decode(raw) } catch (_: Exception) { raw }
+    }
+    /** Доводка к ?hl= — ОДИН раз при первом входе: возврат «назад» со
+     *  связанного стиха не должен мотать обратно — там уже читали дальше */
+    private var hlPending: Boolean = highlight.isNotBlank()
+    fun takeHl(): Boolean {
+        if (!hlPending) return false
+        hlPending = false
+        return true
+    }
     /** Стих + книга грузятся ОДИН раз; потребители ждут через await (StateFlow.first()
      *  возвращал бы начальное значение мгновенно — так терялись бы цитирования/соседи/перевод). */
+    private val _loaded = MutableStateFlow(false)
+    /** true после прочтения из БД (даже если стиха там нет): без этого экран
+     *  «Стих не найден» гадал по таймеру и врал на медленной базе */
+    val loaded: StateFlow<Boolean> = _loaded
     private val vbDef = viewModelScope.async {
         val v = try { db.library().verse(verseId) } catch (_: Exception) { null }
-        v to (v?.let { try { db.library().book(it.bookId) } catch (_: Exception) { null } })
+        val pair = v to (v?.let { try { db.library().book(it.bookId) } catch (_: Exception) { null } })
+        _loaded.value = true
+        pair
     }
     private val vb: StateFlow<Pair<com.vedalibrary.app.data.local.Verse?, Book?>> = flow { emit(vbDef.await()) }
         .stateIn(viewModelScope, SharingStarted.Lazily, null to null)
@@ -420,19 +636,28 @@ class VerseDetailViewModel @Inject constructor(
     /** Фрагмент выделенного текста -> заметка к стиху */
     fun addNote(verseId: String, text: String) = viewModelScope.launch {
         if (text.isBlank()) return@launch
-        db.library().insertNote(com.vedalibrary.app.data.local.GeneralNote(verseId = verseId, text = text.take(2000)))
+        try {
+            db.library().insertNote(com.vedalibrary.app.data.local.GeneralNote(verseId = verseId, text = text.take(2000)))
+        } catch (e: kotlinx.coroutines.CancellationException) {
+            throw e
+        } catch (_: Exception) { }
     }
 
-    /** Название книги-цели для диагностики ссылок (null = книги нет) */
+    /** Название книги-цели для диагностики ссылок (null = книги нет).
+     *  Парный код («CC/SB») — первое найденное из цепочки */
     suspend fun bookTitleFor(code: String, forLang: String? = null): String? = try {
         val cur = db.library().verse(verseId) ?: return null
         val lang = forLang?.lowercase()?.takeIf { it == "rus" || it == "eng" }
             ?: db.library().book(cur.bookId)?.language ?: "rus"
-        val lc = code.lowercase()
-        val books = db.library().booksByType(lc)
-        val exact = books.filter { it.id.startsWith("gb-$lc-") }
-        ((exact.ifEmpty { books }).firstOrNull { it.language == lang }
-            ?: (exact.ifEmpty { books }).firstOrNull())?.title
+        var title: String? = null
+        for (lc in code.lowercase().split("/").map { it.trim() }.filter { it.isNotEmpty() }) {
+            val books = db.library().booksByType(lc)
+            val exact = books.filter { it.id.startsWith("gb-$lc-") }
+            title = ((exact.ifEmpty { books }).firstOrNull { it.language == lang }
+                ?: (exact.ifEmpty { books }).firstOrNull())?.title
+            if (title != null) break
+        }
+        title
     } catch (_: Exception) { null }
 
     /** Размер книги (число стихов) — кэш на жизнь VM. Полная книга всегда
@@ -455,32 +680,37 @@ class VerseDetailViewModel @Inject constructor(
     /** Inline-цитата вида БГ 2.13 / ШБ 1.2.3 -> id стиха в книге нужного языка:
      *  forLang (из gr://) либо язык текущего стиха. Точное совпадение типа первым.
      *  Книг одного типа и языка бывает несколько (полная ШБ + частичная из Ачарьев!) —
-     *  пробуем ВСЕ по порядку, а не первую попавшуюся. */
+     *  пробуем ВСЕ по порядку, а не первую попавшуюся.
+     *  code может быть парой через "/" («CC/SB» — голые тройки из лекций): пробуем по порядку.
+     *  Диапазоны («134-149», «1-74, 82-115») режем до первого номера. */
     suspend fun resolveVerseRef(code: String, song: String, ch: String, txt: String, forLang: String? = null): String? = try {
         val cur = db.library().verse(verseId) ?: return null
         val lang = forLang?.lowercase()?.takeIf { it == "rus" || it == "eng" }
             ?: db.library().book(cur.bookId)?.language ?: "rus"
-        val lc = code.lowercase()
-        val books = db.library().booksByType(lc)
-        val ordered = orderBooksFull(lc, lang, books)
+        val t = txt.split(Regex("[-–—,\\s]+")).firstOrNull()?.trim().orEmpty().ifEmpty { txt }
         var hit: String? = null
-        for (book in ordered) {
-            try {
-                val found = db.library().verse("${book.id}/$song/$ch/$txt")
-                if (found != null) {
-                    hit = found.id
-                    break
-                }
-            } catch (_: Exception) { }
-            // Сдвоенные стихи (SB 7.5.23 лежит как '23-24'): тот же номер в той же главе
-            if (hit == null && ch.isNotBlank() && txt.isNotBlank()) {
-                val chs = try { db.library().chapters(book.id) } catch (_: Exception) { emptyList() }
-                val inCh = findInChapter(book.id, song, ch, txt, chs)
-                if (inCh != null) {
-                    hit = inCh.id
-                    break
+        for (lc in code.lowercase().split("/").map { it.trim() }.filter { it.isNotEmpty() }) {
+            val books = db.library().booksByType(lc)
+            val ordered = orderBooksFull(lc, lang, books)
+            for (book in ordered) {
+                try {
+                    val found = db.library().verse("${book.id}/$song/$ch/$t")
+                    if (found != null) {
+                        hit = found.id
+                        break
+                    }
+                } catch (_: Exception) { }
+                // Сдвоенные стихи (SB 7.5.23 лежит как '23-24'): тот же номер в той же главе
+                if (hit == null && ch.isNotBlank() && t.isNotBlank()) {
+                    val chs = try { db.library().chapters(book.id) } catch (_: Exception) { emptyList() }
+                    val inCh = findInChapter(book.id, song, ch, t, chs)
+                    if (inCh != null) {
+                        hit = inCh.id
+                        break
+                    }
                 }
             }
+            if (hit != null) break
         }
         hit
     } catch (_: Exception) { null }
@@ -493,46 +723,76 @@ class VerseDetailViewModel @Inject constructor(
             else db.library().bookmarkFlow(v.bookId).collect { emit(it) }
         }.stateIn(viewModelScope, SharingStarted.Lazily, null)
 
-    /** Поставить/снять закладку на текущий стих */
+    /** Поставить/снять закладку на текущий стих (замена строки — атомарно) */
     fun toggleBookmark() = viewModelScope.launch {
         try {
             val v = db.library().verse(verseId) ?: return@launch
             val cur = db.library().bookmark(v.bookId)
             if (cur != null && cur.verseId == verseId) db.library().deleteBookmarksOfBook(v.bookId)
-            else {
-                db.library().deleteBookmarksOfBook(v.bookId)
-                db.library().insertBookmark(
-                    com.vedalibrary.app.data.local.Bookmark(bookId = v.bookId, verseId = verseId, chapterId = v.chapterId)
-                )
-            }
+            else db.library().replaceBookmark(
+                com.vedalibrary.app.data.local.Bookmark(bookId = v.bookId, verseId = verseId, chapterId = v.chapterId)
+            )
         } catch (_: Exception) { }
     }
 
     data class ResolvedRef(val label: String, val targetVerseId: String?, val targetRef: String?, val snippet: String? = null)
 
-    /** Исходящие ссылки из комментариев. Книги и стихи-цели грузятся батчами (без N+1).
-     *  На каждый код — цепочка книг (свой язык вперёд): rus-лекций часто нет,
-     *  тогда открывается eng-вариант, а не мёртвая строка. Дубли строк схлопываются. */
-    val relatedOut: StateFlow<List<ResolvedRef>> = flow {
-        val (v, b) = vbDef.await()
-        if (v == null) return@flow emit(emptyList())
-        val lang = b?.language ?: "rus"
-        val refs = try { db.library().outgoingRefs(v.id) } catch (_: Exception) { emptyList() }
-        if (refs.isEmpty()) return@flow emit(emptyList())
-        data class Parsed(val ref: com.vedalibrary.app.data.local.CrossRef, val code: String, val song: String, val ch: String, val txt: String)
-        val parsed = refs.mapNotNull { r ->
-            if (!r.toVerseId.startsWith("ext:")) null
-            else {
-                val parts = r.toVerseId.removePrefix("ext:").split("/")
-                when {
-                    // ext:BG/1/2/13 (глава может быть пустой: ext:TLKS/1//1CC96 — код лекции)
-                    parts.size == 4 -> Parsed(r, parts[0].lowercase(), parts[1], parts[2], parts[3])
-                    // Старые записи без song (ext:BG/2/13): пробуем song=1, не найдётся — строка без ссылки
-                    parts.size == 3 -> Parsed(r, parts[0].lowercase(), "1", parts[1], parts[2])
-                    else -> null
-                }
-            }
+    private data class ParsedRef(
+        val ref: com.vedalibrary.app.data.local.CrossRef,
+        val code: String, val song: String, val ch: String, val txt: String
+    )
+
+    /** ext:-код в тройку (старый формат без song — song=1).
+     *  С какой стороны строки код — неважно: цитирующая и цитируемая меняются
+     *  местами одинаково (thisBook — цитируемый, refbyBook — цитирующий). */
+    private fun parseExtCode(code: String, ref: com.vedalibrary.app.data.local.CrossRef): ParsedRef? {
+        if (!code.startsWith("ext:")) return null
+        val parts = code.removePrefix("ext:").split("/")
+        return when {
+            // ext:BG/1/2/13 (глава может быть пустой: ext:TLKS/1//1CC96 — код лекции)
+            parts.size == 4 -> ParsedRef(ref, parts[0].lowercase(), parts[1], parts[2], parts[3])
+            // Старые записи без song (ext:BG/2/13): пробуем song=1, не найдётся — строка без ссылки
+            parts.size == 3 -> ParsedRef(ref, parts[0].lowercase(), "1", parts[1], parts[2])
+            else -> null
         }
+    }
+
+    /** ext:-код с цитирующей стороны (перевёрнутые legacy) в тройку */
+    private fun parseExtFromRef(r: com.vedalibrary.app.data.local.CrossRef): ParsedRef? {
+        if (!r.fromVerseId.startsWith("ext:")) return null
+        return parseExtCode(r.fromVerseId, r)
+    }
+
+    private val HUMAN_CODE = mapOf(
+        "сб" to "sb", "шб" to "sb", "sb" to "sb",
+        "бг" to "bg", "bg" to "bg", "чч" to "cc", "cc" to "cc"
+    )
+
+    /** Человеческая ссылка TXT-импортов («[[СБ 1.2.3]]», «БГ 2.13», «см. ЧЧ 1.4.8») в тройку */
+    private fun parseHumanRef(raw: String, ref: com.vedalibrary.app.data.local.CrossRef): ParsedRef? {
+        return try {
+            var t = raw.trim()
+            if (t.startsWith("[[") && t.endsWith("]]")) t = t.substring(2, t.length - 2).trim()
+            t = t.replace(Regex("^(см\\.?\\s+)"), "").trim()
+            val m = Regex("^([А-Яа-яA-Za-z]+)\\s*(\\d+[.\\-–]\\d+(?:[.\\-–]\\d+)?)\\s*$").find(t)
+                ?: return null
+            val code = HUMAN_CODE[m.groupValues[1].lowercase()] ?: return null
+            val nums = m.groupValues[2].split(Regex("[.\\-–]")).map { it.trim() }
+                .filter { it.isNotEmpty() }
+            when (nums.size) {
+                3 -> ParsedRef(ref, code, nums[0], nums[1], nums[2])
+                2 -> ParsedRef(ref, code, "1", nums[0], nums[1])
+                else -> null
+            }
+        } catch (_: Exception) { null }
+    }
+
+    /** Резолв распарсенных ссылок цепочкой книг: точное+свой язык -> свой язык ->
+     *  точное -> остальные; внутри группы сначала ПОЛНАЯ книга. Ненашедшиеся —
+     *  мёртвой строкой (книга не импортирована). Дубли строк схлопываются. */
+    private suspend fun resolveChainRefs(parsed: List<ParsedRef>, lang: String): List<ResolvedRef> {
+        if (parsed.isEmpty()) return emptyList()
+        val refs = parsed.map { it.ref }.distinctBy { it.id }
         // Цепочка книг на код: точное+свой язык -> свой язык -> точное -> остальные;
         // внутри группы — сначала ПОЛНАЯ книга (main SB, а не выборка VCT)
         val allBooks = parsed.map { it.code }.distinct().flatMap { code ->
@@ -561,7 +821,7 @@ class VerseDetailViewModel @Inject constructor(
         suspend fun chaptersOf(bookId: String) = chaptersCache.getOrPut(bookId) {
             try { db.library().chapters(bookId) } catch (_: Exception) { emptyList() }
         }
-        suspend fun resolveIn(p: Parsed, r: com.vedalibrary.app.data.local.CrossRef): com.vedalibrary.app.data.local.VerseRow? {
+        suspend fun resolveIn(p: ParsedRef, r: com.vedalibrary.app.data.local.CrossRef): com.vedalibrary.app.data.local.VerseRow? {
             for (bk in booksByCode[p.code] ?: return null) {
                 // 1) Точный id
                 versesById["${bk.id}/${p.song}/${p.ch}/${p.txt}"]?.let { return it }
@@ -593,7 +853,48 @@ class VerseDetailViewModel @Inject constructor(
             )
         }
         // Дубли исходных строк (тот же ref дважды) — одна строка
-        emit(out.distinctBy { Triple(it.label, it.targetVerseId, it.targetRef) })
+        return out.distinctBy { Triple(it.label, it.targetVerseId, it.targetRef) }
+    }
+
+    /** Что цитируется в этом стихе (V — цитирующий). Единая раскладка
+     *  (from = цитирующий, to = цитируемый):
+     *  - fromVerseId = V: цитируемый кодом (патчи) или текстом (TXT) — цепочкой;
+     *  - fromVerseId = ext:K(V) (перевёрнутые legacy): цитируемый уже конкретным
+     *    id — напрямую, свой язык вперёд. */
+    val relatedOut: StateFlow<List<ResolvedRef>> = flow {
+        val (v, b) = vbDef.await()
+        if (v == null) return@flow emit(emptyList())
+        val lang = b?.language ?: "rus"
+        val key = com.vedalibrary.app.ui.components.VerseShare.incomingKey(b, v)
+        val coded = if (key == null) emptyList() else try {
+            db.library().refsFromCode(key)
+        } catch (_: Exception) { emptyList() }
+        val direct = if (coded.isEmpty()) emptyList() else try {
+            val ids = coded.map { it.toVerseId }.distinct().filter { !it.startsWith("ext:") }
+            if (ids.isEmpty()) emptyList()
+            else {
+                val byId = try {
+                    db.library().verseLightsByIds(ids)
+                } catch (_: Exception) { emptyList() }.associateBy { it.id }
+                coded.mapNotNull { r -> byId[r.toVerseId] }
+                    .sortedWith(compareBy({ if ((it.bookLang ?: "") == lang) 0 else 1 }))
+                    .map { fv ->
+                        val ref = com.vedalibrary.app.ui.components.VerseShare.refLight(
+                            fv.bookLang, fv.bookId, fv.chapterId, fv.number)
+                        ResolvedRef(
+                            ref, fv.id, ref,
+                            com.vedalibrary.app.ui.components.GbHtml.plain(fv.translation ?: fv.text).take(140)
+                        )
+                    }
+            }
+        } catch (_: Exception) { emptyList() }
+        val own = try { db.library().outgoingRefs(v.id) } catch (_: Exception) { emptyList() }
+        val human = own.filter { !it.toVerseId.startsWith("ext:") }
+        val hparsed = human.mapNotNull { r -> parseHumanRef(r.toVerseId, r) }
+        val hdead = human.filter { r -> hparsed.none { it.ref.id == r.id } }
+            .map { r -> ResolvedRef(r.label, null, null) }
+        emit((direct + resolveChainRefs(hparsed, lang) + hdead)
+            .distinctBy { Triple(it.label, it.targetVerseId, it.targetRef) })
     }.stateIn(viewModelScope, SharingStarted.Lazily, emptyList())
 
     /** Коды лекционных книг (резолв по подписи) */
@@ -610,12 +911,18 @@ class VerseDetailViewModel @Inject constructor(
                 com.vedalibrary.app.ui.components.VerseShare.chapterSong(it.id) == song &&
                         com.vedalibrary.app.ui.components.VerseShare.chapterNum(it.id) == ch
             }?.id ?: return null
-            val verses = try {
-                db.library().versesLight(chId)
+            // 1) точное совпадение номера — один запрос; 2) диапазон «34-35» — только
+            // (id, номер) главы, без загрузки всех строк стиха
+            val exact = try {
+                db.library().verseLightByNumber(chId, txt)
             } catch (_: Exception) { return null }
-            val t = txt.toIntOrNull()
-            verses.firstOrNull { it.number == txt }
-                ?: verses.firstOrNull { t != null && txtRangeHit(it.number, t) }
+            if (exact != null) return exact
+            val t = txt.toIntOrNull() ?: return null
+            val nums = try {
+                db.library().verseNumIds(chId)
+            } catch (_: Exception) { return null }
+            val hitId = nums.firstOrNull { txtRangeHit(it.number, t) }?.id ?: return null
+            try { db.library().verseLight(hitId) } catch (_: Exception) { null }
         } catch (_: Exception) { null }
     }
     /** Стих лекции по подписи («ЛекШБ 1.8.34: дата» -> глава song/ch, номер 34 или диапазон) */
@@ -643,6 +950,24 @@ class VerseDetailViewModel @Inject constructor(
         } catch (_: Exception) { null }
     }
 
+    /** Первый/последний стих соседней непустой главы (шаг dir = -1/+1, дальше 50 глав не ищем) */
+    private suspend fun neighborVerse(
+        chs: List<com.vedalibrary.app.data.local.Chapter>, ci: Int, dir: Int
+    ): String? {
+        var i = ci + dir
+        var guard = 0
+        while (i in chs.indices && guard++ < 50) {
+            // id края главы одним запросом (в порядке стихов) — без чтения строк
+            val id = try {
+                if (dir > 0) db.library().firstVerseId(chs[i].id)
+                else db.library().lastVerseId(chs[i].id)
+            } catch (_: Exception) { null }
+            if (id != null) return id
+            i += dir
+        }
+        return null
+    }
+
     /** Номер лекции vs txt_no («34», «34-35», «30-34»): точное или вхождение в диапазон */
     private fun txtRangeHit(txtNo: String, target: Int): Boolean {
         val s = txtNo.trim()
@@ -655,28 +980,39 @@ class VerseDetailViewModel @Inject constructor(
         return false
     }
 
-    /** Стихи, в чьих комментариях упомянут текущий: цитирующие грузятся одним батчем (без N+1).
-     *  Свой язык — первым (иначе та же лекция дважды: rus+eng). */
+    /** Где цитировался данный стих (V — цитируемый). Два вида записей:
+     *  - цитирующий конкретным id (патчи: toVerseId = ext:K(V)) — напрямую,
+     *    свой язык вперёд;
+     *  - цитирующий кодом (перевёрнутые legacy: toVerseId = id V) — цепочкой книг.
+     *  Пусто — секция скрыта экраном. */
     val relatedIn: StateFlow<List<ResolvedRef>> = flow {
         val (v, b) = vbDef.await()
         if (v == null) return@flow emit(emptyList())
         val lang = b?.language ?: "rus"
         val key = com.vedalibrary.app.ui.components.VerseShare.incomingKey(b, v)
-            ?: return@flow emit(emptyList())
-        val refs = try { db.library().incomingRefs(key) } catch (_: Exception) { emptyList() }
-        if (refs.isEmpty()) return@flow emit(emptyList())
-        val byId = try {
-            db.library().verseLightsByIds(refs.map { it.fromVerseId }.distinct())
-        } catch (_: Exception) { emptyList() }.associateBy { it.id }
-        emit(refs.mapNotNull { r ->
-            byId[r.fromVerseId]
-        }.sortedWith(compareBy({ if ((it.bookLang ?: "") == lang) 0 else 1 })).map { fv ->
-            val ref = com.vedalibrary.app.ui.components.VerseShare.refLight(fv.bookLang, fv.bookId, fv.chapterId, fv.number)
-            ResolvedRef(
-                ref, fv.id, ref,
-                com.vedalibrary.app.ui.components.GbHtml.plain(fv.translation ?: fv.text).take(140)
-            )
-        })
+        val direct = if (key == null) emptyList() else try {
+            val refs = db.library().incomingRefs(key)
+            if (refs.isEmpty()) emptyList()
+            else {
+                val byId = try {
+                    db.library().verseLightsByIds(refs.map { it.fromVerseId }.distinct())
+                } catch (_: Exception) { emptyList() }.associateBy { it.id }
+                refs.mapNotNull { r -> byId[r.fromVerseId] }
+                    .sortedWith(compareBy({ if ((it.bookLang ?: "") == lang) 0 else 1 }))
+                    .map { fv ->
+                        val ref = com.vedalibrary.app.ui.components.VerseShare.refLight(
+                            fv.bookLang, fv.bookId, fv.chapterId, fv.number)
+                        ResolvedRef(
+                            ref, fv.id, ref,
+                            com.vedalibrary.app.ui.components.GbHtml.plain(fv.translation ?: fv.text).take(140)
+                        )
+                    }
+            }
+        } catch (_: Exception) { emptyList() }
+        val coded = try { db.library().refsToVerse(v.id) } catch (_: Exception) { emptyList() }
+        val cparsed = coded.mapNotNull { parseExtFromRef(it) }
+        emit((direct + resolveChainRefs(cparsed, lang))
+            .distinctBy { Triple(it.label, it.targetVerseId, it.targetRef) })
     }.stateIn(viewModelScope, SharingStarted.Lazily, emptyList())
 
     /** Тот же стих того же произведения на другом языке (кнопка Перевод), null = нет пары.
@@ -749,19 +1085,21 @@ class VerseDetailViewModel @Inject constructor(
         var prev: String? = ids.getOrNull(i - 1)
         var next: String? = ids.getOrNull(i + 1)
         if (prev == null || next == null) {
-            val chs = try { db.library().chapters(v.bookId) } catch (_: Exception) { emptyList() }
+            val raw = try { db.library().chapters(v.bookId) } catch (_: Exception) { emptyList() }
+            // Числовой порядок песен/глав (в старых импортах index идёт текстом: 1,10,11,..,2):
+            // иначе свайп с последней главы песни прыгает не в ту песнь
+            val chs = raw.sortedWith(compareBy(
+                { val s = VerseShare.chapterSong(it.id); if (s?.toIntOrNull() == null) 1 else 0 },
+                { VerseShare.chapterSong(it.id)?.toIntOrNull() ?: 999 },
+                { VerseShare.chapterNumInt(it.id) },
+                { it.index }
+            ))
             val ci = chs.indexOfFirst { it.id == v.chapterId }
             if (ci >= 0) {
-                if (prev == null) {
-                    prev = chs.getOrNull(ci - 1)?.let { pc ->
-                        try { db.library().versesLight(pc.id) } catch (_: Exception) { emptyList() }.lastOrNull()?.id
-                    }
-                }
-                if (next == null) {
-                    next = chs.getOrNull(ci + 1)?.let { nc ->
-                        try { db.library().versesLight(nc.id) } catch (_: Exception) { emptyList() }.firstOrNull()?.id
-                    }
-                }
+                // Через границу главы — в соседнюю НЕПУСТУЮ (пустые типа «Заключения»
+                // пропускаем, иначе свайп упрётся в тупик). Главы уже в числовом порядке
+                if (prev == null) prev = neighborVerse(chs, ci, -1)
+                if (next == null) next = neighborVerse(chs, ci, +1)
             }
         }
         prev to next
@@ -806,19 +1144,26 @@ class DictViewModel @Inject constructor(
      *  Показываем ТОЛЬКО строки пословника со словом (слово — перевод, 1-3 слова).
      *  Предложений из переводов здесь нет: если слова нет в пословнике стиха — стих пропускаем. */
     private val allRows: StateFlow<List<DictRow>> = flow {
-        // Кавычки: дефис в FTS означает NOT, без кавычек "какой-то" сломает запрос
-        val q = "\"" + word.replace("\"", "") + "\""
-        val light = try { db.library().dictLight(q) } catch (_: Exception) { emptyList() }
+        // Слово бывает в двух письменностях (латиница IAST в одних книгах, кириллица в других):
+        // ищем обе формы, иначе русские варианты теряются. Кавычки: дефис в FTS означает NOT
+        val alt = com.vedalibrary.app.ui.components.IastCyrillic.convert(word)
+        val queries = listOf(word, alt).map { it.replace("\"", "") }
+            .filter { it.isNotBlank() }.distinct().map { "\"$it\"" }
+        val light = try {
+            queries.flatMap { db.library().dictLight(it) }.distinctBy { it.id }
+        } catch (_: Exception) { emptyList() }
         if (light.isEmpty()) return@flow emit(emptyList())
         val computed = kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.Default) {
+            val gb = com.vedalibrary.app.ui.components.GbHtml
             light.mapNotNull { r ->
-                val synLine = com.vedalibrary.app.ui.components.GbHtml.synonymLines(r.synonyms)
-                    .firstOrNull { com.vedalibrary.app.ui.components.GbHtml.wholeWord(it, word) }
+                val synLine = gb.synonymLines(r.synonyms)
+                    .firstOrNull { gb.wholeWord(it, word) }
+                    ?: gb.synonymLines(r.synonyms).firstOrNull { gb.wholeWord(it, alt) }
                     ?: return@mapNotNull null
                 val type = r.bookId.split("-").getOrNull(1)?.uppercase() ?: ""
                 val rank = workRank(type)
                 val ref = com.vedalibrary.app.ui.components.VerseShare.refLight(r.bookLang, r.bookId, r.chapterId, r.number)
-                val (w, t) = com.vedalibrary.app.ui.components.GbHtml.splitHead(synLine)
+                val (w, t) = gb.splitHead(synLine)
                 val hw = if (r.bookLang == "rus") com.vedalibrary.app.ui.components.IastCyrillic.convert(w) else w
                 DictRow(r.id, hw, t, ref, rank, r.bookLang ?: "")
             }.sortedWith(compareBy({ it.rank }))
@@ -827,8 +1172,9 @@ class DictViewModel @Inject constructor(
     }.stateIn(viewModelScope, SharingStarted.Lazily, emptyList())
 
     /** Фильтр языков: по умолчанию только язык источника, «Все языки» — всё */
-    val showAllLangs = MutableStateFlow(false)
-    fun toggleShowAll() { showAllLangs.value = !showAllLangs.value }
+    private val _showAllLangs = MutableStateFlow(false)
+    val showAllLangs: StateFlow<Boolean> = _showAllLangs
+    fun toggleShowAll() { _showAllLangs.value = !_showAllLangs.value }
     val rows: StateFlow<List<DictRow>> = combine(allRows, showAllLangs) { list, all ->
         if (all) list else list.filter { it.blang == lang }
     }.stateIn(viewModelScope, SharingStarted.Lazily, emptyList())

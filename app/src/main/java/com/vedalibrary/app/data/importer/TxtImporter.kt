@@ -2,6 +2,7 @@ package com.vedalibrary.app.data.importer
 
 import android.content.Context
 import android.net.Uri
+import androidx.room.withTransaction
 import com.vedalibrary.app.data.local.*
 import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.Dispatchers
@@ -34,18 +35,23 @@ class TxtImporter @Inject constructor(
         val parsed = splitter.split(cleaned)
         val bookId = "import-" + UUID.randomUUID().toString().take(8)
         val words = if (cleaned.isBlank()) 0 else cleaned.count { it.isWhitespace() } + 1
-        db.library().upsertBooks(listOf(Book(bookId, title, null, "rus", null, "IMPORT_TXT", words / 150, System.currentTimeMillis(), false)))
-        val chapters = parsed.mapIndexed { i, c -> Chapter("$bookId/$i", bookId, i, c.title) }
-        db.library().upsertChapters(chapters)
-        val verses = parsed.flatMapIndexed { ci, c ->
-            c.paragraphs.mapIndexed { pi, p ->
-                Verse("$bookId/$ci/$pi", "$bookId/$ci", bookId, "абз. ${pi + 1}", null, p.take(2000), p, "стр. ${pi + 1}")
+        // Вся цепочка (книга → главы → стхи чанками → ссылки → ready) — ОДНА
+        // транзакция: раньше отдельные вставки оставляли при падении невосстановимую
+        // полукнигу с isReady=false. Откат = книги как будто и не было.
+        db.withTransaction {
+            db.library().upsertBooks(listOf(Book(bookId, title, null, "rus", null, "IMPORT_TXT", words / 150, System.currentTimeMillis(), false)))
+            val chapters = parsed.mapIndexed { i, c -> Chapter("$bookId/$i", bookId, i, c.title) }
+            db.library().upsertChapters(chapters)
+            val verses = parsed.flatMapIndexed { ci, c ->
+                c.paragraphs.mapIndexed { pi, p ->
+                    Verse("$bookId/$ci/$pi", "$bookId/$ci", bookId, "абз. ${pi + 1}", null, p.take(2000), p, "стр. ${pi + 1}")
+                }
             }
+            // Batch-вставки чанками по 500 для оптимизации
+            verses.chunked(500).forEach { db.library().upsertVerses(it) }
+            extractCrossRefs(verses)
+            db.library().markBookReady(bookId, words / 150)
         }
-        // Batch-вставки чанками по 500 для оптимизации
-        verses.chunked(500).forEach { db.library().upsertVerses(it) }
-        extractCrossRefs(verses)
-        db.library().markBookReady(bookId, words / 150)
         return bookId
     }
 

@@ -17,7 +17,7 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.text.withStyle
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
-import com.vedalibrary.app.ui.theme.ReadSerif
+import com.vedalibrary.app.ui.theme.ReadFont
 import com.vedalibrary.app.ui.vm.DictViewModel
 import kotlinx.coroutines.launch
 
@@ -56,7 +56,8 @@ fun DictScreen(onVerse: (String) -> Unit, vm: DictViewModel = hiltViewModel()) {
                 }
                 ListItem(
                     headlineContent = {
-                        Text(annotated, maxLines = 3, overflow = TextOverflow.Ellipsis, fontFamily = ReadSerif)
+                        Text(annotated, maxLines = 3, overflow = TextOverflow.Ellipsis, fontFamily = ReadFont,
+                            lineHeight = androidx.compose.material3.LocalTextStyle.current.fontSize * 1.35f)
                     },
                     modifier = Modifier.clickable { onVerse(r.verseId) }
                 )

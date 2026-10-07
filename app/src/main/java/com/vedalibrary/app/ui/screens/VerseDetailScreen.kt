@@ -16,6 +16,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import androidx.hilt.navigation.compose.hiltViewModel
 import com.vedalibrary.app.ui.components.GbHtml
 import com.vedalibrary.app.ui.components.HtmlText
@@ -39,6 +40,7 @@ fun VerseDetailScreen(
     val other by vm.otherLang.collectAsState(null)
     val bm by vm.bookmark.collectAsState(null)
     val audioSrc by vm.audio.collectAsState(null)
+    val loaded by vm.loaded.collectAsState()
     val neighbors by vm.neighbors.collectAsState(null to null)
     val prevId = neighbors.first
     val nextId = neighbors.second
@@ -57,9 +59,7 @@ fun VerseDetailScreen(
     Scaffold(
         topBar = {
             Column(
-                Modifier.fillMaxWidth()
-                    .windowInsetsPadding(WindowInsets.statusBars)
-                    .padding(top = 2.dp, bottom = 2.dp),
+                Modifier.fillMaxWidth().padding(top = 2.dp, bottom = 2.dp),
                 horizontalAlignment = androidx.compose.ui.Alignment.CenterHorizontally
             ) {
                 Text(
@@ -80,7 +80,8 @@ fun VerseDetailScreen(
                     TextButton(onClick = { vm.toggleBookmark() }) {
                         Text(
                             if (v != null && bm?.verseId == v?.id) "★" else "☆",
-                            style = MaterialTheme.typography.titleLarge
+                            style = MaterialTheme.typography.titleLarge,
+                            fontSize = 33.sp
                         )
                     }
                     other?.let { (ov, ob) ->
@@ -88,7 +89,13 @@ fun VerseDetailScreen(
                             Text(if (ob?.language == "rus") "RU" else "EN")
                         }
                     }
-                    IconButton(onClick = onSettings) { Text("⚙️", style = MaterialTheme.typography.titleLarge) }
+                    IconButton(onClick = onSettings) {
+                        Text(
+                            "⚙️",
+                            style = MaterialTheme.typography.titleLarge,
+                            fontSize = MaterialTheme.typography.titleLarge.fontSize * 1.2f
+                        )
+                    }
                 }
             }
         },
@@ -100,10 +107,15 @@ fun VerseDetailScreen(
         }
     ) { pad ->
         val verse = v
-        var timedOut by remember { mutableStateOf(false) }
-        LaunchedEffect(Unit) { kotlinx.coroutines.delay(3000); timedOut = true }
         val scope = rememberCoroutineScope()
         val ctx = androidx.compose.ui.platform.LocalContext.current
+        // Аудио живёт на уровне экрана, а НЕ в элементе списка: раньше прокрутка
+        // кнопки за экран роняла плеер release() посреди трека/TTS. Смена стиха —
+        // stop (и погасить «Слушать»), уход с экрана — stop + release
+        val player = remember { com.vedalibrary.app.ui.audio.VerseAudioPlayer(ctx) }
+        var playing by remember { mutableStateOf(false) }
+        DisposableEffect(Unit) { onDispose { player.stop(); player.release() } }
+        LaunchedEffect(verse?.id) { player.stop(); playing = false }
         // Кнопки громкости — размер шрифта стиха (только пока открыт этот экран)
         val volOwner = remember { Any() }
         DisposableEffect(Unit) {
@@ -124,6 +136,19 @@ fun VerseDetailScreen(
                 }
             }
         }
+        // Контекст лекции для голых номеров стихов («(8.134)», «1.6.82», «ЧЧ Ади Лила 1.1»):
+        // песнь/глава — из самой лекции, произведение — из типа книги. Обычным книгам — null
+        val lecCtx = remember(verse?.id, book?.id) {
+            val k = verse?.let { com.vedalibrary.app.ui.components.VerseShare.verseKey(it) }
+            val work = when (book?.id?.split("-")?.getOrNull(1)?.uppercase()) {
+                "SCC" -> "CC"
+                "SSB" -> "SB"
+                "SBG" -> "BG"
+                "SBRS" -> "BRS"
+                else -> null
+            }
+            if (k != null && work != null) Triple(k.first, k.second, work) else null
+        }
         // «Вопрос» из меню выделения -> редактор вопроса с цитатой
         fun askIt(q: String) {
             val vv = verse ?: return
@@ -136,67 +161,100 @@ fun VerseDetailScreen(
         // оказалось в видимой части (длинные секции: top.item показывает только верх).
         // Ищем по отображаемому тексту (rus = кириллица после cyrillicTranslit/Terms).
         // frac — доля позиции совпадения внутри секции (0 = начало).
+        // audioSrc в КЛЮЧАХ: появление аудио-строки сдвигает номера секций вниз —
+        // без пересчёта цель уезжала на секцию выше
         val hl = vm.highlight
+        val hp = vm.highlightField
         val listState = androidx.compose.foundation.lazy.rememberLazyListState()
-        val target = remember(verse?.id, hl, san, tra, syn, trl, pur, book?.language) {
+        val target = remember(verse?.id, hl, hp, san, tra, syn, trl, pur, book?.language, audioSrc != null) {
             data class T(val idx: Int, val frac: Float)
             if (verse == null || hl.isBlank()) T(-1, 0f)
             else {
-                var idx = 0
-                var res: T? = null
-                fun section(present: Boolean, text: String) {
-                    if (!present) return
-                    if (res == null) {
-                        val at = com.vedalibrary.app.ui.components.GbHtml.foldDia(text).lowercase()
-                            .indexOf(com.vedalibrary.app.ui.components.GbHtml.foldDia(hl).lowercase())
-                        if (at >= 0 && text.isNotEmpty()) {
-                            res = T(idx, (at.toFloat() / text.length).coerceIn(0f, 1f))
-                        }
-                    }
-                    idx++
-                }
                 val gb = com.vedalibrary.app.ui.components.GbHtml
                 val rus = book?.language == "rus"
-                section(san && !verse.sanskrit.isNullOrBlank(), gb.plain(verse.sanskrit))
-                section(audioSrc != null, "")
-                section(tra && verse.text.isNotBlank(),
-                    if (rus) gb.cyrillicTranslit(verse.text) else gb.plain(verse.text))
-                section(syn && !verse.synonyms.isNullOrBlank(),
-                    gb.synonymLines(verse.synonyms).joinToString("\n") { line ->
-                        val (w, t) = gb.splitHead(line)
-                        (if (rus) com.vedalibrary.app.ui.components.IastCyrillic.convert(w) else w) + " " + t
-                    })
-                section(trl && !verse.translation.isNullOrBlank(),
-                    if (rus) gb.cyrillicTerms(verse.translation) else gb.plain(verse.translation))
-                section(pur && !verse.purport.isNullOrBlank(),
-                    if (rus) gb.cyrillicTerms(verse.purport) else gb.plain(verse.purport))
+                // Тексты present-секций один раз; имена = поля ?hp= из поиска.
+                // audio в ключах: появление аудио-строки сдвигает номера секций.
+                val names = arrayOf("sanskrit", "audio", "text", "synonyms", "translation", "purport")
+                val texts = arrayOf(
+                    if (san && !verse.sanskrit.isNullOrBlank()) gb.plain(verse.sanskrit) else null,
+                    if (audioSrc != null) "" else null,
+                    if (tra && verse.text.isNotBlank())
+                        (if (rus) gb.cyrillicTranslit(verse.text) else gb.plain(verse.text)) else null,
+                    if (syn && !verse.synonyms.isNullOrBlank())
+                        gb.synonymLines(verse.synonyms).joinToString("\n") { line ->
+                            val (w, t) = gb.splitHead(line)
+                            (if (rus) com.vedalibrary.app.ui.components.IastCyrillic.convert(w) else w) + " " + t
+                        } else null,
+                    if (trl && !verse.translation.isNullOrBlank())
+                        (if (rus) gb.cyrillicTerms(verse.translation) else gb.plain(verse.translation)) else null,
+                    if (pur && !verse.purport.isNullOrBlank())
+                        (if (rus) gb.cyrillicTerms(verse.purport) else gb.plain(verse.purport)) else null
+                )
+                val hlFold = gb.foldDia(hl).lowercase()
+                fun fracAt(text: String): Float? {
+                    if (text.isEmpty()) return null
+                    val at = gb.foldDia(text).lowercase().indexOf(hlFold)
+                    return if (at >= 0) (at.toFloat() / text.length).coerceIn(0f, 1f) else null
+                }
+                var res: T? = null
+                // 1-й проход: поле-подсказка ?hp= — поиск нашёл слово в ЭТОЙ секции,
+                // иначе первое вхождение в соседнем поле (шлока/пословник) цепляло
+                // чужую секцию и скролл уезжал мимо комментария
+                var idx = 0
+                for (i in texts.indices) {
+                    val text = texts[i] ?: continue
+                    if (names[i] == hp) res = fracAt(text)?.let { T(idx, it) }
+                    idx++
+                }
+                // 2-й проход: первая секция с совпадением (без ?hp= — как раньше)
+                if (res == null) {
+                    idx = 0
+                    for (i in texts.indices) {
+                        val text = texts[i] ?: continue
+                        if (res == null) res = fracAt(text)?.let { T(idx, it) }
+                        idx++
+                    }
+                }
                 res ?: T(-1, 0f)
             }
         }
         LaunchedEffect(verse?.id, hl) {
-            if (target.idx >= 0) {
-                try { listState.scrollToItem(target.idx) } catch (_: Exception) { }
-                // Совпадение глубоко внутри секции — дотягиваем, чтобы было видно
-                if (target.frac > 0.15f) {
-                    try { kotlinx.coroutines.delay(250) } catch (_: Exception) { }
-                    try {
-                        val vh = listState.layoutInfo.viewportSize.height
-                        if (vh > 0) listState.scrollBy(vh * target.frac * 0.5f)
-                    } catch (_: Exception) { }
+            // takeHl: доводка только при первом входе — возврат «назад» со
+            // связанного стиха не сбрасывает позицию чтения обратно к ?hl=
+            if (target.idx >= 0 && vm.takeHl()) {
+                try { listState.scrollToItem(target.idx) } catch (_: Exception) { return@LaunchedEffect }
+                // Меряем РЕАЛЬНУЮ высоту секции и мотаем на её долю. Старая
+                // эвристика «пол-экрана × доля» на длинных комментариях не
+                // дотягивала — слово оставалось ниже экрана и приходилось
+                // скроллить вручную. Слово целим на ~30% высоты экрана.
+                var size = 0
+                for (attempt in 0 until 10) {
+                    val info = listState.layoutInfo.visibleItemsInfo
+                        .firstOrNull { i -> i.index == target.idx }
+                    if (info != null) { size = info.size; break }
+                    try { kotlinx.coroutines.delay(32) } catch (_: Exception) { }
+                }
+                val vh = listState.layoutInfo.viewportEndOffset - listState.layoutInfo.viewportStartOffset
+                val delta = size * target.frac - vh * 0.30f
+                if (size > 0 && vh > 0 && delta > 0f) {
+                    try { listState.scrollBy(delta) } catch (_: Exception) { }
                 }
             }
         }
         if (verse == null) {
             Box(Modifier.padding(pad).fillMaxSize()) {
                 Text(
-                    if (timedOut) "Стих не найден — возможно, книга была удалена или импортирована заново под другим именем файла."
+                    // По реальному состоянию загрузки, а не по таймеру: таймер
+                    // врал на медленной БД (ложное «Стих не найден»)
+                    if (loaded) "Стих не найден — возможно, книга была удалена или импортирована заново под другим именем файла."
                     else "Загрузка…",
                     Modifier.padding(16.dp)
                 )
             }
         }
         else LazyColumn(
-            Modifier.padding(pad).padding(horizontal = 16.dp)
+            // 6dp вместо 16: больше текста на экране — как в поиске и списке главы
+            Modifier.padding(pad).padding(horizontal = 8.dp)
                 .pointerInput(prevId, nextId) {
                     var dx = 0f
                     detectHorizontalDragGestures(
@@ -210,10 +268,6 @@ fun VerseDetailScreen(
                 HtmlText(verse.sanskrit!!, Modifier.fillMaxWidth().padding(vertical = 12.dp), center = true, fontSizeSp = font + 2, onSaveNote = { vm.addNote(verse.id, it) }, onAsk = ::askIt, highlight = hl)
             }
             if (audioSrc != null) item {
-                val player = remember { com.vedalibrary.app.ui.audio.VerseAudioPlayer(ctx) }
-                var playing by remember(verse.id) { mutableStateOf(false) }
-                DisposableEffect(Unit) { onDispose { player.release() } }
-                LaunchedEffect(verse.id) { player.stop(); playing = false }
                 Row(
                     Modifier.fillMaxWidth().padding(bottom = 4.dp),
                     horizontalArrangement = Arrangement.Center
@@ -263,10 +317,38 @@ fun VerseDetailScreen(
                 HtmlText(translitHtml, Modifier.fillMaxWidth().padding(vertical = 8.dp), center = true, fontSizeSp = font, onSaveNote = { vm.addNote(verse.id, it) }, onAsk = ::askIt, highlight = hl)
             }
             if (syn && !verse.synonyms.isNullOrBlank()) item {
-                val synLines = remember(verse.id) { GbHtml.synonymLines(verse.synonyms) }
-                Column(Modifier.fillMaxWidth().padding(vertical = 8.dp)) {
-                    synLines.forEach { line ->
-                            SynonymLine(line, font - 1, onWordClick = { w -> onWord(w, book?.language ?: "eng", book?.id?.split("-")?.getOrNull(1) ?: "") }, modifier = Modifier.fillMaxWidth().padding(vertical = 3.dp), cyrillic = book?.language == "rus", highlight = hl)
+                // Привязка лекции («ЧЧ 1.4.73-82») — кнопка перехода к первому стиху,
+                // а не словарь (там по «ЧЧ» смотреть нечего)
+                val lecRef = remember(verse.id, book?.id) {
+                    parseLectureRef(verse.synonyms!!, lecCtx)
+                }
+                if (lecRef != null) {
+                    Row(
+                        Modifier.fillMaxWidth().clickable {
+                            openRef(lecRef.code, lecRef.song, lecRef.ch, lecRef.txt)
+                        }.padding(vertical = 10.dp),
+                        verticalAlignment = androidx.compose.ui.Alignment.CenterVertically
+                    ) {
+                        Text(
+                            verse.synonyms!!.trim(),
+                            fontWeight = androidx.compose.ui.text.font.FontWeight.Bold,
+                            fontSize = font.sp,
+                            modifier = Modifier.weight(1f)
+                        )
+                        Text(
+                            "→",
+                            style = MaterialTheme.typography.titleLarge,
+                            color = MaterialTheme.colorScheme.primary
+                        )
+                    }
+                } else {
+                    val synLines = remember(verse.id) { GbHtml.synonymLines(verse.synonyms) }
+                    // Раздел пословника: межстрочный шаг как в обычных строках
+                    // (−20% к прежним 3dp+темовому lineHeight — просят плотнее)
+                    Column(Modifier.fillMaxWidth().padding(vertical = 8.dp)) {
+                        synLines.forEach { line ->
+                            SynonymLine(line, font - 1, onWordClick = { w -> onWord(w, book?.language ?: "eng", book?.id?.split("-")?.getOrNull(1) ?: "") }, modifier = Modifier.fillMaxWidth().padding(vertical = 1.dp), cyrillic = book?.language == "rus", highlight = hl)
+                        }
                     }
                 }
             }
@@ -274,13 +356,18 @@ fun VerseDetailScreen(
                 val translationHtml = remember(verse.id, book?.language) {
                     if (book?.language == "rus") GbHtml.cyrillicTerms(verse.translation) else verse.translation!!
                 }
-                HtmlText(translationHtml, Modifier.fillMaxWidth().padding(vertical = 8.dp), center = centerBlock, justify = justifyBlock, fontSizeSp = font, bold = true, onSaveNote = { vm.addNote(verse.id, it) }, onAsk = ::askIt, highlight = hl, onVerseRef = ::openRef)
+                // Тело лекции — обычным начертанием (жирным только короткие переводы стихов)
+                val lectureBody = remember(book?.id) { VerseShare.isLectureBook(book?.id) }
+                val proseBody = remember(book?.id) { VerseShare.isProseBook(book?.id) }
+                HtmlText(translationHtml, Modifier.fillMaxWidth().padding(vertical = 8.dp), center = centerBlock, justify = justifyBlock, fontSizeSp = font, bold = !lectureBody && !proseBody, onSaveNote = { vm.addNote(verse.id, it) }, onAsk = ::askIt, highlight = hl, onVerseRef = ::openRef,
+                    refSong = lecCtx?.first, refCh = lecCtx?.second, refWork = lecCtx?.third)
             }
             if (pur && !verse.purport.isNullOrBlank()) item {
                 val purportHtml = remember(verse.id, book?.language) {
                     if (book?.language == "rus") GbHtml.cyrillicTerms(verse.purport) else verse.purport!!
                 }
-                HtmlText(purportHtml, Modifier.fillMaxWidth().padding(vertical = 8.dp), center = centerBlock, justify = justifyBlock, fontSizeSp = font, onSaveNote = { vm.addNote(verse.id, it) }, onAsk = ::askIt, highlight = hl, onVerseRef = ::openRef)
+                HtmlText(purportHtml, Modifier.fillMaxWidth().padding(vertical = 8.dp), center = centerBlock, justify = justifyBlock, fontSizeSp = font, onSaveNote = { vm.addNote(verse.id, it) }, onAsk = ::askIt, highlight = hl, onVerseRef = ::openRef,
+                    refSong = lecCtx?.first, refCh = lecCtx?.second, refWork = lecCtx?.third)
             }
             item { RelatedSections(vm, onNavigate) }
             item { SimilarSection(vm, verse, onNavigate, font) }
@@ -315,6 +402,37 @@ fun VerseDetailScreen(
             )
         }
     }
+}
+
+/** Привязка лекции («ЧЧ 1.4.73-82», «БГ 2.13», «ШБ 1.8.34») -> цель для openRef.
+ *  Диапазон режется до первого стиха («73-82» -> «73»): ведут на первый стих ссылки */
+private data class LecRef(val code: String, val song: String, val ch: String, val txt: String)
+
+private val LEC_REF_RE = Regex(
+    """^\s*(?:(ЧЧ|ШБ|БГ|CC|SB|BG)\s+)?(\d{1,2})\s*[.]\s*(\d{1,3})(?:\s*[.]\s*([\d–—\-, ]+))?\s*$"""
+)
+private val LEC_CODE = mapOf(
+    "ЧЧ" to "CC", "CC" to "CC", "ШБ" to "SB", "SB" to "SB", "БГ" to "BG", "BG" to "BG"
+)
+
+private fun parseLectureRef(
+    ref: String, lecCtx: Triple<String, String, String>?
+): LecRef? {
+    val m = LEC_REF_RE.matchEntire(ref.trim()) ?: return null
+    val code = m.groupValues[1].uppercase().let { if (it.isBlank()) null else LEC_CODE[it] }
+        ?: lecCtx?.third ?: return null
+    val a = m.groupValues[2]
+    val b = m.groupValues[3]
+    val rest = m.groupValues[4]
+    val (song, ch, txtRaw) = if (rest.isBlank()) {
+        // Две цифры: глава.стих в песне лекции («БГ 2.13»)
+        Triple(lecCtx?.first ?: "1", a, b)
+    } else {
+        Triple(a, b, rest)
+    }
+    val txt = txtRaw.split(Regex("[-–—,\\s]+")).firstOrNull()?.trim().orEmpty()
+    if (txt.isBlank()) return null
+    return LecRef(code, song, ch, txt)
 }
 
 /** Play Маркет на Google TTS (движок синтеза).
@@ -369,7 +487,7 @@ private fun RelatedSections(vm: VerseDetailViewModel, onNavigate: (String) -> Un
     if (out.isNotEmpty()) {
         Card(Modifier.fillMaxWidth().padding(vertical = 6.dp)) {
             Column(Modifier.padding(12.dp)) {
-                Text("Где встречается этот стих", style = MaterialTheme.typography.titleMedium)
+                Text("Цитаты в этом стихе", style = MaterialTheme.typography.titleMedium)
                 out.forEach { r ->
                     val t = r.targetVerseId
                     if (t != null) {

@@ -1,17 +1,22 @@
 package com.vedalibrary.app.ui.audio
 
 import android.content.Context
-import android.media.MediaPlayer
+import android.net.Uri
 import android.speech.tts.TextToSpeech
 import android.speech.tts.UtteranceProgressListener
+import androidx.media3.common.MediaItem
+import androidx.media3.common.Player
+import androidx.media3.exoplayer.ExoPlayer
+import java.io.File
 import java.util.Locale
 
 /**
- * Озвучка санскрита стиха: MP3-файл (импорт аудио-БД) или синтез.
- * Один инстанс на экран, release() в onDispose. Без внешних зависимостей.
+ * Озвучка санскрита стиха: MP3/OGG-файл (импорт аудио-БД) или синтез.
+ * Плеер — ExoPlayer: системный MediaPlayer не играет Opus-in-Ogg (паки ШБ молчали).
+ * Один инстанс на экран, release() в onDispose. Без внешних зависимостей, кроме media3.
  */
 class VerseAudioPlayer(private val ctx: Context) {
-    private var media: MediaPlayer? = null
+    private var exo: ExoPlayer? = null
     private var tts: TextToSpeech? = null
     private var ttsReady = false
     private var pending: String? = null
@@ -24,12 +29,19 @@ class VerseAudioPlayer(private val ctx: Context) {
     fun playFile(path: String) {
         stop()
         try {
-            media = MediaPlayer().apply {
-                setDataSource(path)
-                prepare()
-                setOnCompletionListener { playing = false; onDone?.invoke() }
-                start()
-            }
+            val p = ExoPlayer.Builder(ctx).build()
+            exo = p
+            p.addListener(object : Player.Listener {
+                override fun onPlaybackStateChanged(state: Int) {
+                    if (state == Player.STATE_ENDED) {
+                        playing = false
+                        onDone?.invoke()
+                    }
+                }
+            })
+            p.setMediaItem(MediaItem.fromUri(Uri.fromFile(File(path))))
+            p.prepare()
+            p.play()
             playing = true
         } catch (_: Exception) {
             playing = false
@@ -182,12 +194,12 @@ class VerseAudioPlayer(private val ctx: Context) {
         playing = false
         pending = null
         try {
-            media?.stop()
+            exo?.stop()
         } catch (_: Exception) { }
         try {
-            media?.release()
+            exo?.release()
         } catch (_: Exception) { }
-        media = null
+        exo = null
         try {
             tts?.stop()
         } catch (_: Exception) { }

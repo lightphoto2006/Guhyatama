@@ -6,18 +6,24 @@ import android.content.Context
 import android.net.Uri
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
+import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.Alignment
+import androidx.compose.ui.draw.scale
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import androidx.datastore.preferences.core.edit
 import androidx.hilt.navigation.compose.hiltViewModel
 import com.vedalibrary.app.data.backup.BackupManager
-import com.vedalibrary.app.data.gitabase.GitabaseDbImporter
+import com.vedalibrary.app.data.library.LibraryDbImporter
 import com.vedalibrary.app.data.importer.DocxImporter
 import com.vedalibrary.app.data.importer.PdfImporter
 import com.vedalibrary.app.data.importer.TxtImporter
@@ -43,7 +49,7 @@ class SettingsViewModel @Inject constructor(
     private val txt: TxtImporter,
     private val pdf: PdfImporter,
     private val docx: DocxImporter,
-    private val gdb: GitabaseDbImporter,
+    private val gdb: LibraryDbImporter,
     private val backup: BackupManager,
     private val db: com.vedalibrary.app.data.local.AppDatabase,
     @ApplicationContext private val ctx: Context
@@ -53,15 +59,15 @@ class SettingsViewModel @Inject constructor(
     fun fontList(v: Float) = viewModelScope.launch { s.setFontListSize(v) }
     fun align(v: String) = viewModelScope.launch { s.setParaAlign(v) }
     fun bookSection(bookId: String, section: Int) = viewModelScope.launch { s.setBookSection(bookId, section) }
-    /** Полное удаление книги: стихи, главы, иллюстрации, ссылки, закладки, файлы картинок */
+    /** Полное удаление книги: БД — одной транзакцией (deleteBookCascade),
+     *  плюс аудио, обложный кэш-нет (у этой VM его нет) и файлы картинок */
     fun deleteBook(id: String) = viewModelScope.launch {
         try {
-            db.library().deleteVersesOfBook(id)
-            db.library().deleteChaptersOfBook(id)
-            db.library().deleteIllustrationsOfBook(id)
-            db.library().deleteRefsFrom(id)
-            db.library().deleteBookmarksOfBook(id)
-            db.library().deleteBookRow(id)
+            db.library().deleteBookCascade(id)
+            try { gdb.deleteAudioOfBook(id) } catch (_: Exception) { }
+            refreshAudioPacks()
+        } catch (e: kotlinx.coroutines.CancellationException) {
+            throw e
         } catch (_: Exception) { }
         try {
             val dir = java.io.File(ctx.filesDir, "illustrations/${id.replace(Regex("[^A-Za-z0-9_-]"), "_")}")
@@ -73,6 +79,29 @@ class SettingsViewModel @Inject constructor(
 
     private val _status = MutableStateFlow<String?>(null)
     val status: StateFlow<String?> = _status
+
+    /** Импортированные аудиопаки (строки секции Аудио) */
+    private val _packs = MutableStateFlow<List<LibraryDbImporter.AudioPack>>(emptyList())
+    val audioPacks: StateFlow<List<LibraryDbImporter.AudioPack>> = _packs
+
+    fun refreshAudioPacks() = viewModelScope.launch {
+        // Санация: лекции Шьямакунды не должны носить паковую озвучку шлок —
+        // до 1.2.25 она в них затесалась (совпадение координат). Метод идемпотентен.
+        try { gdb.purgeLectureAudio() } catch (_: Exception) { }
+        _packs.value = try { gdb.audioPacks() } catch (_: Exception) { emptyList() }
+    }
+
+    fun deleteAudioPack(key: String) = viewModelScope.launch {
+        val n = try { gdb.deleteAudioPack(key) } catch (_: Exception) { 0 }
+        _status.value = "Аудиопак удалён: файлов $n"
+        refreshAudioPacks()
+    }
+
+    fun deleteAllAudio() = viewModelScope.launch {
+        val n = try { gdb.deleteAllAudio() } catch (_: Exception) { 0 }
+        _status.value = "Всё аудио удалено: файлов $n"
+        refreshAudioPacks()
+    }
 
     fun importTxt(u: Uri) = viewModelScope.launch {
         try { _status.value = "Импорт TXT…"; txt.import(u); _status.value = "Готово" }
@@ -184,7 +213,7 @@ class SettingsViewModel @Inject constructor(
     } catch (_: Exception) { u.toString() }
 
     /** Тяжёлая часть импорта .db: файл + SQLite + Room — только IO-поток, не Main. */
-    private suspend fun copyAndImportDb(u: Uri): GitabaseDbImporter.Result {
+    private suspend fun copyAndImportDb(u: Uri): LibraryDbImporter.Result {
         val expected = try {
             ctx.contentResolver.query(u, null, null, null, null)?.use { c ->
                 val i = c.getColumnIndex(android.provider.OpenableColumns.SIZE)
@@ -197,7 +226,7 @@ class SettingsViewModel @Inject constructor(
                 if (c.moveToFirst() && i >= 0) c.getString(i) else null
             }
         } catch (_: Exception) { null }
-        val tmp = File.createTempFile("gitabase", ".db", ctx.cacheDir)
+        val tmp = File.createTempFile("library", ".db", ctx.cacheDir)
         try {
             var copied = 0L
             ctx.contentResolver.openInputStream(u)!!.use { inp ->
@@ -217,12 +246,26 @@ class SettingsViewModel @Inject constructor(
                 error("Это не SQLite-база (байты: $hex, размер $copied). Нужен именно .db.")
             }
             val rawName = (name ?: u.toString()).lowercase()
+            // Лекции Шьямакунды (SCC/SSB/SBG/SBRS) — всегда русские, как бы файл ни звался
+            val peekLang = try {
+                android.database.sqlite.SQLiteDatabase.openDatabase(
+                    tmp.absolutePath, null,
+                    android.database.sqlite.SQLiteDatabase.OPEN_READONLY
+                ).use { sq ->
+                    val types = mutableListOf<String>()
+                    sq.rawQuery("SELECT DISTINCT type FROM books", null).use { c ->
+                        while (c.moveToNext()) types += (c.getString(0) ?: "").uppercase()
+                    }
+                    if (types.isNotEmpty() && types.all { it == "SCC" || it == "SSB" || it == "SBG" || it == "SBRS" }) "rus"
+                    else null
+                }
+            } catch (_: Exception) { null }
             // rus / _ru_ / -ru / eng — файлы могут зваться bg_ru.db, texts_eng.db и т.п.
-            val lang = when {
+            val lang = peekLang ?: when {
                 "rus" in rawName || Regex("(^|[^a-z])ru([^a-z]|$)").containsMatchIn(rawName) -> "rus"
                 else -> "eng"
             }
-            return gdb.importFile(tmp, lang) { d, t, label -> _status.value = "Импорт: $label — $d/$t" }
+            return gdb.importFile(tmp, lang, packName = name) { d, t, label -> _status.value = "Импорт: $label — $d/$t" }
         } finally {
             tmp.delete()
         }
@@ -264,7 +307,7 @@ class SettingsViewModel @Inject constructor(
 private val Context.readerBackupPrefs by androidx.datastore.preferences.preferencesDataStore("backup_prefs")
 
 @Composable
-fun SettingsScreen(vm: SettingsViewModel = hiltViewModel()) {
+fun SettingsScreen(vm: SettingsViewModel = hiltViewModel(), updateVm: com.vedalibrary.app.ui.vm.UpdateViewModel) {
     val san by vm.s.showSanskrit.collectAsState(true)
     val tra by vm.s.showTranslit.collectAsState(true)
     val syn by vm.s.showSynonyms.collectAsState(true)
@@ -273,14 +316,14 @@ fun SettingsScreen(vm: SettingsViewModel = hiltViewModel()) {
     val fontV by vm.s.fontVerse.collectAsState(17f)
     val fontL by vm.s.fontList.collectAsState(15f)
     val align by vm.s.paraAlign.collectAsState("justify")
+    val shelf by vm.s.shelfView.collectAsState(false)
     val booksList by vm.books.collectAsState(emptyList())
     val sectionsMap by vm.bookSections.collectAsState(emptyMap())
+    val packs by vm.audioPacks.collectAsState(emptyList())
+    LaunchedEffect(Unit) { vm.refreshAudioPacks() }
     val status by vm.status.collectAsState(null)
     val ctx = androidx.compose.ui.platform.LocalContext.current
-    val pickTxt = rememberLauncherForActivityResult(ActivityResultContracts.GetContent()) { u: Uri? -> u?.let { vm.importTxt(it) } }
     val pickPdf = rememberLauncherForActivityResult(ActivityResultContracts.GetContent()) { u: Uri? -> u?.let { vm.importPdf(it) } }
-    val pickDb = rememberLauncherForActivityResult(ActivityResultContracts.OpenMultipleDocuments()) { us: List<Uri> -> vm.importDbList(us) }
-    val pickFolder = rememberLauncherForActivityResult(ActivityResultContracts.OpenDocumentTree()) { u: Uri? -> u?.let { vm.importFolder(it) } }
     val pickDocx = rememberLauncherForActivityResult(ActivityResultContracts.OpenDocument()) { u: Uri? ->
         u?.let {
             var name: String? = null
@@ -303,11 +346,23 @@ fun SettingsScreen(vm: SettingsViewModel = hiltViewModel()) {
         onDispose { com.vedalibrary.app.ui.util.VolumeFont.clear(volOwner) }
     }
     Scaffold(topBar = { TopAppBar(title = { Text("Настройки") })     }) { pad ->
-        LazyColumn(Modifier.padding(pad).padding(16.dp)) {
+        Column(Modifier.padding(pad)) {
+        LazyColumn(Modifier.weight(1f).padding(16.dp)) {
             item { Text("Импорт книг", style = MaterialTheme.typography.titleMedium) }
             item {
-                // Маркер сборки: дата установки APK — сверяем, что на телефоне свежий код
-                val buildMark = remember {
+                // Только свои файлы: PDF / DOCX. Книги из сети — через «Обновления» ниже.
+                // Кнопки в размер текста — обе в одну строку.
+                Column(Modifier.fillMaxWidth().padding(vertical = 4.dp)) {
+                    Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                        OutlinedButton(onClick = { pickPdf.launch("application/pdf") }) { Text("PDF") }
+                        OutlinedButton(onClick = { pickDocx.launch(arrayOf("application/vnd.openxmlformats-officedocument.wordprocessingml.document")) }) { Text("DOCX") }
+                    }
+                    Text("Лекции и книги: PDF / DOCX.", style = MaterialTheme.typography.bodySmall)
+                }
+            }
+            item {
+                // Версия для опознания сборок: имя + код + дата установки APK
+                val appVer = remember {
                     try {
                         val pm = ctx.packageManager
                         val pi = if (android.os.Build.VERSION.SDK_INT >= 33) {
@@ -315,41 +370,19 @@ fun SettingsScreen(vm: SettingsViewModel = hiltViewModel()) {
                         } else {
                             @Suppress("DEPRECATION") pm.getPackageInfo(ctx.packageName, 0)
                         }
-                        java.text.SimpleDateFormat("dd.MM HH:mm", java.util.Locale.getDefault())
+                        val vc = if (android.os.Build.VERSION.SDK_INT >= 28) pi.longVersionCode
+                        else @Suppress("DEPRECATION") pi.versionCode.toLong()
+                        val dt = java.text.SimpleDateFormat("dd.MM HH:mm", java.util.Locale.getDefault())
                             .format(java.util.Date(pi.lastUpdateTime))
+                        "${pi.versionName ?: "?"} ($vc) · $dt"
                     } catch (_: Exception) { "?" }
                 }
-                Text("Сборка приложения: $buildMark", style = MaterialTheme.typography.bodySmall)
+                Text("Версия приложения: $appVer", style = MaterialTheme.typography.bodySmall)
             }
-            item {
-                status?.let {
-                    Row(Modifier.fillMaxWidth().padding(vertical = 4.dp)) {
-                        if (it.startsWith("Импорт") || it.startsWith("Копирую")) CircularProgressIndicator(Modifier.size(20.dp))
-                        Spacer(Modifier.width(8.dp))
-                        Text(it, style = MaterialTheme.typography.bodySmall, modifier = Modifier.weight(1f))
-                        TextButton(onClick = { vm.clearStatus() }) { Text("×") }
-                    }
-                }
-            }
-            item {
-                Column(Modifier.fillMaxWidth().padding(vertical = 4.dp)) {
-                    Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                        OutlinedButton(onClick = { pickTxt.launch("text/plain") }, modifier = Modifier.weight(1f)) { Text("TXT") }
-                        OutlinedButton(onClick = { pickPdf.launch("application/pdf") }, modifier = Modifier.weight(1f)) { Text("PDF") }
-                    }
-                    Spacer(Modifier.height(8.dp))
-                    Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                        OutlinedButton(onClick = { pickDocx.launch(arrayOf("application/vnd.openxmlformats-officedocument.wordprocessingml.document")) }, modifier = Modifier.weight(1f)) { Text("DOCX") }
-                        OutlinedButton(onClick = { pickDb.launch(arrayOf("*/*")) }, modifier = Modifier.weight(1f)) { Text(".db") }
-                    }
-                    Spacer(Modifier.height(8.dp))
-                    Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                        OutlinedButton(onClick = { pickFolder.launch(null) }, modifier = Modifier.weight(1f)) { Text("📁 Папка с .db") }
-                    }
-                    Text("Лекции и книги: TXT / PDF / DOCX. Базы Gitabase: .db (не -journal).", style = MaterialTheme.typography.bodySmall)
-                }
-            }
-            item { Spacer(Modifier.height(12.dp)); Text("Разделы стиха", style = MaterialTheme.typography.titleMedium) }
+            item { Spacer(Modifier.height(12.dp)); Text("Обновления", style = MaterialTheme.typography.titleMedium) }
+            item { com.vedalibrary.app.ui.components.UpdateSection(updateVm) }
+            item { Spacer(Modifier.height(12.dp)); Text("Настройки отображения", style = MaterialTheme.typography.titleMedium) }
+            item { SwitchRow("Книжная полка", shelf) { vm.toggle(vm.s::setShelfView, shelf) } }
             item { SwitchRow("Санскрит (деванагари)", san) { vm.toggle(vm.s::setShowSanskrit, san) } }
             item { SwitchRow("Транслитерация", tra) { vm.toggle(vm.s::setShowTranslit, tra) } }
             item { SwitchRow("Пословный перевод", syn) { vm.toggle(vm.s::setShowSynonyms, syn) } }
@@ -388,20 +421,31 @@ fun SettingsScreen(vm: SettingsViewModel = hiltViewModel()) {
                 var expanded by remember(b.id) { mutableStateOf(false) }
                 var confirmDelete by remember(b.id) { mutableStateOf(false) }
                 Box {
-                    ListItem(
-                        headlineContent = {
-                            Text(VerseShare.cleanTitle(b.title), maxLines = 1,
-                                overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis)
-                        },
-                        supportingContent = { Text(vm.s.sectionTitles[cur]) },
-                        trailingContent = {
-                            Row {
-                                TextButton(onClick = { confirmDelete = true }) { Text("🗑") }
-                                TextButton(onClick = { expanded = true }) { Text("▾") }
-                            }
-                        },
-                        modifier = Modifier.clickable { expanded = true }
-                    )
+                    // Название почти во всю ширину (две строки), справа только
+                    // компактные корзня и стрелка — листайте списки книг спокойно
+                    Row(
+                        Modifier.fillMaxWidth().padding(vertical = 8.dp),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Column(Modifier.weight(1f)) {
+                            Text(
+                                VerseShare.cleanTitle(b.title),
+                                style = MaterialTheme.typography.bodyLarge,
+                                maxLines = 2, overflow = TextOverflow.Ellipsis
+                            )
+                            Text(
+                                vm.s.sectionTitles[cur],
+                                style = MaterialTheme.typography.bodySmall,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                            )
+                        }
+                        Box(
+                            Modifier.clickable { confirmDelete = true }.padding(10.dp)
+                        ) { Text("🗑", fontSize = 20.sp) }
+                        Box(
+                            Modifier.clickable { expanded = true }.padding(10.dp)
+                        ) { Text("▾", fontSize = 30.sp) }
+                    }
                     DropdownMenu(expanded = expanded, onDismissRequest = { expanded = false }) {
                         vm.s.sectionTitles.forEachIndexed { i, t ->
                             DropdownMenuItem(
@@ -429,6 +473,78 @@ fun SettingsScreen(vm: SettingsViewModel = hiltViewModel()) {
                 }
                 HorizontalDivider()
             }
+            item { Spacer(Modifier.height(12.dp)); Text("Аудио", style = MaterialTheme.typography.titleMedium) }
+            item {
+                Text("Файлы аудиобаз: удаление убирает только звук, тексты и закладки остаются.",
+                    style = MaterialTheme.typography.bodySmall)
+            }
+            if (packs.isEmpty()) {
+                item { Text("Аудио не импортировано.", style = MaterialTheme.typography.bodySmall) }
+            } else {
+                items(packs, key = { it.key }) { p ->
+                    var confirmPack by remember(p.key) { mutableStateOf(false) }
+                    val date = remember(p.at) {
+                        try {
+                            java.text.SimpleDateFormat("dd.MM.yyyy", java.util.Locale.getDefault())
+                                .format(java.util.Date(p.at))
+                        } catch (_: Exception) { "" }
+                    }
+                    Row(
+                        Modifier.fillMaxWidth().padding(vertical = 8.dp),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Column(Modifier.weight(1f)) {
+                            Text(p.name, style = MaterialTheme.typography.bodyLarge,
+                                maxLines = 2, overflow = TextOverflow.Ellipsis)
+                            Text(
+                                "${p.types.joinToString("+")} · стихов ${p.verses} · файлов ${p.files} (${p.bytes / 1048576} МБ) · $date",
+                                style = MaterialTheme.typography.bodySmall,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                            )
+                        }
+                        Box(
+                            Modifier.clickable { confirmPack = true }.padding(10.dp)
+                        ) { Text("🗑", fontSize = 20.sp) }
+                    }
+                    if (confirmPack) {
+                        AlertDialog(
+                            onDismissRequest = { confirmPack = false },
+                            title = { Text("Удалить аудиопак?") },
+                            text = { Text("«${p.name}»: ${p.files} файлов. Уберётся только звук этого пака.") },
+                            confirmButton = {
+                                TextButton(onClick = {
+                                    confirmPack = false
+                                    vm.deleteAudioPack(p.key)
+                                }) { Text("Удалить", color = MaterialTheme.colorScheme.error) }
+                            },
+                            dismissButton = {
+                                TextButton(onClick = { confirmPack = false }) { Text("Отмена") }
+                            }
+                        )
+                    }
+                    HorizontalDivider()
+                }
+                item {
+                    var confirmAll by remember { mutableStateOf(false) }
+                    OutlinedButton(onClick = { confirmAll = true }) { Text("Удалить всё аудио") }
+                    if (confirmAll) {
+                        AlertDialog(
+                            onDismissRequest = { confirmAll = false },
+                            title = { Text("Удалить всё аудио?") },
+                            text = { Text("Снесёт весь звук, включая старые паки. Тексты не тронет.") },
+                            confirmButton = {
+                                TextButton(onClick = {
+                                    confirmAll = false
+                                    vm.deleteAllAudio()
+                                }) { Text("Удалить", color = MaterialTheme.colorScheme.error) }
+                            },
+                            dismissButton = {
+                                TextButton(onClick = { confirmAll = false }) { Text("Отмена") }
+                            }
+                        )
+                    }
+                }
+            }
             item { Spacer(Modifier.height(12.dp)); Text("Заметки и бэкап", style = MaterialTheme.typography.titleMedium) }
             item {
                 Row(Modifier.fillMaxWidth().padding(vertical = 4.dp), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
@@ -438,13 +554,36 @@ fun SettingsScreen(vm: SettingsViewModel = hiltViewModel()) {
                 Text("JSON со всеми заметками, темами и карточками. Авто-копия раз в неделю лежит в папке приложения.", style = MaterialTheme.typography.bodySmall)
             }
         }
+        // Статус операций — фиксированной плашкой ВНИЗУ экрана: всегда в поле
+        // зрения (там же, где фокус после нажатия кнопки), не скроллится,
+        // контрастный фон secondaryContainer — не растворяется в теме
+        status?.let {
+            Row(
+                Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = 16.dp, vertical = 8.dp)
+                    .background(MaterialTheme.colorScheme.secondaryContainer, RoundedCornerShape(12.dp))
+                    .padding(horizontal = 12.dp, vertical = 6.dp),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                if (it.startsWith("Импорт") || it.startsWith("Копирую")) CircularProgressIndicator(Modifier.size(20.dp))
+                Spacer(Modifier.width(8.dp))
+                Text(it, style = MaterialTheme.typography.bodySmall, modifier = Modifier.weight(1f))
+                TextButton(onClick = { vm.clearStatus() }) { Text("×") }
+            }
+        }
+        }
     }
 }
 
 @Composable
 private fun SwitchRow(label: String, checked: Boolean, onToggle: () -> Unit) {
-    Row(Modifier.fillMaxWidth().padding(vertical = 4.dp), horizontalArrangement = Arrangement.SpaceBetween) {
+    // Вертикальные отступы в 1.5 раза меньше (строки плотнее), текст по центру
+    // кнопки, сам переключатель в 2 раза компактнее
+    Row(Modifier.fillMaxWidth().padding(vertical = 1.33.dp),
+        horizontalArrangement = Arrangement.SpaceBetween,
+        verticalAlignment = Alignment.CenterVertically) {
         Text(label, Modifier.weight(1f))
-        Switch(checked, { onToggle() })
+        Switch(checked, { onToggle() }, modifier = Modifier.scale(0.5f))
     }
 }
