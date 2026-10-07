@@ -1,12 +1,12 @@
 {
   "catalogVersion": 1,
   "apk": {
-    "versionCode": 15,
-    "versionName": "1.2.9",
-    "url": "https://github.com/lightphoto2006/Guhyatama/releases/download/v1.2.9/Guhyatama-1.2.9.apk",
-    "size": 17710050,
-    "sha256": "5c8d8580a8e0230ddb7ad533b882b157c564f7d57d73a56cc2eecc6bd97f7c25",
-    "notes": "Что нового:\n— книги и аудио качаются прямо из приложения (закрытое хранилище)."
+    "versionCode": 45,
+    "versionName": "1.2.39",
+    "url": "https://github.com/lightphoto2006/Guhyatama/releases/download/v1.2.39/Guhyatama-1.2.39.apk",
+    "size": 20111477,
+    "sha256": "fbec62815cc5b6141656876ed19bbbc7ac48d00adca17116bd4e09afcfb83212",
+    "notes": "Что нового:\n— «Книжная полка»: библиотека торцами с вертикальным названием (5-6 в ряд), звезда закладки отдельной зоной, доска полки;\n— настройки: секция «Настройки отображения» с тумблером полки и компактные строки-переключатели;\n— поиск: язык — одна кнопка-цикл (общая с главным экраном), тумблер «Везде/В книге», компактный выбор книги;\n— список стихов и чтение: отступ от края экрана 8dp."
   },
   "books": [
     {
@@ -18,18 +18,233 @@
       "lang": "rus",
       "auth": "github",
       "size": 153735168,
-      "sha256": "b411bac2be1adce65f6617c3df0717dbe3186bf4b3ef2367ba285ea2b52ddc83"
+      "sha256": "b411bac2be1adce65f6617c3df0717dbe3186bf4b3ef2367ba285ea2b52ddc83",
+      "fp": [
+        {
+          "t": "bg-ss",
+          "g": 1,
+          "v": 649,
+          "vg": 649
+        },
+        {
+          "t": "bg",
+          "g": 2,
+          "v": 681,
+          "vg": 681
+        },
+        {
+          "t": "sb",
+          "g": 3,
+          "v": 13231,
+          "vg": 13241
+        },
+        {
+          "t": "cc",
+          "g": 4,
+          "v": 11419,
+          "vg": 11419
+        },
+        {
+          "t": "tlc",
+          "g": 5,
+          "v": 37,
+          "vg": 37
+        },
+        {
+          "t": "nod",
+          "g": 6,
+          "v": 57,
+          "vg": 57
+        },
+        {
+          "t": "noi",
+          "g": 7,
+          "v": 12,
+          "vg": 12
+        },
+        {
+          "t": "tqk",
+          "g": 8,
+          "v": 27,
+          "vg": 27
+        },
+        {
+          "t": "bs",
+          "g": 9,
+          "v": 68,
+          "vg": 68
+        },
+        {
+          "t": "iso",
+          "g": 10,
+          "v": 20,
+          "vg": 20
+        },
+        {
+          "t": "ltrs",
+          "g": 11,
+          "v": 5316,
+          "vg": 5316
+        },
+        {
+          "t": "lbg",
+          "g": 12,
+          "v": 121,
+          "vg": 121
+        },
+        {
+          "t": "lsb",
+          "g": 13,
+          "v": 237,
+          "vg": 237
+        },
+        {
+          "t": "tlks",
+          "g": 14,
+          "v": 180,
+          "vg": 180
+        },
+        {
+          "t": "kb",
+          "g": 15,
+          "v": 94,
+          "vg": 94
+        }
+      ]
     },
     {
       "key": "Prabhupada_eng",
       "title": "Prabhupada books (eng)",
-      "version": 1,
-      "url": "https://api.github.com/repos/lightphoto2006/Guhyatama-files/releases/assets/603170778",
-      "notes": "First catalog release. Full English library.",
+      "version": 2,
+      "url": "https://api.github.com/repos/lightphoto2006/Guhyatama-files/releases/assets/607548569",
+      "notes": "Похудела вдвое: обложки ужаты (тексты те же).",
       "lang": "eng",
       "auth": "github",
-      "size": 293826560,
-      "sha256": "0f3077e03f3bc8f3e265fd73fcd72d7814fceb355a5f08811bdaa4e69ee24216"
+      "adopt": false,
+      "size": 158236672,
+      "sha256": "8085a1f75da2b28e964b16fb6baad0035a9ae11e7f897836e6eb35796a7964c1",
+      "fp": [
+        {
+          "t": "bg72",
+          "g": 1,
+          "v": 658,
+          "vg": 658
+        },
+        {
+          "t": "bg",
+          "g": 2,
+          "v": 680,
+          "vg": 680
+        },
+        {
+          "t": "sb",
+          "g": 3,
+          "v": 13248,
+          "vg": 13248
+        },
+        {
+          "t": "cc",
+          "g": 4,
+          "v": 11424,
+          "vg": 11424
+        },
+        {
+          "t": "tlc",
+          "g": 5,
+          "v": 36,
+          "vg": 36
+        },
+        {
+          "t": "nod",
+          "g": 6,
+          "v": 54,
+          "vg": 54
+        },
+        {
+          "t": "noi",
+          "g": 7,
+          "v": 12,
+          "vg": 12
+        },
+        {
+          "t": "tqk",
+          "g": 8,
+          "v": 27,
+          "vg": 27
+        },
+        {
+          "t": "bs",
+          "g": 9,
+          "v": 64,
+          "vg": 64
+        },
+        {
+          "t": "iso",
+          "g": 10,
+          "v": 20,
+          "vg": 20
+        },
+        {
+          "t": "mm",
+          "g": 11,
+          "v": 53,
+          "vg": 53
+        },
+        {
+          "t": "nbs",
+          "g": 12,
+          "v": 84,
+          "vg": 84
+        },
+        {
+          "t": "ltrs",
+          "g": 13,
+          "v": 6475,
+          "vg": 6475
+        },
+        {
+          "t": "ltr",
+          "g": 14,
+          "v": 0,
+          "vg": 0
+        },
+        {
+          "t": "lbg",
+          "g": 15,
+          "v": 219,
+          "vg": 219
+        },
+        {
+          "t": "lsb",
+          "g": 16,
+          "v": 579,
+          "vg": 579
+        },
+        {
+          "t": "tlks",
+          "g": 17,
+          "v": 1322,
+          "vg": 1322
+        },
+        {
+          "t": "lcc",
+          "g": 18,
+          "v": 107,
+          "vg": 107
+        },
+        {
+          "t": "liso",
+          "g": 19,
+          "v": 12,
+          "vg": 12
+        },
+        {
+          "t": "kb",
+          "g": 20,
+          "v": 94,
+          "vg": 94
+        }
+      ]
     },
     {
       "key": "Acharyi_eng",
@@ -40,18 +255,117 @@
       "lang": "eng",
       "auth": "github",
       "size": 4489216,
-      "sha256": "ed598a9c745ed8fc6183609796b8e0a554ab2cf438b8b72039b991401423c269"
+      "sha256": "ed598a9c745ed8fc6183609796b8e0a554ab2cf438b8b72039b991401423c269",
+      "fp": [
+        {
+          "t": "aisvarya",
+          "g": 1,
+          "v": 65,
+          "vg": 65
+        },
+        {
+          "t": "avc",
+          "g": 2,
+          "v": 84,
+          "vg": 84
+        },
+        {
+          "t": "sb",
+          "g": 3,
+          "v": 741,
+          "vg": 741
+        },
+        {
+          "t": "ma",
+          "g": 4,
+          "v": 55,
+          "vg": 55
+        },
+        {
+          "t": "dg",
+          "g": 5,
+          "v": 10,
+          "vg": 10
+        },
+        {
+          "t": "ga",
+          "g": 6,
+          "v": 27,
+          "vg": 27
+        },
+        {
+          "t": "m",
+          "g": 7,
+          "v": 87,
+          "vg": 87
+        },
+        {
+          "t": "lm",
+          "g": 8,
+          "v": 11,
+          "vg": 11
+        }
+      ]
     },
     {
       "key": "Syamakunda_CC",
       "title": "Лекции Шьямакунды прабху по ЧЧ (рус)",
-      "version": 2,
-      "url": "https://api.github.com/repos/lightphoto2006/Guhyatama-files/releases/assets/605848620",
-      "notes": "Исправлена опечатка: «они в неправильном направлении» (ЧЧ 1.5.179-235).",
+      "version": 4,
+      "url": "https://api.github.com/repos/lightphoto2006/Guhyatama-files/releases/assets/606200632",
+      "notes": "Техническое переимпортирование (файл тот же): лекции-дубли одного стиха больше не затирают друг друга.",
       "lang": "rus",
       "auth": "github",
-      "size": 10539008,
-      "sha256": "0c3557950c60ebe47fa33a73aefe85837a6277178025bfd6c6abb800c7400ed6"
+      "adopt": false,
+      "size": 10469376,
+      "sha256": "fdf966fadd9d509faccf072e1530e5165334146f2fc7655140ffd28cd71d4bc1",
+      "fp": [
+        {
+          "t": "scc",
+          "g": 1,
+          "v": 180,
+          "vg": 180
+        }
+      ]
+    },
+    {
+      "key": "Syamakunda_BRS",
+      "title": "Лекции Шьямакунды прабху по БРС (рус)",
+      "version": 4,
+      "url": "https://api.github.com/repos/lightphoto2006/Guhyatama-files/releases/assets/607134393",
+      "notes": "025 устроена по номеру; голые ссылки ищутся в БРС.",
+      "lang": "rus",
+      "auth": "github",
+      "adopt": false,
+      "size": 13209600,
+      "sha256": "450e948d1fc5ebf3a0407f2a30b0631f0897c89add3c083566ae1ceee4dc6936",
+      "fp": [
+        {
+          "t": "sbrs",
+          "g": 1,
+          "v": 252,
+          "vg": 252
+        }
+      ]
+    },
+    {
+      "key": "Acharyi_rus",
+      "title": "Книги ачарий (рус)",
+      "version": 5,
+      "url": "https://api.github.com/repos/lightphoto2006/Guhyatama-files/releases/assets/607505825",
+      "notes": "Транслит: ш вместо щ (кршна, шри, лакшми).",
+      "lang": "rus",
+      "auth": "github",
+      "adopt": false,
+      "size": 2969600,
+      "sha256": "c4ea0642d4b8c79d98026707e84a0e1d262e5fdcbae367e15f235df80aeb9dad",
+      "fp": [
+        {
+          "t": "gc",
+          "g": 1,
+          "v": 70,
+          "vg": 70
+        }
+      ]
     }
   ],
   "audio": [

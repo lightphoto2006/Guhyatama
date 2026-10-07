@@ -1,11 +1,11 @@
 {
   "apk": {
-    "versionCode": 15,
-    "versionName": "1.2.9",
-    "url": "https://github.com/lightphoto2006/Guhyatama/releases/download/v1.2.9/Guhyatama-1.2.9.apk",
-    "size": 17710050,
-    "sha256": "5c8d8580a8e0230ddb7ad533b882b157c564f7d57d73a56cc2eecc6bd97f7c25",
-    "notes": "Что нового:\n— книги и аудио качаются прямо из приложения (закрытое хранилище)."
+    "versionCode": 45,
+    "versionName": "1.2.39",
+    "url": "https://github.com/lightphoto2006/Guhyatama/releases/download/v1.2.39/Guhyatama-1.2.39.apk",
+    "size": 20111477,
+    "sha256": "fbec62815cc5b6141656876ed19bbbc7ac48d00adca17116bd4e09afcfb83212",
+    "notes": "Что нового:\n— «Книжная полка»: библиотека торцами с вертикальным названием (5-6 в ряд), звезда закладки отдельной зоной, доска полки;\n— настройки: секция «Настройки отображения» с тумблером полки и компактные строки-переключатели;\n— поиск: язык — одна кнопка-цикл (общая с главным экраном), тумблер «Везде/В книге», компактный выбор книги;\n— список стихов и чтение: отступ от края экрана 8dp."
   },
   "books": {
     "Prabhupada_rus": {
@@ -21,10 +21,11 @@
       "title": "Prabhupada books (eng)",
       "lang": "eng",
       "file": "Prabhupada_eng.db",
-      "version": 1,
-      "url": "https://api.github.com/repos/lightphoto2006/Guhyatama-files/releases/assets/603170778",
-      "notes": "First catalog release. Full English library.",
-      "auth": "github"
+      "version": 2,
+      "url": "https://api.github.com/repos/lightphoto2006/Guhyatama-files/releases/assets/607548569",
+      "notes": "Похудела вдвое: обложки ужаты (тексты те же).",
+      "auth": "github",
+      "adopt": false
     },
     "Acharyi_eng": {
       "title": "Книги ачарьев (eng)",
@@ -39,10 +40,32 @@
       "title": "Лекции Шьямакунды прабху по ЧЧ (рус)",
       "lang": "rus",
       "file": "Syamakunda_CC.db",
-      "version": 2,
-      "url": "https://api.github.com/repos/lightphoto2006/Guhyatama-files/releases/assets/605848620",
-      "notes": "Исправлена опечатка: «они в неправильном направлении» (ЧЧ 1.5.179-235).",
-      "auth": "github"
+      "version": 4,
+      "url": "https://api.github.com/repos/lightphoto2006/Guhyatama-files/releases/assets/606200632",
+      "notes": "Техническое переимпортирование (файл тот же): лекции-дубли одного стиха больше не затирают друг друга.",
+      "auth": "github",
+      "adopt": false
+    },
+    "Syamakunda_BRS": {
+      "title": "Лекции Шьямакунды прабху по БРС (рус)",
+      "lang": "rus",
+      "file": "DB Final/Syamakunda_BRS.db",
+      "version": 4,
+      "url": "https://api.github.com/repos/lightphoto2006/Guhyatama-files/releases/assets/607134393",
+      "auth": "github",
+      "notes": "025 устроена по номеру; голые ссылки ищутся в БРС.",
+      "adopt": false
+    },
+    "Acharyi_rus": {
+      "title": "Книги ачарий (рус)",
+      "lang": "rus",
+      "file": "Acharyi_rus.db",
+      "version": 5,
+      "url": "https://api.github.com/repos/lightphoto2006/Guhyatama-files/releases/assets/607505825",
+      "auth": "github",
+      "notes": "Транслит: ш вместо щ (кршна, шри, лакшми).",
+      "next_id": 2,
+      "adopt": false
     }
   },
   "audio": {

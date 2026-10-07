@@ -1,6 +1,6 @@
-# VedaLibrary — аналог Gitabase Reader для Android (Native Kotlin + Compose)
+# VedaLibrary — читалка книг и лекций для Android (Native Kotlin + Compose)
 
-Полный аналог https://gitabase.com/#features + импорт транскрибированных лекций из PDF/TXT.
+Офлайн-библиотека: книги, лекции, поиск, словарь + импорт транскрибированных лекций из PDF/TXT.
 
 ## Стек (тренды 2026)
 - **Kotlin + Jetpack Compose + Material 3 Expressive** (dynamic color, edge-to-edge, dark/night mode)
@@ -8,8 +8,8 @@
 - **Offline-first**: Room + FTS5, Paging3, DataStore, WorkManager, Coil, R8 + Baseline Profiles
 - **DI**: Hilt; **Навигация**: Navigation-Compose type-safe; **TTS**: android.speech.tts + Media3; **PDF**: pdfbox-android + PdfRenderer fallback
 
-## Покрытие 21 фичи Gitabase
-| Gitabase | Реализация |
+## Возможности (21)
+| Раздел | Реализация |
 |---|---|
 | Search all books (sanskrit/verse/purport) | `VerseFts` (FTS4/5) + `searchFts()` + scope-фильтр в `SearchScreen` |
 | Dictionary tab | `dictionaryLookup()` — все стихи со словом |
@@ -35,7 +35,7 @@
 ## Импорт лекций/произведений (гибрид)
 - **TXT/MD**: SAF-picker → `TxtImporter` → `TextCleaner.clean()` (мусор, колонтитулы, переносы) → `ChapterSplitter` (маркеры Глава/Лекция/## или чанки 4000 симв.) → batch-вставки по 500.
 - **PDF**: SAF-picker → копия в cache → `PdfImporter` (pdfbox `sortByPosition=true` чинит 2 колонки) → тот же pipeline. Сканы без текстового слоя → сообщение «нужен OCR».
-- **Пакеты**: `PackageInstaller.installFromZip()` (.gbpkg аналог .db Gitabase).
+- **Пакеты**: `PackageInstaller.installFromZip()` (.gbpkg = zip{manifest.json, library.db}).
 
 ## Структура
 ```
