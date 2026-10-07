@@ -1,37 +1,36 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
-"""dbcomposer GUI — чистка и пересборка Gitabase .db для Гухьятамы.
+"""dbcomposer GUI — чистка и пересборка библиотечных .db для Гухьятамы.
 
 Запуск:  py gui.py   (только стандартная библиотека: tkinter + sqlite3)
+Вкладки сверху: Сборка | Лекции DOCX | Базы Аудио | AI-импорт (переключение кликом).
 Логика сборки — в recompose.py (импортируется как модуль).
 """
 import json
 import os
 import queue
+import re
 import tempfile
 import threading
 import tkinter as tk
 from tkinter import filedialog, messagebox, ttk
 
+import dbcommon
 import recompose
-import vagdhenu_gui
+import lectures_gui
+import audio_gui
+import ai_import
 
-APP_TITLE = "dbcomposer v%s — чистка Gitabase-баз" % recompose.TOOLS_VERSION
+APP_TITLE = "dbcomposer v%s — чистка библиотечных баз" % recompose.TOOLS_VERSION
 CFG_PATH = os.path.join(os.path.dirname(os.path.abspath(__file__)), "dbcomposer.json")
 
 
 def load_cfg():
-    try:
-        return json.load(open(CFG_PATH, encoding="utf-8"))
-    except Exception:
-        return {}
+    return dbcommon.load_cfg(CFG_PATH)
 
 
 def save_cfg(cfg):
-    try:
-        json.dump(cfg, open(CFG_PATH, "w", encoding="utf-8"), ensure_ascii=False, indent=1)
-    except Exception:
-        pass
+    return dbcommon.save_cfg(CFG_PATH, cfg)
 
 
 def file_sig(p):
@@ -39,11 +38,49 @@ def file_sig(p):
     return [st.st_size, st.st_mtime]
 
 
+#: типы писем, раскладываемых по темам (пара «письма + темы», напр. LTRS + LTR)
+LETTER_TYPES = ("LTRS", "LTR")
+
+
+def _title_script(row):
+    """Письменность названия: 'cy' (есть кириллица) или 'lat». Смешивать языки
+    в merge нельзя (русские письма + английские темы = каша)."""
+    t = row.get('new_title') or row.get('title') or ''
+    return 'cy' if re.search(r'[А-Яа-яЁё]', t) else 'lat'
+
+
+def find_topic_donor(letters_row, all_rows):
+    """Книга тем для писем: ПАРНЫЙ тип (LTRS<->LTR), есть главы, нет стихов.
+    Тот же файл — всегда можно; чужой файл — только та же письменность
+    (русские письма не мержим с английскими темами и наоборот).
+    Возвращает (row-донор, отвергнутый) или (None, None). Второй элемент нужен,
+    чтобы объяснить в логе, почему не смержили (темы на другом языке)."""
+    lt = (letters_row.get('type') or '').upper()
+    if lt not in LETTER_TYPES or not letters_row.get('verses'):
+        return None, None
+    want = [t for t in LETTER_TYPES if t != lt]
+    cands = [r for r in all_rows
+             if r is not letters_row
+             and (r.get('type') or '').upper() in want
+             and r.get('chapters') and not r.get('verses')]
+    if not cands:
+        return None, None
+    same = [r for r in cands if r.get('file') == letters_row.get('file')]
+    if same:
+        return same[0], None
+    lscript = _title_script(letters_row)
+    for r in cands:
+        if _title_script(r) == lscript:
+            return r, None
+    # донор есть, но на другом языке — не мержим, объясняем почему
+    return None, cands[0]
+
+
 class App(tk.Tk):
     def __init__(self):
         super().__init__()
         self.title(APP_TITLE)
-        self.geometry("980x640")
+        self.geometry("1040x720")
         # iid -> dict(file, book_id, title, author, type, chapters, verses, images, junk, checked,
         #            new_title, new_author, new_type)
         self.rows = {}
@@ -58,7 +95,13 @@ class App(tk.Tk):
         # (file, book_id) -> ('id', image_id) | ('file', path) | отсутствует
         self.covers = {}
 
-        top = ttk.Frame(self, padding=6)
+        # вкладки сверху: содержимое сборки — в «Сборке», инструменты — в своих
+        self.nb = ttk.Notebook(self)
+        self.nb.pack(fill="both", expand=True)
+        build = ttk.Frame(self.nb)
+        self.nb.add(build, text="Сборка")
+
+        top = ttk.Frame(build, padding=6)
         top.pack(fill="x")
         ttk.Button(top, text="+ Файлы .db", command=self.add_files).pack(side="left")
         ttk.Button(top, text="+ Папка", command=self.add_folder).pack(side="left", padx=4)
@@ -66,10 +109,9 @@ class App(tk.Tk):
         ttk.Button(top, text="Выбрать все", command=lambda: self.set_all(True)).pack(side="right")
         ttk.Button(top, text="Снять все", command=lambda: self.set_all(False)).pack(side="right", padx=4)
         ttk.Button(top, text="Содержимое", command=self.open_content).pack(side="right", padx=4)
-        ttk.Button(top, text="🎙 Vagdhenu", command=lambda: vagdhenu_gui.open_vag(self)).pack(side="right", padx=4)
 
         cols = ("title", "type", "chapters", "verses", "junk", "file")
-        self.tv = ttk.Treeview(self, columns=cols, show="tree headings", selectmode="browse")
+        self.tv = ttk.Treeview(build, columns=cols, show="tree headings", selectmode="browse")
         self.tv.heading("#0", text="✓")
         self.tv.column("#0", width=36, stretch=False, anchor="center")
         for c, label, w, anchor in (
@@ -84,7 +126,7 @@ class App(tk.Tk):
         self.tv.bind("<Double-Button-1>", self.on_double)
         self.tv.bind("<<TreeviewSelect>>", self.on_select)
 
-        edit = ttk.LabelFrame(self, text="Выбранная книга (переименовать при сборке)", padding=6)
+        edit = ttk.LabelFrame(build, text="Выбранная книга (переименовать при сборке)", padding=6)
         edit.pack(fill="x", padx=6, pady=4)
         self.e_title = tk.StringVar()
         self.e_author = tk.StringVar()
@@ -98,7 +140,7 @@ class App(tk.Tk):
         ttk.Button(edit, text="Применить", command=self.apply_edit).grid(row=1, column=2, columnspan=2)
         edit.columnconfigure(1, weight=1)
 
-        opts = ttk.LabelFrame(self, text="Чистка", padding=6)
+        opts = ttk.LabelFrame(build, text="Чистка", padding=6)
         opts.pack(fill="x", padx=6, pady=4)
         self.v_err = tk.BooleanVar(value=True)
         self.v_empty = tk.BooleanVar(value=True)
@@ -108,26 +150,11 @@ class App(tk.Tk):
         ttk.Checkbutton(opts, text="пустые стихи", variable=self.v_empty).pack(side="left")
         ttk.Checkbutton(opts, text="дубли", variable=self.v_dup).pack(side="left")
         ttk.Checkbutton(opts, text="пустые главы", variable=self.v_ch).pack(side="left")
+        self.v_merge = tk.BooleanVar(value=True)
+        ttk.Checkbutton(opts, text="📨 письма по темам (LTRS+LTR)",
+                        variable=self.v_merge).pack(side="left")
 
-        aud = ttk.LabelFrame(self, text="Аудио санскрита (MP3 → verse_audio в выходной файл)", padding=6)
-        aud.pack(fill="x", padx=6, pady=4)
-        self.v_aud = tk.BooleanVar(value=False)
-        ttk.Checkbutton(aud, text="паковать", variable=self.v_aud).pack(side="left")
-        ttk.Label(aud, text="Папка MP3:").pack(side="left")
-        self.e_auddir = tk.StringVar()
-        ttk.Entry(aud, textvariable=self.e_auddir, width=34).pack(side="left", fill="x", expand=True, padx=4)
-        ttk.Button(aud, text="…", command=self.pick_auddir, width=3).pack(side="left")
-        ttk.Label(aud, text="Тип:").pack(side="left")
-        self.e_audtype = tk.StringVar(value="BG")
-        ttk.Entry(aud, textvariable=self.e_audtype, width=7).pack(side="left", padx=2)
-        ttk.Label(aud, text="Шаблон:").pack(side="left")
-        self.e_audpat = tk.StringVar(value="BG{ch}.{txt}.mp3")
-        ttk.Entry(aud, textvariable=self.e_audpat, width=22).pack(side="left", padx=2)
-        ttk.Button(aud, text="Проверить", command=self.check_audio).pack(side="left", padx=4)
-        self.aud_info = ttk.Label(aud, text="")
-        self.aud_info.pack(side="left")
-
-        out = ttk.Frame(self, padding=6)
+        out = ttk.Frame(build, padding=6)
         out.pack(fill="x")
         ttk.Label(out, text="Выход:").pack(side="left")
         self.e_out = tk.StringVar(value=os.path.join(os.path.expanduser("~"), "clean_library.db"))
@@ -139,11 +166,61 @@ class App(tk.Tk):
         self.prog.pack(side="left")
         ttk.Button(out, text="📋", command=self.copy_log).pack(side="left", padx=4)
 
-        self.log = tk.Text(self, height=9, wrap="word")
+        self.log = tk.Text(build, height=9, wrap="word")
         self.log.pack(fill="both", expand=False, padx=6, pady=(0, 6))
         self.log.bind("<Key>", self._log_key)
+
+        # вкладки-инструменты (бывшие отдельные окна). Создаются сразу, но
+        # тяжёлая инициализация — при первом показе (см. on_tab/on_activate)
+        self.tab_lectures = lectures_gui.LecturesTab(self.nb, self)
+        self.nb.add(self.tab_lectures, text="📖 Лекции DOCX")
+        self.tab_audio = audio_gui.AudioTab(self.nb, self)
+        self.nb.add(self.tab_audio, text="🎧 Базы Аудио")
+        self.tab_ai = ai_import.AIImportTab(self.nb, self)
+        self.nb.add(self.tab_ai, text="🤖 AI-импорт")
+        self.nb.bind("<<NotebookTabChanged>>", self.on_tab)
+        self.protocol("WM_DELETE_WINDOW", self.on_close)
+
         self.after(150, self.poll)
         self.after(400, self.startup_scan)
+
+    def on_tab(self, _ev):
+        """Первый показ вкладки — её разовый тяжёлый activate (папка лекций)."""
+        try:
+            w = self.nb.nametowidget(self.nb.select())
+        except tk.TclError:
+            return
+        act = getattr(w, "on_activate", None)
+        if act is not None:
+            act()
+
+    def on_close(self):
+        """Крестик окна: не даём оборвать идущую работу, конфиги сохраняем."""
+        busy = []
+        if self.building:
+            busy.append("сборка библиотеки")
+        if self.tab_lectures.building:
+            busy.append("сборка лекций")
+        if self.tab_audio.busy:
+            busy.append("аудио-задача")
+        if self.tab_ai.busy:
+            busy.append("ИИ-задача")
+        if busy:
+            messagebox.showwarning(
+                "Занято",
+                "Идёт: %s.\nДождись конца или нажми Стоп." % ", ".join(busy))
+            return
+        try:
+            self.tab_audio._save()
+        except Exception:
+            pass
+        # llama-server, поднятый этой вкладкой, — гасим вместе с окном
+        try:
+            if self.tab_ai.server.alive():
+                self.tab_ai.server.stop()
+        except Exception:
+            pass
+        self.destroy()
 
     def startup_scan(self):
         """При старте — молча подхватить запомненную папку. Без изменений — без шума."""
@@ -173,7 +250,7 @@ class App(tk.Tk):
     # ------------------------------------------------------------ файлы ---
     def add_files(self):
         for p in filedialog.askopenfilenames(
-                title="Gitabase .db", filetypes=[("SQLite", "*.db"), ("Все", "*.*")]):
+                title="Библиотечный .db", filetypes=[("SQLite", "*.db"), ("Все", "*.*")]):
             self.load_file(p)
 
     def add_folder(self):
@@ -353,38 +430,12 @@ class App(tk.Tk):
         if p:
             self.e_out.set(p)
 
-    def pick_auddir(self):
-        d = filedialog.askdirectory(title="Папка с MP3")
-        if d:
-            self.e_auddir.set(d)
-
-    def check_audio(self):
-        """Сколько файлов совпадёт с шаблоном — без сборки."""
-        d = self.e_auddir.get().strip()
-        if not d or not os.path.isdir(d):
-            self.aud_info.configure(text="нет папки")
-            return
-        try:
-            rx = recompose.pattern_to_regex(self.e_audpat.get())
-        except Exception as e:
-            self.aud_info.configure(text="плохой шаблон: %s" % e)
-            return
-        n = ok = 0
-        for f in os.listdir(d):
-            if not f.lower().endswith(('.mp3', '.ogg', '.opus')):
-                continue
-            n += 1
-            if rx.match(f):
-                ok += 1
-        self.aud_info.configure(text="файлов: %d, совпало: %d" % (n, ok))
-
     def start_build(self):
         if self.building:
             return
         chosen = [r for r in self.rows.values() if r['checked']]
-        audio_on = bool(self.v_aud.get() and self.e_auddir.get().strip())
-        if not chosen and not audio_on:
-            messagebox.showwarning("Пусто", "Отметь хотя бы одну книгу или включи пакование аудио")
+        if not chosen:
+            messagebox.showwarning("Пусто", "Отметь хотя бы одну книгу")
             return
         out = self.e_out.get().strip()
         if not out:
@@ -392,6 +443,32 @@ class App(tk.Tk):
             return
         if os.path.exists(out) and not messagebox.askyesno("Перезапись", "Файл есть. Перезаписать?\n%s" % out):
             return
+        # merge писем по темам: книга тем (главы есть, стихов нет) отдаёт главы,
+        # сама из сборки исключается — иначе в приложении висят 256 пустых тем
+        merge_notes = []
+        donors_used = set()
+        topics_map = {}
+        if self.v_merge.get():
+            for r in chosen:
+                d, refused = find_topic_donor(r, list(self.rows.values()))
+                if d is None:
+                    if (r.get('type') or '').upper() in LETTER_TYPES and r.get('verses'):
+                        if refused is not None:
+                            merge_notes.append(
+                                "merge: '%s' НЕ тронута — книга тем '%s' на другом языке" %
+                                (r['title'][:40], refused['title'][:40]))
+                        else:
+                            merge_notes.append(
+                                "merge: для '%s' нет книги тем (парный тип без стихов) — сборка по годам" %
+                                r['title'][:40])
+                    continue
+                topics_map[id(r)] = {"file": d['file'], "book_id": d['book_id']}
+                donors_used.add((d['file'], d['book_id']))
+                merge_notes.append("merge: '%s' -> по темам из '%s'" %
+                                   (r['title'][:40], d['title'][:40]))
+        chosen = [r for r in chosen if (r['file'], r['book_id']) not in donors_used]
+        if donors_used:
+            merge_notes.append("книги тем из сборки исключены (их главы — внутри писем)")
         spec = {
             "out": out,
             "drop_error_rows": self.v_err.get(),
@@ -405,18 +482,14 @@ class App(tk.Tk):
                 "exclude_verses": sorted(self.excl.get((r['file'], r['book_id']), {}).get('verses', set())),
                 "drop_images": sorted(self.imgdrop.get((r['file'], r['book_id']), set())),
                 **self._cover_spec(r),
+                **(({"topics_from": topics_map[id(r)]} if id(r) in topics_map else {})),
             } for r in chosen],
         }
-        if audio_on:
-            spec["audio_pack"] = {
-                "dir": self.e_auddir.get().strip(),
-                "book_type": self.e_audtype.get().strip() or "BG",
-                "pattern": self.e_audpat.get().strip() or "BG{ch}.{txt}.mp3",
-            }
         fd, spec_path = tempfile.mkstemp(prefix="dbspec_", suffix=".json")
         with os.fdopen(fd, "w", encoding="utf-8") as f:
-            import json as _json
-            _json.dump(spec, f, ensure_ascii=False, indent=1)
+            json.dump(spec, f, ensure_ascii=False, indent=1)
+        for n in merge_notes:
+            self.say(n)
         self.building = True
         self.b_build.state(["disabled"])
         self.prog.start(12)
@@ -538,7 +611,7 @@ class ContentWin(tk.Toplevel):
         ttk.Label(fr, text="Показать:").pack(side="left")
         self.v_kind = tk.StringVar(value="all")
         kinds = [("all", "все"), ("error", "@ERROR"), ("dup", "дубли"),
-                 ("empty", "пустые"), ("orphan", "без глав")]
+                 ("empty", "пустые"), ("orphan", "без глав"), ("gallery", "галереи")]
         for val, label in kinds:
             ttk.Radiobutton(fr, text=label, value=val, variable=self.v_kind).pack(side="left")
         self.e_search = tk.StringVar()
@@ -718,21 +791,16 @@ class ContentWin(tk.Toplevel):
             self.preview_img.configure(text="Нет Pillow:\npy -m pip install pillow")
             self.preview_info.configure(text="")
             return
+        import io as _io
         try:
-            import sqlite3 as _sq
-            con = _sq.connect("file:%s?mode=ro" % self.path, uri=True)
+            con = dbcommon.connect_ro(self.path)
             r = con.execute("SELECT content FROM images WHERE image_id=?", (image_id,)).fetchone()
             con.close()
             if not r or not r[0]:
                 raise ValueError("пусто")
-            raw = r[0]
-            if isinstance(raw, str):
-                raw = raw.encode('ascii', 'ignore')
-            import base64 as _b64, io as _io
-            try:
-                data = _b64.b64decode(raw)
-            except Exception:
-                data = bytes(raw)
+            data = dbcommon.img_bytes(r[0])
+            if not data:
+                raise ValueError("контент не распознан (не JPEG/PNG/base64)")
             img = _PILImage.open(_io.BytesIO(data))
             img.thumbnail((300, 300))
             photo = _PILImageTk.PhotoImage(img)
@@ -763,11 +831,9 @@ class ContentWin(tk.Toplevel):
         d = filedialog.askdirectory(title="Куда выгрузить JPEG")
         if not d:
             return
-        import base64 as _b64
         n = 0
         try:
-            import sqlite3 as _sq
-            con = _sq.connect("file:%s?mode=ro" % self.path, uri=True)
+            con = dbcommon.connect_ro(self.path)
             try:
                 iids = [r[0] for r in con.execute(
                     "SELECT DISTINCT image_id FROM image_nums WHERE bid=?", (self.book_id,)).fetchall()]
@@ -777,14 +843,8 @@ class ContentWin(tk.Toplevel):
                 r = con.execute("SELECT content FROM images WHERE image_id=?", (iid,)).fetchone()
                 if not r or not r[0]:
                     continue
-                raw = r[0]
-                if isinstance(raw, str):
-                    raw = raw.encode('ascii', 'ignore')
-                try:
-                    data = _b64.b64decode(raw)
-                except Exception:
-                    data = bytes(raw)
-                if len(data) < 100:
+                data = dbcommon.img_bytes(r[0])
+                if not data:
                     continue
                 safe = "".join(c if c.isalnum() or c in "-_" else "_" for c in iid)[:40]
                 with open(os.path.join(d, safe + ".jpg"), "wb") as f:
