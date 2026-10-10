@@ -1,0 +1,70 @@
+# Handoff: Guhyatama (VedaLibrary) — 2026-10-10
+
+## Окружение (главное для новых сессий)
+- Каноническое местоположение проекта: `F:\AI\Development\Guhyatama` (git-репозиторий).
+- Старая папка `F:\AI\тест2` удалена полностью (и junction-ярлык на её месте тоже убран — Explorer показывал его как «вторую копию 3 ГБ», хотя данные одни).
+- JAVA_HOME (JetBrains Runtime из Android Studio): `F:\AI\Development\Android\jbr`, версия 25.0.2.
+  ВНИМАНИЕ: Gradle 8.7 может не поддерживать JDK 25 — предыдущие сборки падали на конфигурации за 2-3 сек с сообщением «25.0.2». Решения: JDK 17/21 через org.gradle.java.home в gradle.properties, или обновить Gradle/AGP.
+- Android SDK: `C:\Users\light\AppData\Local\Android\Sdk` (прописан в local.properties: sdk.dir).
+- local.properties содержит githubFilesToken — НЕ коммитить (файл в .gitignore).
+- Версии: Gradle 8.7 (wrapper), AGP 8.6.0, Kotlin 2.0.21, KSP 2.0.21-1.0.25.
+- gradle.properties: org.gradle.jvmargs=-Xmx4g -Dfile.encoding=UTF-8.
+- Пример сборки (PowerShell):
+  cd F:\AI\Development\Guhyatama
+  $env:JAVA_HOME="F:\AI\Development\Android\jbr"
+  .\gradlew.bat :app:compileDebugKotlin --console=plain
+- Python: системный; для tools/dbcomposer нужен `pip install bsdiff4` (make_apk_delta.py).
+
+## Git
+- HEAD: d474613 (2026-10-07, docs: README (deltas, tests), release catalog, user manual).
+- Незакоммичено ~48 файлов — работа этапов 2-4 и текущей сессии. Коммиты не делать без явной просьбы.
+- remote не настроен.
+
+## Выполнено
+1. Звезда закладок в библиотеке: тап по правой части звезды — размер ×1.5 (33/24/39 sp, зона starZone 54.dp) — app/.../ui/screens/LibraryScreen.kt
+2. Долгое нажатие снятия закладки: 2000 → 1000 мс — app/.../ui/components/BookmarkStar.kt
+3. Cleanup каталога updates/: cleanupInstalledApks() удаляет установленные .apk/.part/.db и осиротевшие .bsdiff/.bsdiff.part — app/.../data/update/AppUpdater.kt
+4. Дельта-обновления APK без маркета (как Play Market):
+   - Клиент: Bspatch.kt (BSDIFF40-применитель, воспроизводит подписанный new.apk байт-в-байт; ключ подписи не нужен); поля delta* в ApkInfo (UpdateCatalog.kt); ветка дельты + fallback на полный APK в UpdateViewModel.download()
+   - Сервер: tools/dbcomposer/make_apk_delta.py (патч от старого подписного APK к новому), make_catalog.py считает delta*-поля
+   - updates/versions.json — заполнить реальными delta*-значениями при релизе
+5. (Ранее) AI-импорт, дельты книг, delta-импорт — все python-тесты зелёные.
+6. Релиз v1.3 (vc48) опубликован: GitHub release Guhyatama-1.3.apk, catalog.json на main обновлён до 48; следующий релиз можно дельтить от 48 (патч строится make_apk_delta.py от скачанного v1.3).
+
+## Публикация на GitHub Releases (схема)
+- В GitHub Release выкладывать ПОЛНЫЙ подписанный APK (для новых пользователей) + патч .bsdelta + обновлённый catalog.json.
+- Приложение скачивает патч только если установленный versionCode == delta.from; иначе fallback: полный APK.
+- Первый релиз с этой дельта-системой: все качают полный APK. Дельты начнут работать со второго релиза — для тех, кто установил первый.
+- Хранить старые подписные APK байт-в-байт — от них строятся патчи.
+
+## TODO
+1. Проверить компиляцию :app:compileDebugKotlin из нового ASCII-пути; решить проблему JBR/Gradle (см. Окружение).
+2. Запустить python-тесты tools/dbcomposer из новой папки (пути в тестах могут содержать старый путь — проверить).
+3. E2E на устройстве: звезда ×1.5, long-press 1с, дельта-обновление, очистка updates/ после установки.
+
+## Ключевые файлы
+- app/src/main/java/com/vedalibrary/app/data/update/{AppUpdater,Bspatch,UpdateCatalog,Downloader}.kt
+- app/src/main/java/com/vedalibrary/app/ui/vm/UpdateViewModel.kt
+- app/src/main/java/com/vedalibrary/app/ui/screens/LibraryScreen.kt
+- app/src/main/java/com/vedalibrary/app/ui/components/BookmarkStar.kt
+- tools/dbcomposer/{make_apk_delta.py,make_catalog.py,README.md}
+- updates/versions.json (+ catalog.json)
+
+## Ключи GitHub (маски, где лежат)
+Инвентарь от 2026-10-11. Значения нигде не выводились; маска = первые 8 символов + «…». Проверка типов: GET /user (владелец) и GET /repos/{owner}/{repo} → поле permissions (специального эндпоинта /permissions в GitHub API нет — отвечает 404; коды зафиксированы ниже). X-OAuth-Scopes пуст везде — все живые ключи fine-grained (у них scopes нет, вместо них access-листы).
+
+| файл | маска | тип | Guhyatama (app) | Guhyatama-files | примечание |
+|---|---|---|---|---|---|
+| `C:\Users\light\.secrets\github_pat.txt` | github_p… | fine-grained PAT | admin/maintain/push/pull/triage — все true | все true | владелец lightphoto2006; рабочий; самый широкий |
+| `C:\Users\light\.secrets\github_pat_catalog.txt` | github_p… | fine-grained PAT | admin/maintain/push/pull/triage — все true | нет доступа (404 на GET репо — репозиторий для него не виден) | владелец lightphoto2006; рабочий; только для каталога/app-репо |
+| `C:\Users\light\.secrets\github_pat_ro.txt` | github_p… | fine-grained PAT | 401 | 401 | НЕДЕЙСТИВЕН (просрочен/отозван); ничего не может |
+| `githubFilesToken` в `F:\AI\Development\Guhyatama\local.properties` | github_p… | fine-grained PAT | все true | все true | владелец lightphoto2006; НЕ совпадает ни с одним ключом из .secrets; ⚠ через BuildConfig попадает в собранный APK (см. ниже) |
+| `C:\Users\light\.secrets\filebase.json` | access: `4D5B4D43…` (20), secret: `B8bWutVm…` (40) | Filebase S3 (не GitHub) | — | — | endpoint `https://…` (22 симв.); используется tools/dbcomposer/s3filebase.py; значения в файлах репо не найдены |
+
+- Пуш приложения делается через Credential Manager (GCM OAuth gho_…, scopes repo) — git push работает без явного токена. Релизы — тем же GCM-токеном через API (git credential fill).
+- Все 4 GitHub-ключа маскируются одинаково (github_p…), различаются только именем файла; первые 17 символов у всех четырёх совпадают.
+- Ни одно значение из `.secrets\*` и `githubFilesToken` не встречается в исходниках/доках репозитория (проверено поиском по значениям). Ссылки на путь `C:\Users\light\.secrets\` (без значений) есть в `tools/dbcomposer/s3filebase.py` (CREDS) и `docs/CORRECTION_PLAN.md`.
+- ⚠ build-артефакты содержат githubFilesToken (он вшивается в BuildConfig): `.gradle\8.7\executionHistory\executionHistory.bin`, `app\build\**` (BuildConfig.java/.class, classes.dex release). Всё это покрыто `.gitignore` (проверено `git check-ignore`), но токен физически внутри релизного APK — при случае его стоит ротировать/ограничить (CORRECTION_PLAN.md называл это «плохим токеном»; хардкода в UpdateCatalog.kt уже нет — проверено).
+- ⚠ `docs/AUDIT.md` содержит 17-символьный префикс живых токенов (первые 17 симв. совпадают у всех четырёх) — это не значение целиком, но при публичном репо фрагмент лучше убрать.
+- Каталог `.secrets` лежит вне репозитория (в домашней папке), в `.gitignore` упоминаний значений нет; `local.properties` в `.gitignore` включён.
+

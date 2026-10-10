@@ -35,3 +35,4 @@ mail_cloud_docs/
 tools/dbcomposer/ai_gui.json
 tools/dbcomposer/audio_gui.json
 tools/dbcomposer/lectures_gui.json
+*.bsdiff
