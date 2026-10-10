@@ -140,7 +140,27 @@ def main(argv):
             items.append(entry)
         return items
 
-    cat = {"catalogVersion": 1, "apk": side.get("apk") or {},
+    # apk: дельта считается с файла так же, как у books (см. section выше) —
+    # владелец пишет в versions.json только "delta": {file,url,from}
+    apk = dict(side.get("apk") or {})  # копия: не мутируем исходный side
+    dm = apk.get("delta")
+    if isinstance(dm, dict):
+        dfn = dm.get("file", "")
+        dp = dfn if os.path.isabs(dfn) else os.path.join(a.src, dfn)
+        apk["deltaFrom"] = int(dm.get("from", -1))
+        if os.path.exists(dp):
+            apk["deltaUrl"] = dm.get("url", "")
+            apk["deltaSize"] = os.path.getsize(dp)
+            apk["deltaSha"] = sha256(dp)
+            print("  apk delta: v%s, %.0f МБ ok" % (
+                apk["deltaFrom"], apk["deltaSize"] / 1048576))
+        else:
+            apk["deltaUrl"] = ""
+            apk["deltaSize"] = 0
+            apk["deltaSha"] = ""
+            print("  apk delta: ФАЙЛ НЕ НАЙДЕН (%s)" % dp)
+
+    cat = {"catalogVersion": 1, "apk": apk,
            "books": section("books"), "audio": section("audio")}
     # атомарно: обрыв посреди записи не должен оставить полукаталог
     err = dbcommon.atomic_write_bytes(

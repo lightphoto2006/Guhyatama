@@ -199,6 +199,16 @@ delta.from = прошлая version; затем make_catalog.py -> updates/catal
 файлов _id между версиями обязан быть стабилен (спеку не переставлять) —
 иначе импорт откажется fail-closed.
 
+Дельта APK (обновление приложения без полного APK):
+
+  py tools/dbcomposer/make_apk_delta.py --old Guhyatama-45.apk --new Guhyatama-46.apk --out updates\Guhyatama-delta-45-to-46.bsdiff
+
+В versions.json у apk добавь "delta": {"file": ..., "url": ..., "from": 45} —
+from = versionCode старого APK, с которого патч применим; make_catalog.py посчитает
+deltaSize/deltaSha. Клиент (Bspatch.kt) применяет патч к установленному APK
+(sourceDir) и воспроизводит новый подписанный байт-в-байт; патч битый/версия
+не своя — тихо качается полный APK. Нужен pip: py -m pip install bsdiff4.
+
 ## Важно для приложения
 
 - После импорта чистого файла **удали старые книги** тех же произведений (id изменятся из-за перенумерации).
