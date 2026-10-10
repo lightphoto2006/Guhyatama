@@ -5,6 +5,11 @@
     "url": "https://github.com/lightphoto2006/Guhyatama/releases/download/v1.2.0/Guhyatama-1.2.0.apk",
     "size": 17529637,
     "sha256": "4795e93d772799e02ba903604ea96f2fe6e82d5e1e99aacdcddd85814f0ce6ce",
+    "delta": {
+      "file": "Guhyatama-delta-45-to-46.bsdiff",
+      "url": "https://ХОСТ/Guhyatama-delta-45-to-46.bsdiff",
+      "from": 2
+    },
     "notes": "Что нового:\n— ..."
   },
   "books": {
