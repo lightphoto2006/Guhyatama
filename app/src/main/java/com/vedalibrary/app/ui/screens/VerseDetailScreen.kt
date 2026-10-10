@@ -18,6 +18,7 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.hilt.navigation.compose.hiltViewModel
+import com.vedalibrary.app.ui.components.BookmarkStar
 import com.vedalibrary.app.ui.components.GbHtml
 import com.vedalibrary.app.ui.components.HtmlText
 import com.vedalibrary.app.ui.components.SynonymLine
@@ -77,13 +78,14 @@ fun VerseDetailScreen(
                     horizontalArrangement = Arrangement.Center,
                     verticalAlignment = androidx.compose.ui.Alignment.CenterVertically
                 ) {
-                    TextButton(onClick = { vm.toggleBookmark() }) {
-                        Text(
-                            if (v != null && bm?.verseId == v?.id) "★" else "☆",
-                            style = MaterialTheme.typography.titleLarge,
-                            fontSize = 33.sp
-                        )
-                    }
+                    // ★: тап — поставить/переставить на текущий стих,
+                    // удержание 1с — снять (вибро)
+                    BookmarkStar(
+                        active = v != null && bm?.verseId == v?.id,
+                        style = MaterialTheme.typography.titleLarge,
+                        onSave = { vm.setBookmark() },
+                        onRemove = { vm.removeBookmark() }
+                    )
                     other?.let { (ov, ob) ->
                         TextButton(onClick = { go(ov.id) }) {
                             Text(if (ob?.language == "rus") "RU" else "EN")

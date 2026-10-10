@@ -18,6 +18,7 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.drawBehind
 import androidx.compose.ui.draw.rotate
 import androidx.compose.ui.geometry.Offset
@@ -46,7 +47,8 @@ import com.vedalibrary.app.ui.vm.FavoritesViewModel
 import com.vedalibrary.app.ui.vm.LibraryViewModel
 import com.vedalibrary.app.ui.vm.NotesViewModel
 
-/** Библиотека — сетка 2 колонки. Долгое нажатие — удалить. Звезда — переход к закладке. */
+/** Библиотека — три формата: плитки (2 колонки), книжная полка (торцы), список
+ *  (1 колонка, строки ~48dp). Долгое нажатие — удалить. Звезда — переход к закладке. */
 @Composable
 fun LibraryScreen(
     onOpen: (String) -> Unit, onSettings: () -> Unit,
@@ -56,7 +58,9 @@ fun LibraryScreen(
     val bySection by vm.bySection.collectAsState(emptyMap())
     val collapsed by vm.settings.collapsedSections.collectAsState(setOf(2, 3, 4))
     val lang by vm.settings.bookLang.collectAsState("all")
-    val shelf by vm.settings.shelfView.collectAsState(false)
+    val view by vm.settings.mainView.collectAsState("tiles")
+    val shelf = view == "shelf"
+    val listView = view == "list"
     // «Книжная полка»: торцы 5-6 в ряд (узкий не влезает — 5), ширина как у
     // ячейки сетки, высота торца = высота плитки (квадрат обложки + блок названия)
     val screenW = LocalConfiguration.current.screenWidthDp.dp
@@ -103,11 +107,11 @@ fun LibraryScreen(
         }
     ) { pad ->
         LazyVerticalGrid(
-            columns = GridCells.Fixed(if (shelf) shelfCols else 2),
+            columns = GridCells.Fixed(if (listView) 1 else if (shelf) shelfCols else 2),
             modifier = Modifier.padding(pad).fillMaxSize(),
             contentPadding = PaddingValues(start = 12.dp, end = 12.dp, top = 4.dp, bottom = 12.dp),
-            horizontalArrangement = Arrangement.spacedBy(if (shelf) 4.dp else 12.dp),
-            verticalArrangement = Arrangement.spacedBy(12.dp),
+            horizontalArrangement = Arrangement.spacedBy(if (listView) 0.dp else if (shelf) 4.dp else 12.dp),
+            verticalArrangement = Arrangement.spacedBy(if (listView) 0.dp else 12.dp),
             userScrollEnabled = draggingId == null
         ) {
             titles.indices.forEach { i ->
@@ -144,8 +148,8 @@ fun LibraryScreen(
                             else IntOffset.Zero
                         }
                         .zIndex(if (draggingId == b.id) 1f else 0f)
-                        .onSizeChanged { cellPx = it } // ячейка меняет размер при переключении полки
-                        .pointerInput(b.id, shelf) {
+                        .onSizeChanged { cellPx = it } // ячейка меняет размер при переключении формата
+                        .pointerInput(b.id, view) {
                             var acc = Offset.Zero
                             detectDragGesturesAfterLongPress(
                                 onDragStart = {
@@ -163,10 +167,10 @@ fun LibraryScreen(
                                     val w = cellPx.width
                                     val h = cellPx.height
                                     if (w > 0 && h > 0) {
-                                        // ±1 — сосед по строке; ±колонок — строка выше/ниже
-                                        // (2 в плитках, 5-6 на полке). Индексы считает VM
-                                        // по свежим данным — жест можно вести далеко.
-                                        val cols = if (shelf) shelfCols else 2
+                                        // ±колонок — строка выше/ниже: 1 в списке,
+                                        // 2 в плитках, 5-6 на полке; ±1 — сосед по строке.
+                                        // Индексы считает VM по свежим данным — жест можно вести далеко.
+                                        val cols = if (listView) 1 else if (shelf) shelfCols else 2
                                         var di = 0
                                         if (acc.x >= w) { di = 1; acc = acc.copy(x = acc.x - w) }
                                         else if (acc.x <= -w) { di = -1; acc = acc.copy(x = acc.x + w) }
@@ -186,7 +190,18 @@ fun LibraryScreen(
                             )
                         }
                 ) {
-                    if (shelf) {
+                    if (listView) {
+                        // Список: строка + разделитель (ритм без вертикальных зазоров)
+                        Column(Modifier.fillMaxWidth()) {
+                            BookRow(
+                                book = b,
+                                vm = vm,
+                                bookmarked = bookmarked.contains(b.id),
+                                onBookmark = { vm.openBookmark(b.id, onOpenBookmark) }
+                            )
+                            HorizontalDivider()
+                        }
+                    } else if (shelf) {
                         BookSpine(
                             book = b,
                             spineW = spineW,
@@ -333,7 +348,81 @@ private fun BookCard(
                 "★",
                 color = androidx.compose.ui.graphics.Color(0xFFFFB300),
                 style = MaterialTheme.typography.titleLarge,
+                fontSize = 33.sp,
                 modifier = Modifier.align(Alignment.TopEnd).clickable { onBookmark() }.padding(8.dp)
+            )
+        }
+    }
+}
+
+/** Мини-обложка для строки списка: та же загрузка coverPath, что у плитки */
+@Composable
+private fun MiniCover(book: Book, vm: LibraryViewModel, size: Dp) {
+    var coverPath by remember(book.id, book.coverPath) { mutableStateOf<String?>(null) }
+    LaunchedEffect(book.id, book.coverPath) {
+        coverPath = kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.IO) {
+            book.coverPath?.takeIf { java.io.File(it).exists() } ?: vm.coverPath(book.id)
+        }
+    }
+    val cover = coverPath
+    if (cover != null) {
+        AsyncImage(
+            model = coil.request.ImageRequest.Builder(LocalContext.current)
+                .data(java.io.File(cover))
+                .size(512)
+                .crossfade(true)
+                .build(),
+            contentDescription = book.title,
+            modifier = Modifier.size(size).clip(RoundedCornerShape(4.dp)),
+            contentScale = ContentScale.Crop
+        )
+    } else {
+        Box(
+            Modifier.size(size).background(MaterialTheme.colorScheme.primaryContainer, RoundedCornerShape(4.dp)),
+            contentAlignment = Alignment.Center
+        ) {
+            Text(
+                book.title.take(1).uppercase(),
+                color = MaterialTheme.colorScheme.onPrimaryContainer,
+                fontSize = 18.sp
+            )
+        }
+    }
+}
+
+/** Строка списка: мини-обложка 40dp + заголовок одной строкой, ★/⏳ справа.
+ *  Высота ~48dp — на экран помещается в 3-4 раза больше книг, чем в плитках. */
+@Composable
+private fun BookRow(
+    book: Book, vm: LibraryViewModel, bookmarked: Boolean, onBookmark: () -> Unit
+) {
+    Row(
+        Modifier.fillMaxWidth().padding(vertical = 4.dp),
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        MiniCover(book, vm, size = 40.dp)
+        Spacer(Modifier.width(10.dp))
+        Text(
+            com.vedalibrary.app.ui.components.VerseShare.cleanTitle(book.title),
+            style = MaterialTheme.typography.titleMedium,
+            maxLines = 1,
+            overflow = TextOverflow.Ellipsis,
+            modifier = Modifier.weight(1f)
+        )
+        if (bookmarked) {
+            Text(
+                "★",
+                color = androidx.compose.ui.graphics.Color(0xFFFFB300),
+                fontSize = 24.sp,
+                modifier = Modifier.padding(start = 8.dp).clickable { onBookmark() }
+            )
+        }
+        if (!book.isReady) {
+            Text(
+                "⏳",
+                fontSize = 14.sp,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                modifier = Modifier.padding(start = 8.dp)
             )
         }
     }
@@ -359,7 +448,7 @@ private fun BookSpine(book: Book, spineW: Dp, spineH: Dp, bookmarked: Boolean, o
     val fs = ((spineW.value - 6f) / 2.6f).coerceIn(9f, 15f)
     // Звезде — отдельная зона сверху: заголовок короче и смещён ниже,
     // чтобы ★ не наезжала на текст
-    val starZone = if (bookmarked) 36.dp else 0.dp
+    val starZone = if (bookmarked) 54.dp else 0.dp
     Box(Modifier.fillMaxWidth().height(spineH)) {
         Box(
             Modifier.fillMaxSize()
@@ -400,7 +489,7 @@ private fun BookSpine(book: Book, spineW: Dp, spineH: Dp, bookmarked: Boolean, o
                 Text(
                     "★",
                     color = androidx.compose.ui.graphics.Color(0xFFFFB300),
-                    fontSize = 26.sp,
+                    fontSize = 39.sp,
                     modifier = Modifier.align(Alignment.TopCenter).padding(top = 3.dp).clickable { onBookmark() }
                 )
             }

@@ -23,6 +23,7 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.hilt.navigation.compose.hiltViewModel
+import com.vedalibrary.app.ui.components.BookmarkStar
 import com.vedalibrary.app.ui.theme.ReadFont
 import com.vedalibrary.app.ui.util.VolumeFont
 import com.vedalibrary.app.ui.vm.ChapterViewModel
@@ -117,19 +118,16 @@ fun ChapterScreen(
                     )
                 }
             Row(verticalAlignment = androidx.compose.ui.Alignment.CenterVertically) {
-                TextButton(
-                    onClick = {
+                // ★: тап — поставить/переставить на текущее место,
+                // удержание 1с — снять (вибро)
+                BookmarkStar(
+                    active = bm?.chapterId == vm.chapterId && bm?.verseId == null,
+                    style = MaterialTheme.typography.titleMedium,
+                    onSave = {
                         vm.saveChapterBookmark(listState.firstVisibleItemIndex, listState.firstVisibleItemScrollOffset)
                     },
-                    contentPadding = PaddingValues(horizontal = 8.dp, vertical = 0.dp)
-                ) {
-                    val b = bm
-                    Text(
-                        if (b != null && b.chapterId == vm.chapterId && b.verseId == null) "★" else "☆",
-                        style = MaterialTheme.typography.titleMedium,
-                        fontSize = 33.sp
-                    )
-                }
+                    onRemove = { vm.removeChapterBookmark() }
+                )
                 Text(
                     "⚙️",
                     style = MaterialTheme.typography.titleMedium,
