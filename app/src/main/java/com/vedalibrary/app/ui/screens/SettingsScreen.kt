@@ -58,6 +58,7 @@ class SettingsViewModel @Inject constructor(
     fun font(v: Float) = viewModelScope.launch { s.setFontSize(v) }
     fun fontList(v: Float) = viewModelScope.launch { s.setFontListSize(v) }
     fun align(v: String) = viewModelScope.launch { s.setParaAlign(v) }
+    fun mainView(v: String) = viewModelScope.launch { s.setMainView(v) }
     fun bookSection(bookId: String, section: Int) = viewModelScope.launch { s.setBookSection(bookId, section) }
     /** Полное удаление книги: БД — одной транзакцией (deleteBookCascade),
      *  плюс аудио, обложный кэш-нет (у этой VM его нет) и файлы картинок */
@@ -316,7 +317,7 @@ fun SettingsScreen(vm: SettingsViewModel = hiltViewModel(), updateVm: com.vedali
     val fontV by vm.s.fontVerse.collectAsState(17f)
     val fontL by vm.s.fontList.collectAsState(15f)
     val align by vm.s.paraAlign.collectAsState("justify")
-    val shelf by vm.s.shelfView.collectAsState(false)
+    val view by vm.s.mainView.collectAsState("tiles")
     val booksList by vm.books.collectAsState(emptyList())
     val sectionsMap by vm.bookSections.collectAsState(emptyMap())
     val packs by vm.audioPacks.collectAsState(emptyList())
@@ -382,7 +383,15 @@ fun SettingsScreen(vm: SettingsViewModel = hiltViewModel(), updateVm: com.vedali
             item { Spacer(Modifier.height(12.dp)); Text("Обновления", style = MaterialTheme.typography.titleMedium) }
             item { com.vedalibrary.app.ui.components.UpdateSection(updateVm) }
             item { Spacer(Modifier.height(12.dp)); Text("Настройки отображения", style = MaterialTheme.typography.titleMedium) }
-            item { SwitchRow("Книжная полка", shelf) { vm.toggle(vm.s::setShelfView, shelf) } }
+            item {
+                // Формат главного экрана: та же строка-сегмент, что «Выравнивание текста»
+                Text("Формат главного экрана", style = MaterialTheme.typography.bodyMedium)
+                Row(Modifier.fillMaxWidth().padding(vertical = 4.dp), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    listOf("tiles" to "Плитки", "shelf" to "Полка", "list" to "Список").forEach { (v, l) ->
+                        FilterChip(view == v, { vm.mainView(v) }, { Text(l, maxLines = 1) })
+                    }
+                }
+            }
             item { SwitchRow("Санскрит (деванагари)", san) { vm.toggle(vm.s::setShowSanskrit, san) } }
             item { SwitchRow("Транслитерация", tra) { vm.toggle(vm.s::setShowTranslit, tra) } }
             item { SwitchRow("Пословный перевод", syn) { vm.toggle(vm.s::setShowSynonyms, syn) } }

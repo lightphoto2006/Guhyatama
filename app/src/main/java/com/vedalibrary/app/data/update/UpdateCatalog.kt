@@ -15,7 +15,13 @@ data class ApkInfo(
     val url: String,
     val size: Long,
     val sha256: String,
-    val notes: String
+    val notes: String,
+    /** Дельта APK (bsdiff) для обновляющихся: from = versionCode, с которого
+     *  патч применим; пустой deltaUrl = дельты нет, качаем полный APK */
+    val deltaFrom: Long = -1,
+    val deltaUrl: String = "",
+    val deltaSize: Long = 0,
+    val deltaSha: String = ""
 )
 
 /** Разбор секции "apk" каталога. Пустой url = секции нет. Без новых зависимостей (org.json встроен). */
@@ -30,7 +36,11 @@ fun parseApkInfo(root: JSONObject): ApkInfo? {
             url = url,
             size = o.optLong("size", 0),
             sha256 = o.optString("sha256", "").trim().lowercase(),
-            notes = o.optString("notes", "").trim()
+            notes = o.optString("notes", "").trim(),
+            deltaFrom = o.optLong("deltaFrom", -1),
+            deltaUrl = o.optString("deltaUrl", "").trim(),
+            deltaSize = o.optLong("deltaSize", 0),
+            deltaSha = o.optString("deltaSha", "").trim().lowercase()
         )
     } catch (_: Exception) { null }
 }

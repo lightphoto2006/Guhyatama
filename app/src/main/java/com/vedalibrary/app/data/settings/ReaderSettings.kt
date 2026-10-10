@@ -27,6 +27,7 @@ class ReaderSettings @Inject constructor(@ApplicationContext private val ctx: Co
     private val K_LANG = stringPreferencesKey("book_lang_filter")
     private val K_ORDER = stringPreferencesKey("book_order")
     private val K_SHELF = booleanPreferencesKey("book_shelf_view")
+    private val K_VIEW = stringPreferencesKey("main_view")
 
     val showSanskrit = ctx.readerStore.data.map { it[K_SAN] ?: true }
     val showTranslit = ctx.readerStore.data.map { it[K_TRA] ?: true }
@@ -38,8 +39,11 @@ class ReaderSettings @Inject constructor(@ApplicationContext private val ctx: Co
     val fontList = ctx.readerStore.data.map { it[K_FONT_L] ?: 15f }
     /** Выравнивание перевода/комментария/списков: left|justify|center */
     val paraAlign = ctx.readerStore.data.map { it[K_ALIGN] ?: "justify" }
-    /** Библиотека: книжная полка (торцы с вертикальным названием) вместо плиток */
-    val shelfView = ctx.readerStore.data.map { it[K_SHELF] ?: false }
+    /** Формат главного экрана: tiles|shelf|list. Старый свитч K_SHELF
+     *  читаем на миграцию (полка=true), сам он больше не записывается */
+    val mainView: kotlinx.coroutines.flow.Flow<String> = ctx.readerStore.data.map { prefs ->
+        prefs[K_VIEW] ?: if (prefs[K_SHELF] == true) "shelf" else "tiles"
+    }
 
     /** Разделы библиотеки (порядок фиксирован) */
     val sectionTitles = listOf(
@@ -89,7 +93,7 @@ class ReaderSettings @Inject constructor(@ApplicationContext private val ctx: Co
     suspend fun setFontSize(v: Float) = set(K_FONT_V, v)
     suspend fun setFontListSize(v: Float) = set(K_FONT_L, v)
     suspend fun setParaAlign(v: String) = set(K_ALIGN, v)
-    suspend fun setShelfView(v: Boolean) = set(K_SHELF, v)
+    suspend fun setMainView(v: String) = set(K_VIEW, v)
 
     /** Положить книгу в секцию вручную (перекрывает defaultSection).
      *  Чтение+запись ВНУТРИ одного updateData: DataStore сериализует трансформы,

@@ -80,11 +80,23 @@ fun VedaNavGraph() {
                             // Стандартная мультивкладочность: стек вкладок не растёт
                             // (saveState кладёт прежнюю вкладку, restoreState при
                             // возврате достаёт её же с состоянием), «назад» не гоняет
-                            // по всем визитам (LIB→SEARCH→LIB раньше плодил копии)
-                            nav.navigate(r) {
-                                launchSingleTop = true
-                                popUpTo(Routes.LIB) { saveState = true }
-                                restoreState = true
+                            // по всем визитам (LIB→SEARCH→LIB раньше плодил копии).
+                            // Тап по уже открытой главной — no-op: иначе entry
+                            // пересоздаётся и список скроллится вверх.
+                            val onLib = r == Routes.LIB &&
+                                nav.currentBackStackEntry?.destination?.route == r &&
+                                nav.previousBackStackEntry == null
+                            if (!onLib) {
+                                nav.navigate(r) {
+                                    launchSingleTop = true
+                                    popUpTo(Routes.LIB) { saveState = true }
+                                    // restoreState ТОЛЬКО не для LIB: у главной нет
+                                    // своего saved state, а popUpTo(saveState) как раз
+                                    // кладёт в backStackMap[LIB] только что снятый стек
+                                    // (settings и т.п.) — restore тут же возвращал бы
+                                    // его, и тап по 📚 превращался в no-op
+                                    restoreState = r != Routes.LIB
+                                }
                             }
                         },
                             icon = { Text(e, fontSize = 30.sp) }

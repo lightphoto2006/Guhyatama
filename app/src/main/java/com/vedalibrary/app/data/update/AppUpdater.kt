@@ -78,6 +78,49 @@ class AppUpdater @Inject constructor(
             out
         }
 
+    /** Применяет bsdiff-патч к установленному APK (sourceDir) → новый APK.
+     *  Путь как в Play Market: качаем маленький патч, воспроизводим целый APK
+     *  байт-в-байт (подпись нового APK валидна — приватный ключ клиенту не нужен).
+     *  Fallback null = битый патч: нет исходного APK, Bspatch не воспроизвёл,
+     *  sha256 нового APK не сошёлся — вызывающий тихо уходит на полный APK. */
+    fun applyApkDelta(patchFile: File, info: ApkInfo): File? {
+        try {
+            val oldApk = File(ctx.applicationInfo.sourceDir)  // установленный base.apk
+            if (!oldApk.exists()) return null
+            val oldBytes = oldApk.readBytes()
+            val newBytes = Bspatch.apply(oldBytes, patchFile.readBytes())
+            if (sha256hex(newBytes) != info.sha256) return null   // sha нового APK не сошёлся
+            val out = File(updatesDir(), "Guhyatama-${info.versionCode}.apk")
+            try { out.delete() } catch (_: Exception) { }
+            out.writeBytes(newBytes)
+            return out
+        } catch (_: Exception) { return null }
+    }
+
+    /** Удаляет скачанные APK уже установленных версий (vc <= текущего), их .part-сироты
+     *  и осиротевшие bsdiff-патчи (процесс убили до конца обновления). Тихо, без исключений. */
+    fun cleanupInstalledApks() {
+        try {
+            val vcNow = currentVersion().second
+            val re = Regex("^Guhyatama-(\\d+)\\.apk(?:\\.part)?$")
+            // патчи перекачиваются и удаляются после применения в download() —
+            // осиротевший (крэш посреди дельты) только жрёт место
+            val rePatch = Regex("^Guhyatama-delta-.*\\.bsdiff(?:\\.part)?$")
+            for (f in updatesDir().listFiles() ?: return) {
+                if (rePatch.matches(f.name)) {
+                    try { f.delete() } catch (_: Exception) { }
+                    continue
+                }
+                val m = re.matchEntire(f.name) ?: continue // чужие файлы (books/ и пр.) не трогаем
+                val vc = m.groupValues[1].toLongOrNull() ?: continue
+                // vc > текущего — скачано, но ещё не установлено: файл нужен для установки
+                if (vc <= vcNow) {
+                    try { f.delete() } catch (_: Exception) { }
+                }
+            }
+        } catch (_: Exception) { }
+    }
+
     fun cancelDownload() = downloader.cancelAll()
 
     fun lastCheck(): Long = prefs.lastCheck()

@@ -581,6 +581,15 @@ class ChapterViewModel @Inject constructor(
             )
         } catch (_: Exception) { }
     }
+
+    /** Снять закладку главы (удержание ★ 1 секунду). Одна закладка на книгу —
+     *  удаляем, только если она стоит на ЭТОЙ главе, чужую не трогаем. */
+    fun removeChapterBookmark() = viewModelScope.launch {
+        try {
+            val b = bookmark.value ?: return@launch
+            if (b.chapterId == chapterId && b.verseId == null) db.library().deleteBookmarksOfBook(b.bookId)
+        } catch (_: Exception) { }
+    }
 }
 
 @HiltViewModel
@@ -723,15 +732,23 @@ class VerseDetailViewModel @Inject constructor(
             else db.library().bookmarkFlow(v.bookId).collect { emit(it) }
         }.stateIn(viewModelScope, SharingStarted.Lazily, null)
 
-    /** Поставить/снять закладку на текущий стих (замена строки — атомарно) */
-    fun toggleBookmark() = viewModelScope.launch {
+    /** Тап ★ — поставить/переставить закладку на ТЕКУЩИЙ стих (прыгнул по
+     *  закладке, читал дальше — один тап переносит её, без «снять+поставить») */
+    fun setBookmark() = viewModelScope.launch {
+        try {
+            val v = db.library().verse(verseId) ?: return@launch
+            db.library().replaceBookmark(
+                com.vedalibrary.app.data.local.Bookmark(bookId = v.bookId, verseId = verseId, chapterId = v.chapterId)
+            )
+        } catch (_: Exception) { }
+    }
+
+    /** Удержание ★ 1 секунду — снять (только если она на этом стихе) */
+    fun removeBookmark() = viewModelScope.launch {
         try {
             val v = db.library().verse(verseId) ?: return@launch
             val cur = db.library().bookmark(v.bookId)
             if (cur != null && cur.verseId == verseId) db.library().deleteBookmarksOfBook(v.bookId)
-            else db.library().replaceBookmark(
-                com.vedalibrary.app.data.local.Bookmark(bookId = v.bookId, verseId = verseId, chapterId = v.chapterId)
-            )
         } catch (_: Exception) { }
     }
 

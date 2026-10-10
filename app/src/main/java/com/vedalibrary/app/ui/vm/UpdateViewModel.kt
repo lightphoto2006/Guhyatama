@@ -81,6 +81,9 @@ class UpdateViewModel @Inject constructor(
     /** Тихая автопроверка при старте (не чаще раза в сутки). Диалог — только если есть
      *  новая версия и её не пропускали. */
     fun autoCheck() = viewModelScope.launch {
+        // Чистим уже-установленные APK до обращения к серверу и до троттлинга —
+        // чтобы место освобождалось при каждом старте, даже без сети
+        updater.cleanupInstalledApks()
         if (_state.value != State.Idle) return@launch
         if (System.currentTimeMillis() - updater.lastCheck() < 24L * 3600 * 1000) return@launch
         val info = fetchNewer() ?: return@launch
@@ -97,6 +100,8 @@ class UpdateViewModel @Inject constructor(
 
     /** Ручная проверка приложения (кнопка 1): результат виден всегда. Книги не трогает. */
     fun checkApp() = viewModelScope.launch {
+        // Сначала тихо убираем APK уже установленных версий (до сетевого запроса)
+        updater.cleanupInstalledApks()
         _state.value = State.Checking
         val cat = try { updater.fetchCatalog() } catch (e: Exception) {
             _state.value = State.Error(e.message ?: "Нет связи с сервером")
@@ -145,6 +150,45 @@ class UpdateViewModel @Inject constructor(
         _state.value = State.Downloading(0, info.size)
         dlJob = viewModelScope.launch {
             try {
+                // Дельта — только со своей версии (deltaFrom == текущий versionCode),
+                // иначе сразу полный APK. Патч битый/не применился — тоже тихо полный APK.
+                val vcNow = updater.currentVersion().second
+                if (info.deltaUrl.isNotBlank() && info.deltaFrom >= 0 && vcNow == info.deltaFrom) {
+                    val pf = File(
+                        updater.updatesDir(),
+                        "Guhyatama-delta-${info.deltaFrom}-to-${info.versionCode}.bsdiff"
+                    )
+                    try {
+                        _state.value = State.Downloading(0, info.deltaSize)
+                        val hdrs = if (info.deltaUrl.startsWith("https://api.github.com/"))
+                            mapOf(
+                                "Authorization" to
+                                    "Bearer ${com.vedalibrary.app.BuildConfig.GITHUB_FILES_TOKEN}",
+                                "Accept" to "application/octet-stream"
+                            )
+                        else emptyMap()
+                        downloader.fetch(
+                            info.deltaUrl, pf, "Патч ${info.versionName}",
+                            onProgress = { d, t -> _state.value = State.Downloading(d, t) },
+                            headers = hdrs
+                        )
+                        // sha патча из каталога (если задан) — не сошёлся, значит патч
+                        // битый/подменённый: удаляем и уходим на полный APK
+                        val patchOk = info.deltaSha.isBlank() || sha256hex(pf) == info.deltaSha
+                        val f = if (patchOk) updater.applyApkDelta(pf, info) else null
+                        try { pf.delete() } catch (_: Exception) { }
+                        if (f != null) {
+                            _state.value = State.Ready(f, info)
+                            return@launch
+                        }
+                    } catch (e: kotlinx.coroutines.CancellationException) {
+                        try { pf.delete() } catch (_: Exception) { }
+                        throw e
+                    } catch (_: Exception) {
+                        // патч не скачался/не применился — тихо падаем в полное скачивание
+                        try { pf.delete() } catch (_: Exception) { }
+                    }
+                }
                 val f = updater.download(info) { d, t ->
                     _state.value = State.Downloading(d, t)
                 }
@@ -344,6 +388,15 @@ class UpdateViewModel @Inject constructor(
             // выход из папки обновлений (путь файла от ключа изолирован)
             val safeKey = key.replace(Regex("[^A-Za-z0-9._-]"), "_")
             val out = File(dir, "$safeKey-v${info.version}" + (if (useDelta) "-delta" else "") + ".db")
+            // Прошлые версии той же книги больше не нужны — чтобы не копились
+            try {
+                val staleRe = Regex("^${Regex.escape(safeKey)}-v\\d+(-delta)?\\.db$")
+                for (old in dir.listFiles() ?: emptyArray()) {
+                    if (old.name != out.name && staleRe.matchEntire(old.name) != null) {
+                        try { old.delete() } catch (_: Exception) { }
+                    }
+                }
+            } catch (_: Exception) { }
             if (!(out.exists() && out.length() > 1024 && sha256hex(out) == sha)
             ) {
                 try { out.delete() } catch (_: Exception) { }
@@ -384,6 +437,11 @@ class UpdateViewModel @Inject constructor(
             else "Готово: ${res.bookIds.size} кн., ${res.verses} стихов" +
                     (if (res.failed.isNotEmpty()) " · пропущено: ${res.failed.size}" else "")
             finish(info.version, false, note)
+            // Импорт прошёл целиком — скачанный файл больше не нужен, убираем молча.
+            // При частичных пропаданиях (res.failed непуст) файл оставляем для разбора
+            if (res.failed.isEmpty()) {
+                try { out.delete() } catch (_: Exception) { }
+            }
         } catch (e: kotlinx.coroutines.CancellationException) {
             // Отмена (уход с экрана) — не показываем как «Ошибка»
             throw e

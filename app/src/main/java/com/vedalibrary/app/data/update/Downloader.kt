@@ -26,6 +26,10 @@ fun sha256hex(f: File): String {
     return d.digest().joinToString("") { "%02x".format(it) }
 }
 
+/** SHA-256 от байтов в памяти (тот же hex-формат, что у File-версии) */
+fun sha256hex(bytes: ByteArray): String =
+    MessageDigest.getInstance("SHA-256").digest(bytes).joinToString("") { "%02x".format(it) }
+
 /** Заголовок "SQLite format 3\0" (16 байт): битый/чужой контент (JSON-ошибка
  *  сервера, HTML-страница) не уходит в импорт, а получает внятную ошибку. */
 fun isSqliteFile(f: File): Boolean = try {
