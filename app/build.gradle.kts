@@ -26,10 +26,18 @@ android {
         applicationId = "com.vedalibrary.app"
         minSdk = 26
         targetSdk = 35
-        versionCode = 45
-        versionName = "1.2.39"
+        versionCode = 48
+        versionName = "1.3"
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
         buildConfigField("String", "GITHUB_FILES_TOKEN", "\"$githubFilesToken\"")
+    }
+    signingConfigs {
+        create("release") {
+            storeFile = rootProject.file("debug.keystore")
+            storePassword = "android"
+            keyAlias = "androiddebugkey"
+            keyPassword = "android"
+        }
     }
     buildTypes {
         release {
@@ -39,6 +47,7 @@ android {
                 getDefaultProguardFile("proguard-android-optimize.txt"),
                 "proguard-rules.pro"
             )
+            signingConfig = signingConfigs.getByName("release")
         }
     }
     compileOptions {
