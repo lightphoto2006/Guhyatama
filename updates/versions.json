@@ -1,11 +1,16 @@
 {
   "apk": {
-    "versionCode": 48,
-    "versionName": "1.3",
-    "url": "https://github.com/lightphoto2006/Guhyatama/releases/download/v1.3/Guhyatama-1.3.apk",
-    "size": 5936150,
-    "sha256": "c39ea88832897d49f93c5198515f1d7eea7abde840cf8f7c4189b577832f91ba",
-    "notes": "Что нового:\n— Звезда в шапке библиотеки: тап по правой половине — крупная закладка (×1.5).\n— Снятие закладки долгим нажатием стало быстрее: секунда вместо двух.\n— Обновление приложения: формат дельта-патчей подготовлен, следующий релиз придёт маленьким файлом."
+    "versionCode": 49,
+    "versionName": "1.3.1",
+    "url": "https://github.com/lightphoto2006/Guhyatama/releases/download/v1.3.1/Guhyatama-1.3.1.apk",
+    "size": 5936146,
+    "sha256": "7dd9fcb6d81aa8255502a97d4edac2b939fa35f4417e39d0771ce4c9b31456ea",
+    "notes": "Что нового:\n— Избранное: номер стиха жирным в одной строке с текстом — видно больше стиха; крестик убран в узкую колонку справа.\n— Настройки: строки книг в «Книгах по разделам» теперь по размеру названия — меньше скрола.",
+    "delta": {
+      "from": 48,
+      "file": "F:\\AI\\Development\\Guhyatama\\releases\\Guhyatama-delta-48-to-49.bsdiff",
+      "url": "https://github.com/lightphoto2006/Guhyatama/releases/download/v1.3.1/Guhyatama-delta-48-to-49.bsdiff"
+    }
   },
   "books": {
     "Prabhupada_rus": {
