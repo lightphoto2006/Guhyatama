@@ -33,6 +33,9 @@ import androidx.compose.ui.platform.LocalHapticFeedback
 import com.vedalibrary.app.ui.util.VolumeFont
 import kotlinx.coroutines.launch
 import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.text.SpanStyle
+import androidx.compose.ui.text.buildAnnotatedString
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.IntSize
 import androidx.compose.ui.unit.Dp
@@ -563,17 +566,32 @@ fun FavoritesScreen(onVerse: (String) -> Unit = {}, vm: FavoritesViewModel = hil
         } else {
             LazyColumn(Modifier.padding(pad)) {
                 items(items, key = { it.card.id }) { it ->
-                    ListItem(
-                        headlineContent = { Text(it.verseLabel ?: it.card.front) },
-                        supportingContent = { Text(it.card.back.take(300), maxLines = 3) },
-                        trailingContent = {
-                            TextButton(onClick = { vm.delete(it.card.id) }) { Text("×") }
-                        },
-                        modifier = Modifier.clickable(
-                            enabled = it.verseLabel != null,
-                            onClick = { onVerse(it.card.verseId) }
+                    // Номер стиха — жирным в той же строке, с которой начинается
+                    // текст: строка заголовка не тратится, в те же 4 строки влезает
+                    // больше стиха. Крестик — узкой колонкой у правого края.
+                    Row(
+                        Modifier.fillMaxWidth()
+                            .clickable(
+                                enabled = it.verseLabel != null,
+                                onClick = { onVerse(it.card.verseId) }
+                            )
+                            .padding(start = 16.dp, end = 4.dp, top = 8.dp, bottom = 8.dp),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Text(
+                            buildAnnotatedString {
+                                pushStyle(SpanStyle(fontWeight = FontWeight.Bold))
+                                append(it.verseLabel ?: it.card.front)
+                                pop()
+                                append("  " + it.card.back.take(300))
+                            },
+                            Modifier.weight(1f),
+                            maxLines = 4, overflow = TextOverflow.Ellipsis
                         )
-                    )
+                        Box(
+                            Modifier.clickable { vm.delete(it.card.id) }.padding(12.dp)
+                        ) { Text("×", fontSize = 20.sp) }
+                    }
                     HorizontalDivider()
                 }
             }

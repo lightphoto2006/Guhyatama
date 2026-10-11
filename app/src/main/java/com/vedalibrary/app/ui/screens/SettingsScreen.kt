@@ -430,17 +430,17 @@ fun SettingsScreen(vm: SettingsViewModel = hiltViewModel(), updateVm: com.vedali
                 var expanded by remember(b.id) { mutableStateOf(false) }
                 var confirmDelete by remember(b.id) { mutableStateOf(false) }
                 Box {
-                    // Название почти во всю ширину (две строки), справа только
-                    // компактные корзня и стрелка — листайте списки книг спокойно
+                    // Высота строки — по тексту названия: кнопки справа компактные
+                    // и не задают минимальный порог (стрелка была 30sp и тянула
+                    // все строки к одной высоте).
                     Row(
-                        Modifier.fillMaxWidth().padding(vertical = 8.dp),
+                        Modifier.fillMaxWidth().padding(vertical = 6.dp),
                         verticalAlignment = Alignment.CenterVertically
                     ) {
                         Column(Modifier.weight(1f)) {
                             Text(
                                 VerseShare.cleanTitle(b.title),
-                                style = MaterialTheme.typography.bodyLarge,
-                                maxLines = 2, overflow = TextOverflow.Ellipsis
+                                style = MaterialTheme.typography.bodyLarge
                             )
                             Text(
                                 vm.s.sectionTitles[cur],
@@ -449,11 +449,11 @@ fun SettingsScreen(vm: SettingsViewModel = hiltViewModel(), updateVm: com.vedali
                             )
                         }
                         Box(
-                            Modifier.clickable { confirmDelete = true }.padding(10.dp)
+                            Modifier.clickable { confirmDelete = true }.padding(6.dp)
                         ) { Text("🗑", fontSize = 20.sp) }
                         Box(
-                            Modifier.clickable { expanded = true }.padding(10.dp)
-                        ) { Text("▾", fontSize = 30.sp) }
+                            Modifier.clickable { expanded = true }.padding(6.dp)
+                        ) { Text("▾", fontSize = 22.sp) }
                     }
                     DropdownMenu(expanded = expanded, onDismissRequest = { expanded = false }) {
                         vm.s.sectionTitles.forEachIndexed { i, t ->
