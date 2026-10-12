@@ -1,15 +1,15 @@
 {
   "apk": {
-    "versionCode": 49,
-    "versionName": "1.3.1",
-    "url": "https://github.com/lightphoto2006/Guhyatama/releases/download/v1.3.1/Guhyatama-1.3.1.apk",
+    "versionCode": 50,
+    "versionName": "1.3.2",
+    "url": "https://github.com/lightphoto2006/Guhyatama/releases/download/v1.3.2/Guhyatama-1.3.2.apk",
     "size": 5936146,
-    "sha256": "7dd9fcb6d81aa8255502a97d4edac2b939fa35f4417e39d0771ce4c9b31456ea",
-    "notes": "Что нового:\n— Избранное: номер стиха жирным в одной строке с текстом — видно больше стиха; крестик убран в узкую колонку справа.\n— Настройки: строки книг в «Книгах по разделам» теперь по размеру названия — меньше скрола.",
+    "sha256": "edca29013d9512f7fbc918d2ca4e7a78eae7ab5514e4175bb04b07b3b0bb164e",
+    "notes": "Что нового:\n— Заметки: номер стиха (ШБ 3.3.1) жирным + текст заметки на одной строке; крестик удаления у правого края.\n— Убран лишний суффикс BG72 из названий книг.\n— Дельта-обновление от v1.3.1 до v1.3.2 (патч 49→50).",
     "delta": {
-      "from": 48,
-      "file": "F:\\AI\\Development\\Guhyatama\\releases\\Guhyatama-delta-48-to-49.bsdiff",
-      "url": "https://github.com/lightphoto2006/Guhyatama/releases/download/v1.3.1/Guhyatama-delta-48-to-49.bsdiff"
+      "from": 49,
+      "file": "F:\\AI\\Development\\Guhyatama\\releases\\Guhyatama-delta-49-to-50.bsdiff",
+      "url": "https://github.com/lightphoto2006/Guhyatama/releases/download/v1.3.2/Guhyatama-delta-49-to-50.bsdiff"
     }
   },
   "books": {
