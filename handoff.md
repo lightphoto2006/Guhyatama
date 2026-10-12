@@ -43,6 +43,7 @@
 3. E2E на устройстве: звезда ×1.5, long-press 1с, дельта-обновление, очистка updates/ после установки.
 
 ## Ключевые файлы
+- Выравнивание по ширине (ColorOS, ручная доводка): `docs/JUSTIFY.md` + `app/src/main/java/com/vedalibrary/app/ui/components/HtmlText.kt`
 - app/src/main/java/com/vedalibrary/app/data/update/{AppUpdater,Bspatch,UpdateCatalog,Downloader}.kt
 - app/src/main/java/com/vedalibrary/app/ui/vm/UpdateViewModel.kt
 - app/src/main/java/com/vedalibrary/app/ui/screens/LibraryScreen.kt

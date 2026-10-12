@@ -24,7 +24,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.hilt.navigation.compose.hiltViewModel
 import com.vedalibrary.app.ui.components.BookmarkStar
-import com.vedalibrary.app.ui.theme.ReadFont
+import com.vedalibrary.app.ui.components.JustifiedPreviewText
 import com.vedalibrary.app.ui.util.VolumeFont
 import com.vedalibrary.app.ui.vm.ChapterViewModel
 import kotlinx.coroutines.delay
@@ -275,15 +275,15 @@ fun androidx.compose.foundation.lazy.LazyListScope.verseItems(
                         fontWeight = androidx.compose.ui.text.font.FontWeight.Bold
                     )
                     val listSize = if (fontSizeSp > 0) fontSizeSp.sp else MaterialTheme.typography.bodyMedium.fontSize
-                    Text(
+                    // На ColorOS Compose-Justify молча не работает — там бокс
+                    // переключается на ручную доводку (JustifyTextView), на остальном
+                    // — ровно этот Compose Text, что был
+                    JustifiedPreviewText(
                         full,
-                        style = MaterialTheme.typography.bodyMedium,
-                        fontFamily = ReadFont,
-                        textAlign = textAlign,
-                        fontSize = listSize,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                        // Воздух между строками: крупным кеглем без него всё сливается
-                        lineHeight = listSize * 1.35f
+                        modifier = Modifier.fillMaxWidth(),
+                        fontSizeSp = listSize.value,
+                        align = textAlign,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
                 }
             }

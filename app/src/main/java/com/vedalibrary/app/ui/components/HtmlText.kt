@@ -6,13 +6,18 @@ import android.view.Menu
 import android.view.MenuItem
 import android.widget.TextView
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Text
 import androidx.compose.runtime.*
 import androidx.compose.foundation.layout.padding
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.toArgb
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import androidx.compose.ui.viewinterop.AndroidView
 import androidx.core.text.HtmlCompat
+import com.vedalibrary.app.ui.theme.ReadFont
 import com.vedalibrary.app.ui.theme.readTypeface
 import java.text.Normalizer
 
@@ -430,6 +435,72 @@ fun HtmlText(
     )
 }
 
+/** Превью стиха в списке (глава/читалка). На стоковых прошивках это тот же
+ *  Compose Text с TextAlign.Justify, что и раньше; на ColorOS стоковая оправка
+ *  молча убивается прошивкой (см. JustifyTextView) — там бокс переключается
+ *  на тот же TextView-путь с ручной доводкой. Выделения намеренно нет:
+ *  long-press строки списка остаётся за Compose (меню «Скопировать/В избранное»). */
+@Composable
+fun JustifiedPreviewText(
+    text: String,
+    modifier: Modifier = Modifier,
+    fontSizeSp: Float = 15f,
+    align: TextAlign = TextAlign.Justify,
+    color: Color = MaterialTheme.colorScheme.onSurfaceVariant
+) {
+    val colorOs = remember { isColorOs() }
+    val center = align == TextAlign.Center
+    val justify = align == TextAlign.Justify
+    if (!colorOs) {
+        Text(
+            text,
+            modifier = modifier,
+            style = MaterialTheme.typography.bodyMedium,
+            fontFamily = ReadFont,
+            fontSize = fontSizeSp.sp,
+            textAlign = align,
+            color = color,
+            lineHeight = fontSizeSp.sp * 1.35f
+        )
+        return
+    }
+    val argb = color.toArgb()
+    val bgArgb = MaterialTheme.colorScheme.background.toArgb()
+    AndroidView(
+        modifier = modifier,
+        // Текст кладём как SpannableString: ручная доводка lineSegs работает
+        // только с Spanned (обычная String вернула бы null — оправки не было бы)
+        factory = { ctx -> JustifyTextView(ctx).apply { setTextIsSelectable(false) } },
+        update = { tv ->
+            if (tv.getTag() !== text) {
+                tv.setTag(text)
+                tv.text = android.text.SpannableString(text)
+            }
+            tv.textSize = fontSizeSp
+            tv.setTextColor(argb)
+            tv.hyphenationFrequency = android.text.Layout.HYPHENATION_FREQUENCY_NONE
+            readTypeface(tv.context, false)?.let { tv.typeface = it }
+                ?: tv.setTypeface(null, android.graphics.Typeface.NORMAL)
+            tv.setLineSpacing(0f, 1.35f)
+            tv.gravity = if (center) Gravity.CENTER_HORIZONTAL else Gravity.START
+            tv.textAlignment = if (center) android.view.View.TEXT_ALIGNMENT_CENTER
+            else android.view.View.TEXT_ALIGNMENT_INHERIT
+            // Ручная доводка — только «по ширине» и не центр (как в HtmlText)
+            val manual = justify && !center
+            tv.justifyManual = manual
+            tv.eraseArgb = bgArgb
+            if (justify && !center) {
+                // Стоковую оправку на ColorOS держим выключенной: место ей —
+                // ручной проход; SIMPLE — жадно, без BALANCED-расползания
+                tv.breakStrategy = android.graphics.text.LineBreaker.BREAK_STRATEGY_SIMPLE
+                tv.justificationMode = android.graphics.text.LineBreaker.JUSTIFICATION_MODE_NONE
+            } else {
+                tv.justificationMode = android.graphics.text.LineBreaker.JUSTIFICATION_MODE_NONE
+            }
+        }
+    )
+}
+
 /** ColorOS: стоковая оправка (INTER_WORD) переполняла строки — правый край
  *  обрезался. Здесь оправка своя: строки ломает TextView (BALANCED), а пробелы
  *  не-последних строк абзаца растягиваем при рисовании: super.onDraw рисует
@@ -492,6 +563,10 @@ private class JustifyTextView(ctx: android.content.Context) : android.widget.Tex
         if (extra < 1f) return null
         val add = extra / (ranges.size - 1)
         val spaceW = paint.measureText(" ")
+        // Оправка тянет только пробелы: в строке с 2-3 словами зазор получается
+        // в полэкрана («дыры»). Такую строку оставляем рваной справа — ровный
+        // край с гигантскими пробелами смотрится хуже. Порог — две ширины пробела.
+        if (add > spaceW * 2f) return null
         val segs = ArrayList<Seg>(ranges.size)
         var x = 0f
         for ((s, e) in ranges) {
@@ -670,7 +745,7 @@ private val REF_BS = Regex(
 private val GR_CODE = setOf(
     "SB", "BG", "CC", "BS", "ISO", "NOD", "NOI", "TLC", "KB", "TQK", "MM", "NBS",
     "BRS", "SBRS",
-    "LBG", "LSB", "TLKS", "LCC", "LISO", "LTRS", "LTR", "BG72",
+    "LBG", "LSB", "TLKS", "LCC", "LISO", "LTRS", "LTR",
     "KU", "SVU", "MU", "VS", "VP", "BAU", "BRS", "GGD"
 )
 /** Код перед цифрами («SB 5.5.3», «ШБ 1.8.19») — чтобы вся цитата была ссылкой */
