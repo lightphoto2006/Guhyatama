@@ -93,9 +93,9 @@ object VerseShare {
         return if (n in 1..500) n else 1
     }
 
-    /** Название без технического суффикса импорта ("Шримад Бхагаватам [SB]" -> "Шримад Бхагаватам") */
+    /** Название без технического суффикса импорта ("Шримад Бхагаватам [SB]" -> "Шримад Бхагаватам", "Bhagavad Gita [BG72]" -> "Bhagavad Gita") */
     fun cleanTitle(title: String?): String =
-        title?.replace(Regex("""\s*\[[A-Za-z-]+\]$"""), "") ?: ""
+        title?.replace(Regex("""\s*\[[A-Za-z0-9-]+\]$"""), "") ?: ""
 
     /** Ссылка: БГ 2.13; трёхуровневые (ШБ 1.12.23 — песнь.глава.стих) для ШБ и разделов ≠1 */
     fun ref(book: Book?, verse: Verse): String =

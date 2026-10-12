@@ -525,23 +525,32 @@ fun NotesScreen(onVerse: (String) -> Unit = {}, vm: NotesViewModel = hiltViewMod
         } else {
             LazyColumn(Modifier.padding(pad)) {
                 items(items, key = { it.note.id }) { it ->
-                    val canOpen = it.note.verseId != null && !it.verseGone
-                    ListItem(
-                        headlineContent = { Text(it.verseLabel ?: if (it.verseGone) "(стих недоступен)" else "Заметка") },
-                        supportingContent = {
-                            Text(
-                                it.note.text + "\n" + fmt.format(java.util.Date(it.note.createdAt)),
-                                maxLines = 4
+                    // Заголовок: жирный SHB 3.3.1 + текст заметки на одной строке
+                    // Крестик — узкая колонка у правого края
+                    Row(
+                        Modifier.fillMaxWidth()
+                            .clickable(
+                                enabled = it.note.verseId != null && !it.verseGone,
+                                onClick = { it.note.verseId?.let(onVerse) }
                             )
-                        },
-                        trailingContent = {
-                            TextButton(onClick = { vm.delete(it.note.id) }) { Text("×") }
-                        },
-                        modifier = Modifier.clickable(
-                            enabled = canOpen,
-                            onClick = { it.note.verseId?.let(onVerse) }
+                            .padding(start = 16.dp, end = 4.dp, top = 8.dp, bottom = 8.dp),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Text(
+                            buildAnnotatedString {
+                                // SHB 3.3.1 жирным шрифтом в начале
+                                pushStyle(SpanStyle(fontWeight = FontWeight.Bold))
+                                append("ШБ 3.3.1 ")
+                                pop()
+                                append(it.note.text)
+                            },
+                            Modifier.weight(1f),
+                            maxLines = 4, overflow = TextOverflow.Ellipsis
                         )
-                    )
+                        Box(
+                            Modifier.clickable { vm.delete(it.note.id) }.padding(6.dp, 4.dp)
+                        ) { Text("×", fontSize = 20.sp) }
+                    }
                     HorizontalDivider()
                 }
             }
