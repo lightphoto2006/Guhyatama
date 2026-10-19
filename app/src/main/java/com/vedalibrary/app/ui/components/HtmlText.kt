@@ -559,18 +559,31 @@ private class JustifyTextView(ctx: android.content.Context) : android.widget.Tex
         }
         if (ranges.size < 2) return null
         val targetW = (width - paddingLeft - paddingRight).toFloat()
-        val extra = targetW - layout.getLineWidth(line)
+        val spaceW = paint.measureText(" ")
+        // Ширина «чернил» строки: сами слова + промежутки МЕЖДУ ними.
+        // Ширина строки от фреймворка (getLineWidth) включает ещё и хвостовой
+        // пробел разрыва, которого в картинке нет — из-за этого запас считался
+        // на пробел меньше нужного, и оправленная строка не доходила до
+        // правого поля (ColorOS 16: замер gapInk == spaceW на всех строках).
+        val wordW = FloatArray(ranges.size)
+        var inkW = spaceW * (ranges.size - 1)
+        for (i in ranges.indices) {
+            val (s, e) = ranges[i]
+            wordW[i] = wordPaint(sp, s, e).measureText(sp, s, e)
+            inkW += wordW[i]
+        }
+        val extra = targetW - inkW
         if (extra < 1f) return null
         val add = extra / (ranges.size - 1)
-        val spaceW = paint.measureText(" ")
         // Оправка тянет только пробелы: в строке с 2-3 словами зазор получается
         // в полэкрана («дыры»). Такую строку оставляем рваной справа — ровный
         // край с гигантскими пробелами смотрится хуже. Порог — две ширины пробела.
         if (add > spaceW * 2f) return null
         val segs = ArrayList<Seg>(ranges.size)
         var x = 0f
-        for ((s, e) in ranges) {
-            val w = wordPaint(sp, s, e).measureText(sp, s, e)
+        for (i in ranges.indices) {
+            val (s, e) = ranges[i]
+            val w = wordW[i]
             val stockX = try { layout.getPrimaryHorizontal(s) } catch (_: Exception) { 0f }
             segs.add(Seg(s, e, x, x + w, stockX))
             x += w + spaceW + add

@@ -1,21 +1,21 @@
 {
   "catalogVersion": 1,
   "apk": {
-    "versionCode": 52,
-    "versionName": "1.3.4",
-    "url": "https://github.com/lightphoto2006/Guhyatama/releases/download/v1.3.4/Guhyatama-1.3.4.apk",
+    "versionCode": 53,
+    "versionName": "1.3.5",
+    "url": "https://github.com/lightphoto2006/Guhyatama/releases/download/v1.3.5/Guhyatama-1.3.5.apk",
     "size": 5936146,
-    "sha256": "a8f8bcae4fafc355bd4ae8d81f2547e33935e4951e4d1b9879f08aec6ae372f2",
-    "notes": "Что нового:\n— Выравнивание по ширине в списке стихов главы: на ColorOS список идёт тем же путём, что и читалка (ручная доводка вместо стоковой, которую прошивка молча гасит); на остальных прошивках — как было.\n— Меньше дыр на переносах: если зазор между словами получается больше двух пробелов, строка остаётся рваной справа (и в списке, и в читалке).\n— Дельта-обновление от v1.3.3 до v1.3.4 (патч 51→52).",
+    "sha256": "1e6b7383280d0ea32875afe4c334dfe3b95f83123abd967d7d46762e13c20cd3",
+    "notes": "Что нового:\n— Выравнивание по ширине: оправленные строки теперь доходят до правого поля (раньше не хватало ширины одного пробела — на ColorOS фреймворк отдаёт в ширину строки ещё и хвостовой пробел разрыва).\n— Дельта-обновление от v1.3.4 до v1.3.5 (патч 52→53).",
     "delta": {
-      "from": 51,
-      "file": "F:\\AI\\Development\\Guhyatama\\releases\\Guhyatama-delta-51-to-52.bsdiff",
-      "url": "https://github.com/lightphoto2006/Guhyatama/releases/download/v1.3.4/Guhyatama-delta-51-to-52.bsdiff"
+      "from": 52,
+      "file": "F:\\AI\\Development\\Guhyatama\\releases\\Guhyatama-delta-52-to-53.bsdiff",
+      "url": "https://github.com/lightphoto2006/Guhyatama/releases/download/v1.3.5/Guhyatama-delta-52-to-53.bsdiff"
     },
-    "deltaFrom": 51,
-    "deltaUrl": "https://github.com/lightphoto2006/Guhyatama/releases/download/v1.3.4/Guhyatama-delta-51-to-52.bsdiff",
-    "deltaSize": 5962602,
-    "deltaSha": "bfc1b4e6201dc960d3ca33e8b0fa8252a7bad74ef27f8000d1bdf123301a9fcf"
+    "deltaFrom": 52,
+    "deltaUrl": "https://github.com/lightphoto2006/Guhyatama/releases/download/v1.3.5/Guhyatama-delta-52-to-53.bsdiff",
+    "deltaSize": 5963346,
+    "deltaSha": "80c7ab7ce5676abcb3fd3c8367dff2fcaccf9cee486cea79d43a4f7df2ecc55b"
   },
   "books": [
     {
