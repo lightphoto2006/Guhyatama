@@ -10,6 +10,8 @@ import androidx.compose.foundation.gestures.detectHorizontalDragGestures
 import androidx.compose.foundation.gestures.scrollBy
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
@@ -78,8 +80,9 @@ fun VerseDetailScreen(
                     horizontalArrangement = Arrangement.Center,
                     verticalAlignment = androidx.compose.ui.Alignment.CenterVertically
                 ) {
-                    // ★: тап — поставить/переставить на текущий стих,
-                    // удержание 1с — снять (вибро)
+                    // ★: тап — поставить/переставить закладку на ТЕКУЩИЙ стих
+                    // (прыгнул по закладке, читал дальше — один тап переносит её,
+                    // без «снять+поставить»); удержание 1с — снять (вибро)
                     BookmarkStar(
                         active = v != null && bm?.verseId == v?.id,
                         style = MaterialTheme.typography.titleLarge,
@@ -91,11 +94,13 @@ fun VerseDetailScreen(
                             Text(if (ob?.language == "rus") "RU" else "EN")
                         }
                     }
+                    // ⚙: тот же векторный значок и тот же размер, что у звезды —
+                    // текстовый глиф и эмодзи по вертикали разъезжаются
                     IconButton(onClick = onSettings) {
-                        Text(
-                            "⚙️",
-                            style = MaterialTheme.typography.titleLarge,
-                            fontSize = MaterialTheme.typography.titleLarge.fontSize * 1.2f
+                        Icon(
+                            Icons.Filled.Settings,
+                            contentDescription = null,
+                            modifier = Modifier.size(26.dp)
                         )
                     }
                 }

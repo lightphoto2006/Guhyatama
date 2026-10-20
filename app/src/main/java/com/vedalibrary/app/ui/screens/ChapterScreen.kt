@@ -11,6 +11,8 @@ import androidx.compose.foundation.layout.*
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
@@ -117,23 +119,29 @@ fun ChapterScreen(
                         style = MaterialTheme.typography.labelLarge
                     )
                 }
-            Row(verticalAlignment = androidx.compose.ui.Alignment.CenterVertically) {
+            Row(
+                verticalAlignment = androidx.compose.ui.Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(4.dp)
+            ) {
                 // ★: тап — поставить/переставить на текущее место,
                 // удержание 1с — снять (вибро)
                 BookmarkStar(
-                    active = bm?.chapterId == vm.chapterId && bm?.verseId == null,
+                    active = bm?.chapterId == vm.chapterId,
                     style = MaterialTheme.typography.titleMedium,
                     onSave = {
                         vm.saveChapterBookmark(listState.firstVisibleItemIndex, listState.firstVisibleItemScrollOffset)
                     },
                     onRemove = { vm.removeChapterBookmark() }
                 )
-                Text(
-                    "⚙️",
-                    style = MaterialTheme.typography.titleMedium,
-                    fontSize = MaterialTheme.typography.titleMedium.fontSize * 1.2f,
-                    modifier = Modifier.clickable { onSettings() }.padding(8.dp)
-                )
+                // ⚙: тот же векторный значок, что и звезда, и тот же размер —
+                // иначе текстовый глиф и эмодзи по вертикали разъезжаются
+                IconButton(onClick = { onSettings() }) {
+                    Icon(
+                        Icons.Filled.Settings,
+                        contentDescription = null,
+                        modifier = Modifier.size(26.dp)
+                    )
+                }
             }
         }
     }) { pad ->

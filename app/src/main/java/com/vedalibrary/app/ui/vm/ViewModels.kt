@@ -217,16 +217,14 @@ class SearchViewModel @Inject constructor(
             .launchIn(viewModelScope)
     }
 
-    /** FTS: запрос целиком в кавычки-фразу — дефис (в FTS это оператор NOT),
-     *  скобки, звёздочки и кавычки становятся литералом: «Шримад-Бхагаватам»
-     *  ищется нормально, а не роняет запрос в тихо пустую выдачу.
-     *  Как в DictViewModel (там кавычки уже показали себя). */
-    private fun ftsQuery(q: String, column: String?): String? {
-        val clean = q.replace("\"", "").trim()
-        if (clean.isEmpty()) return null
-        val phrase = "\"$clean\""
-        return if (column == null) phrase else "$column:$phrase"
-    }
+    /** FTS-выражение: слова запроса с вариантами регистра и префиксом у
+     *  последнего слова (см. [SearchQuery]). Раньше запрос целиком цитировался
+     *  кавычками-фразой: токенизатор FTS4 `simple` сворачивает регистр только
+     *  для ASCII, поэтому кириллица искалась строго по написанию, а частичное
+     *  слово не находилось вовсе. Фильтр по колонке (scope) FTS4 применяет
+     *  некорректно — поэтому он делается в Kotlin, по содержимому поля. */
+    private fun ftsQuery(q: String, column: String?): String? =
+        SearchQuery.ftsExpr(q)
 
     private suspend fun runSearch(qRaw: String, sc: String, b: String?) {
         val q = qRaw.trim()
@@ -242,6 +240,13 @@ class SearchViewModel @Inject constructor(
             // (fromHtml на каждую строку), main держит только эмиссии.
             val rows = if (b != null) db.library().searchLightBook(fts, b)
             else db.library().searchLight(fts)
+            // Фильтр по scope делаем здесь, а не в MATCH: FTS4 применяет
+            // фильтр колонки к группам неверно (col:(...) и col:"..." — считает
+            // всю таблицу или не находит ничего). Здесь — по содержимому поля,
+            // регистр и диакритика не важны.
+            val scoped = if (col == null) rows else rows.filter {
+                SearchQuery.matchesScope(fieldText(it, col), q)
+            }
             suspend fun build(list: List<com.vedalibrary.app.data.local.SearchRow>): List<Hit> =
                 withContext(Dispatchers.Default) {
                     list.map { r ->
@@ -255,9 +260,9 @@ class SearchViewModel @Inject constructor(
                 }
             // Первый экран сразу (40 строк), остальное подтягивается следом:
             // тяжёлые лекции/переводы не держат первый показ результатов
-            val first = build(rows.take(40))
+            val first = build(scoped.take(40))
             _r.value = first
-            if (rows.size > 40) _r.value = first + build(rows.drop(40))
+            if (scoped.size > 40) _r.value = first + build(scoped.drop(40))
         } catch (e: kotlinx.coroutines.CancellationException) {
             throw e
         } catch (_: Exception) {
@@ -278,18 +283,22 @@ class SearchViewModel @Inject constructor(
     private val fieldOrder = listOf("text", "translation", "purport", "synonyms", "sanskrit")
 
     /** Поле, где FTS реально нашёл слово: колонка scope, иначе первое поле
-     *  с совпадением (иначе сниппет «зачастую без этого слова»). Быстрый проход
-     *  (contains ignoreCase) — обычный случай; fold-поиск (per-char NFKC на
-     *  строках в 2 КБ) — только фолбэком: он и был причиной лага первых
-     *  результатов на секунды. Имя поля уезжает в ?hp=: экран стиха мотает
-     *  сразу в секцию с найденным словом, а не в первое вхождение в другом поле. */
+     *  с совпадением (иначе сниппет «зачастую без этого слова»). Слова запроса
+     *  ищем по отдельности (регистр/диакритика не важны) — запрос из нескольких
+     *  слов это AND по токенам, а не фраза, и подстрока целиком в тексте
+     *  может не встретиться. Быстрый проход (contains ignoreCase) — обычный
+     *  случай; fold-поиск (per-char NFKC на строках в 2 КБ) — только фолбэком:
+     *  он и был причиной лага первых результатов на секунды. Имя поля уезжает
+     *  в ?hp=: экран стиха мотает сразу в секцию с найденным словом, а не в
+     *  первое вхождение в другом поле. */
     private fun pickField(r: com.vedalibrary.app.data.local.SearchRow, col: String?, q: String): String? =
         when (col) {
             "sanskrit" -> "sanskrit"
             "text" -> "text"
             "purport" -> "purport"
             else -> fieldOrder.firstOrNull { f ->
-                val t = fieldText(r, f); !t.isNullOrBlank() && t.contains(q, true)
+                val t = fieldText(r, f)
+                !t.isNullOrBlank() && SearchQuery.matchesScope(t, q)
             } ?: fieldOrder.firstOrNull { f ->
                 val t = fieldText(r, f); !t.isNullOrBlank() && GbHtml.containsFold(t, q)
             } ?: "translation"
@@ -299,17 +308,23 @@ class SearchViewModel @Inject constructor(
      *  строка слова и ~1 строка после (≈4 экран-строки, слово всегда видно).
      *  Сырые поля с тегами (<i>, <br/>, </blockquote>) чистим через plain() —
      *  иначе теги показывались текстом самой выдачи. «пада-\nсеванам» склеиваем,
-     *  серии пробельных (табы/переносы строк таблиц) схлопываем. Совпадение ищем
-     *  быстрым indexOf; fold/highlightRanges (NFKC на каждом символе) — только
-     *  фолбэк для диакритики в запросе. */
+     *  серии пробельных (табы/переносы строк таблиц) схлопываем. Ищем не запрос
+     *  целиком, а отдельное слово из него (см. [SearchQuery.needleFor]): запрос —
+     *  AND по токенам, и при префиксе («праламб» → «Праламба») подстрока-запрос
+     *  в тексте есть, но при нескольких словах фразы в тексте может не быть.
+     *  Совпадение ищем быстрым indexOf; fold/highlightRanges (NFKC на каждом
+     *  символе) — только фолбэк для диакритики в запросе. */
     private fun searchSnippet(src: String?, q: String): String {
         val raw = src ?: return ""
         val stripped = if (raw.indexOf('<') >= 0) GbHtml.plain(raw) else raw
         val t = stripped.replace(GbHtml.brokenHyphenRe, "-")
-            .replace(Regex("""[\s ]+"""), " ").trim()
+            .replace(Regex("""[\s ]+"""), " ").trim()
         if (t.isEmpty()) return ""
-        var st = t.indexOf(q, ignoreCase = true)
-        var en = if (st >= 0) st + q.length else -1
+        // Ищем ТОКЕН, а не подстроку запроса: в тексте может быть «Праламба»,
+        // а пользователь искал «праламб». Диакритика и регистр не важны.
+        val hit = SearchQuery.findToken(t, q)
+        var st = hit?.first ?: -1
+        var en = if (hit != null) hit.last + 1 else -1
         if (st < 0) {
             val r = GbHtml.highlightRanges(t, q).firstOrNull()
             if (r != null) { st = r.first; en = r.last + 1 }
@@ -569,7 +584,10 @@ class ChapterViewModel @Inject constructor(
         }.stateIn(viewModelScope, SharingStarted.Lazily, null)
     /** Закладка главы: ★ всегда ПЕРЕПИСЫВАЕТ позицию на текущую (и на первом
      *  нажатии, и на повторных — просто запоминаем, где читатель сейчас).
-     *  Замена атомарная (@Transaction), не delete+insert двумя запросами. */
+     *  Замена атомарная (@Transaction), не delete+insert двумя запросами.
+     *  verseId ЗАЧИЩАЕМ: в главе «текущее место» — это позиция списка, а не стих.
+     *  Иначе библиотека продолжала бы открывать стих, и повторное нажатие ★
+     *  в главе выглядело бы как «ничего не сделал». */
     fun saveChapterBookmark(index: Int, offset: Int) = viewModelScope.launch {
         try {
             val c = chDef.await() ?: return@launch
@@ -587,7 +605,7 @@ class ChapterViewModel @Inject constructor(
     fun removeChapterBookmark() = viewModelScope.launch {
         try {
             val b = bookmark.value ?: return@launch
-            if (b.chapterId == chapterId && b.verseId == null) db.library().deleteBookmarksOfBook(b.bookId)
+            if (b.chapterId == chapterId) db.library().deleteBookmarksOfBook(b.bookId)
         } catch (_: Exception) { }
     }
 }
@@ -733,12 +751,21 @@ class VerseDetailViewModel @Inject constructor(
         }.stateIn(viewModelScope, SharingStarted.Lazily, null)
 
     /** Тап ★ — поставить/переставить закладку на ТЕКУЩИЙ стих (прыгнул по
-     *  закладке, читал дальше — один тап переносит её, без «снять+поставить») */
+     *  закладке, читал дальше — один тап переносит её, без «снять+поставить»).
+     *  Позицию главы сохраняем, если закладка уже указывала на эту главу:
+     *  «текущее место» = стих, но список главы не должен при этом прыгать
+     *  наверх. */
     fun setBookmark() = viewModelScope.launch {
         try {
             val v = db.library().verse(verseId) ?: return@launch
+            val cur = db.library().bookmark(v.bookId)
+            val sameChapter = cur != null && cur.chapterId == v.chapterId
             db.library().replaceBookmark(
-                com.vedalibrary.app.data.local.Bookmark(bookId = v.bookId, verseId = verseId, chapterId = v.chapterId)
+                com.vedalibrary.app.data.local.Bookmark(
+                    bookId = v.bookId, verseId = verseId, chapterId = v.chapterId,
+                    scrollIndex = if (sameChapter) cur!!.scrollIndex else 0,
+                    scrollOffset = if (sameChapter) cur!!.scrollOffset else 0
+                )
             )
         } catch (_: Exception) { }
     }
@@ -1162,10 +1189,14 @@ class DictViewModel @Inject constructor(
      *  Предложений из переводов здесь нет: если слова нет в пословнике стиха — стих пропускаем. */
     private val allRows: StateFlow<List<DictRow>> = flow {
         // Слово бывает в двух письменностях (латиница IAST в одних книгах, кириллица в других):
-        // ищем обе формы, иначе русские варианты теряются. Кавычки: дефис в FTS означает NOT
+        // ищем обе формы, иначе русские варианты теряются.
+        // Запрос — по СЛОВАМ с вариантами регистра (FTS4 сворачивает регистр только
+        // для ASCII, кириллица искалась строго по написанию), без префикса: словарь
+        // ищет слово целиком. Дефис в FTS — оператор NOT, поэтому слова режем
+        // на буквы/цифры (см. SearchQuery).
         val alt = com.vedalibrary.app.ui.components.IastCyrillic.convert(word)
-        val queries = listOf(word, alt).map { it.replace("\"", "") }
-            .filter { it.isNotBlank() }.distinct().map { "\"$it\"" }
+        val queries = listOf(word, alt).mapNotNull { SearchQuery.ftsExpr(it, exact = true) }
+            .distinct()
         val light = try {
             queries.flatMap { db.library().dictLight(it) }.distinctBy { it.id }
         } catch (_: Exception) { emptyList() }

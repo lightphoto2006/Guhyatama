@@ -224,11 +224,13 @@ fun SearchScreen(vm: SearchViewModel, onVerse: (String, String, String?) -> Unit
     }
 }
 
-/** Совпадения — зелёным, как в оригинале (диакритика не важна: praptam найдёт prāptam) */
+/** Совпадения — зелёным, как в оригинале. Ищем ТОКЕНЫ, а не подстроку запроса:
+ *  в тексте «Праламба», а пользователь искал «праламб» (регистр и длина слова
+ *  в запросе не совпадают с текстом). Диакритика не важна: praptam найдёт prāptam. */
 private fun highlightMatch(text: String, q: String) = buildAnnotatedString {
     append(text)
     if (q.length >= 2) {
-        for (r in GbHtml.highlightRanges(text, q)) {
+        for (r in com.vedalibrary.app.ui.vm.SearchQuery.findTokens(text, q)) {
             addStyle(
                 SpanStyle(background = Color(0xFF2E7D32), color = Color.White),
                 r.first, r.last + 1

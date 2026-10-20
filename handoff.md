@@ -41,9 +41,18 @@
 1. Проверить компиляцию :app:compileDebugKotlin из нового ASCII-пути; решить проблему JBR/Gradle (см. Окружение).
 2. Запустить python-тесты tools/dbcomposer из новой папки (пути в тестах могут содержать старый путь — проверить).
 3. E2E на устройстве: звезда ×1.5, long-press 1с, дельта-обновление, очистка updates/ после установки.
+4. Выкатить релиз с правками 19.10.2026 (звезда/шестерёнка/justify) — сборка и установка на устройство уже проверены, релиз не делался.
+
+## Правки 19.10.2026 (не закоммичены, релиз не выкатывался)
+- **Звезда закладки — свой вектор** `ui/components/StarIcons.kt` (залитый/контурный из одного контура). Причина: у `material-icons-core` нет контурной звезды (неактивная закладка выглядела бы как активная), а текстовый глиф «★» и эмодзи «⚙️» имеют разные метрики и разъезжались по вертикали. Размер 26.dp.
+- **Шестерёнка** в шапках главы и стиха — `Icons.Filled.Settings` (тот же вектор, тот же размер). Замер на устройстве: центры иконок 434/436 px (было 411/413 при разных размерах).
+- **Закладка в главе**: `saveChapterBookmark` пишет `verseId = null` (текущее место главы = позиция списка), `active` в шапке главы больше не требует `verseId == null` — звезда горит, если закладка стоит в этой главе.
+- **Закладка в читалке стиха**: `setBookmark` переносит её на текущий стих, сохраняя позицию главы, если закладка уже была в этой главе.
+- **Justify**: строки из 3+ слов растягиваются до правого края всегда; порог `add > spaceW * 2` остался только для строк из ДВУХ слов (одного промежутка). Подробности — `docs/JUSTIFY.md`.
 
 ## Ключевые файлы
 - Выравнивание по ширине (ColorOS, ручная доводка): `docs/JUSTIFY.md` + `app/src/main/java/com/vedalibrary/app/ui/components/HtmlText.kt`
+- Звезда закладки (вектор): `app/src/main/java/com/vedalibrary/app/ui/components/StarIcons.kt` + `BookmarkStar.kt`
 - app/src/main/java/com/vedalibrary/app/data/update/{AppUpdater,Bspatch,UpdateCatalog,Downloader}.kt
 - app/src/main/java/com/vedalibrary/app/ui/vm/UpdateViewModel.kt
 - app/src/main/java/com/vedalibrary/app/ui/screens/LibraryScreen.kt
