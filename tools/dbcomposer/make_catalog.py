@@ -140,9 +140,24 @@ def main(argv):
             items.append(entry)
         return items
 
-    # apk: дельта считается с файла так же, как у books (см. section выше) —
-    # владелец пишет в versions.json только "delta": {file,url,from}
+    # apk: размер и sha256 — с файла APK (в sidecar только "file"), дельта —
+    # так же, как у books (см. section выше): владелец пишет в versions.json
+    # "file" (путь к APK) и "delta": {file,url,from}.
+    # size/sha256 у APK ОБЯЗАТЕЛЬНЫ: клиент без sha256 отменяет обновление
+    # (AppUpdater.download: "в каталоге нет контрольной суммы — обновление
+    # отменено"), поэтому считаем их здесь, а не руками.
     apk = dict(side.get("apk") or {})  # копия: не мутируем исходный side
+    afn = apk.get("file", "")
+    if afn:
+        ap = afn if os.path.isabs(afn) else os.path.join(a.src, afn)
+        if os.path.exists(ap):
+            apk["size"] = os.path.getsize(ap)
+            apk["sha256"] = sha256(ap)
+            print("  apk: %d байт, sha ok" % apk["size"])
+        else:
+            apk["size"] = 0
+            apk["sha256"] = ""
+            print("  apk: ФАЙЛ НЕ НАЙДЕН (%s) — sha пустой, обновление не скачается" % ap)
     dm = apk.get("delta")
     if isinstance(dm, dict):
         dfn = dm.get("file", "")

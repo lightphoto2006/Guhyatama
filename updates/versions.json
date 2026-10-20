@@ -1,14 +1,15 @@
 {
   "apk": {
-    "versionCode": 53,
-    "versionName": "1.3.5",
-    "url": "https://github.com/lightphoto2006/Guhyatama/releases/download/v1.3.5/Guhyatama-1.3.5.apk",
-    "notes": "Что нового:\n— Выравнивание по ширине: оправленные строки теперь доходят до правого поля (раньше не хватало ширины одного пробела — на ColorOS фреймворк отдаёт в ширину строки ещё и хвостовой пробел разрыва).\n— Дельта-обновление от v1.3.4 до v1.3.5 (патч 52→53).",
+    "versionCode": 54,
+    "versionName": "1.3.6",
+    "url": "https://github.com/lightphoto2006/Guhyatama/releases/download/v1.3.6/Guhyatama-1.3.6.apk",
+    "notes": "Что нового:\n— Поиск снова работает: слово находится по любому регистру и по началу слова. Раньше «праламб» не находил «Праламба» (в книге слово с большой буквы), а «Праламб» давал одно вхождение; теперь — все: 24 стиха в 10-й песни ШБ и 8 в «Гопала Чампу».\n— Починен фильтр поиска по разделу («Стих»/«Санскрит»/«Коммент.»): он не отбирал ничего.\n— Словарь ищет слово тоже без учёта регистра.\n— Звезда закладки и шестерёнка в шапке выровнены по центру.\n— Дельта-обновление от v1.3.5 до v1.3.6 (патч 53→54).",
     "delta": {
-      "from": 52,
-      "file": "F:\\AI\\Development\\Guhyatama\\releases\\Guhyatama-delta-52-to-53.bsdiff",
-      "url": "https://github.com/lightphoto2006/Guhyatama/releases/download/v1.3.5/Guhyatama-delta-52-to-53.bsdiff"
-    }
+      "from": 53,
+      "file": "F:\\AI\\Development\\Guhyatama\\releases\\Guhyatama-delta-53-to-54.bsdiff",
+      "url": "https://github.com/lightphoto2006/Guhyatama/releases/download/v1.3.6/Guhyatama-delta-53-to-54.bsdiff"
+    },
+    "file": "F:\\AI\\Development\\Guhyatama\\releases\\Guhyatama-1.3.6.apk"
   },
   "books": {
     "Prabhupada_rus": {
