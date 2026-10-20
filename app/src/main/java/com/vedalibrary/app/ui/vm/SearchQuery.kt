@@ -38,13 +38,17 @@ object SearchQuery {
      * (ś ī ṛ ṇ), греческий, кириллицу, деванагари и комбинирующие знаки
      * (составные буквы вроде й, ё). Запрос нормализуем в NFC — иначе
      * «śrī» в разложенном виде не совпадёт с токеном индекса.
+     * Дефис внутри слова НЕ рвём: в книге слова пишут через дефис
+     * («праламба-бака»), и «пра-ламба» должен находить «праламба».
      */
-    private val WORD = Regex(
-        "[0-9A-Za-z\\u00C0-\\u024F\\u0370-\\u03FF\\u0400-\\u04FF" +
-            "\\u0900-\\u097F\\u1E00-\\u1EFF\\u0300-\\u036F]+"
-    )
+    private val LETTER = "[0-9A-Za-z\\u00C0-\\u024F\\u0370-\\u03FF\\u0400-\\u04FF" +
+        "\\u0900-\\u097F\\u1E00-\\u1EFF\\u0300-\\u036F]"
+    private val WORD = Regex("$LETTER+(?:[-\\u2010\\u2011\\u2012\\u2013\\u2014]$LETTER+)*")
+    /** Токен текста — ровно так же, как режет FTS-токенизатор `simple`: дефис и
+     * прочие разделители — граница токена. */
+    private val TOKEN = Regex("$LETTER+")
 
-    /** Слова запроса: только буквы/цифры, до 3 слов. */
+    /** Слова запроса: до 3 слов. */
     fun words(q: String): List<String> =
         WORD.findAll(Normalizer.normalize(q, Normalizer.Form.NFC))
             .map { it.value }.take(3).toList()
@@ -81,10 +85,23 @@ object SearchQuery {
             // Префикс — только у последнего слова (его пользователь дописывает
             // прямо сейчас) и не короче 4 букв: «пра*» даёт 15+ тысяч стихов.
             val prefix = !exact && i == last && w.length >= 4
-            val parts = ArrayList<String>(6)
+            val parts = ArrayList<String>(8)
+            val hyphen = w.contains('-')
+            val solid = w.replace("-", "")
             for (v in variants(w)) {
-                parts += if (v.lowercase() in RESERVED) "\"$v\""
-                else if (prefix) "$v*" else v
+                parts += when {
+                    v.lowercase() in RESERVED -> "\"$v\""
+                    hyphen -> "\"$v\""            // слово с дефисом — фразой
+                    else -> v + if (prefix) "*" else ""
+                }
+            }
+            // Тот же корень без дефиса: в книге «пра-ламба», а пользователь
+            // ищет «праламба» (и наоборот) — обе формы в одной группе.
+            if (hyphen && solid != w) {
+                for (v in variants(solid)) {
+                    if (v.lowercase() in RESERVED) continue
+                    parts += v + if (prefix) "*" else ""
+                }
             }
             groups += "(" + parts.joinToString(" OR ") + ")"
         }
@@ -94,11 +111,56 @@ object SearchQuery {
     /** Токен текста: его диапазон в строке и сам текст. */
     private data class Tok(val range: IntRange, val text: String)
 
-    /** Токены текста (для подсветки и scope-фильтра). */
-    private fun tokens(text: String): List<Tok> =
-        WORD.findAll(text).map { Tok(it.range, it.value) }.toList()
+    /**
+     * Токены текста (для подсветки и scope-фильтра). Режем ТОЧНО так же,
+     * как FTS-токенизатор `simple`: дефис — разделитель, поэтому
+     * «праламба-бака» даёт два токена («праламба», «бака»).
+     */
+    private fun tokens(text: String): List<Tok> {
+        val out = ArrayList<Tok>()
+        for (m in TOKEN.findAll(text)) out.add(Tok(m.range, m.value))
+        return out
+    }
 
-    /** Токен текста, совпадающий со словом запроса (без диакритики и регистра). */
+    /** Слово запроса с дефисом разбивается на части. */
+    private fun parts(w: String): List<String> =
+        w.split('-', '\u2010', '\u2011', '\u2012', '\u2013', '\u2014')
+            .filter { it.isNotEmpty() }
+
+    /**
+     * Слово запроса с дефисом («пра-ламба») совпадает с текстом, если:
+     *  - в тексте есть токен, равный склеенному корню («праламба»), либо
+     *  - части идут подряд как отдельные токены («пра», «ламба»).
+     * Префиксный режим («пра-ламб») сравнивается по началу каждой части.
+     */
+    private fun hyphenMatches(toks: List<Tok>, needle: String, prefix: Boolean): Boolean {
+        val ps = parts(needle)
+        if (ps.isEmpty()) return false
+        val joined = ps.joinToString("")
+        // вариант «одним куском»
+        for (t in toks) {
+            val x = GbHtml.foldDia(t.text).lowercase()
+            val n = GbHtml.foldDia(joined).lowercase()
+            if (if (prefix) x.startsWith(n) else x == n) return true
+        }
+        // вариант «частями подряд»
+        if (ps.size >= 2) {
+            for (i in 0..toks.size - ps.size) {
+                var ok = true
+                for (j in ps.indices) {
+                    val x = GbHtml.foldDia(toks[i + j].text).lowercase()
+                    val n = GbHtml.foldDia(ps[j]).lowercase()
+                    if (!(if (prefix) x.startsWith(n) else x == n)) { ok = false; break }
+                }
+                if (ok) return true
+            }
+        }
+        return false
+    }
+
+    /**
+     * Токен текста, совпадающий со словом запроса (без диакритики и регистра).
+     */
     private fun tokenMatches(tok: Tok, needle: String, prefix: Boolean): Boolean {
         val t = GbHtml.foldDia(tok.text).lowercase()
         val n = GbHtml.foldDia(needle).lowercase()
@@ -117,7 +179,10 @@ object SearchQuery {
         val last = ws.lastIndex
         for (i in ws.indices) {
             val prefix = !exact && i == last && ws[i].length >= 4
-            if (toks.none { tokenMatches(it, ws[i], prefix) }) return false
+            val w = ws[i]
+            val ok = if (w.contains('-')) hyphenMatches(toks, w, prefix)
+            else toks.any { tokenMatches(it, w, prefix) }
+            if (!ok) return false
         }
         return true
     }
@@ -135,8 +200,38 @@ object SearchQuery {
         // Сначала последнее слово (его пользователь обычно и дописывает)
         for (i in ws.indices.reversed()) {
             val prefix = !exact && i == last && ws[i].length >= 4
-            val hit = toks.firstOrNull { tokenMatches(it, ws[i], prefix) } ?: continue
+            val w = ws[i]
+            if (w.contains('-')) {
+                val r = hyphenRanges(toks, w, prefix)
+                if (r != null) return r
+                continue
+            }
+            val hit = toks.firstOrNull { tokenMatches(it, w, prefix) } ?: continue
             return hit.range
+        }
+        return null
+    }
+
+    /**
+     * Диапазон в тексте для слова с дефисом: подсвечиваем и склеенный корень,
+     * и обе части (если слово в тексте написано через дефис).
+     */
+    private fun hyphenRanges(toks: List<Tok>, w: String, prefix: Boolean): IntRange? {
+        val ps = parts(w)
+        if (ps.isEmpty()) return null
+        val joined = ps.joinToString("")
+        // «праламба» — одним токеном
+        val j = toks.indexOfFirst { tokenMatches(it, joined, prefix) }
+        if (j >= 0) return toks[j].range
+        // «пра-ламба» — двумя токенами подряд
+        if (ps.size >= 2) {
+            for (i in 0..toks.size - ps.size) {
+                var ok = true
+                for (k in ps.indices) {
+                    if (!tokenMatches(toks[i + k], ps[k], prefix)) { ok = false; break }
+                }
+                if (ok) return toks[i].range.first..toks[i + ps.size - 1].range.last
+            }
         }
         return null
     }
@@ -150,8 +245,13 @@ object SearchQuery {
         val out = ArrayList<IntRange>()
         for (i in ws.indices) {
             val prefix = !exact && i == last && ws[i].length >= 4
+            val w = ws[i]
+            if (w.contains('-')) {
+                hyphenRanges(toks, w, prefix)?.let { out.add(it) }
+                continue
+            }
             for (t in toks) {
-                if (tokenMatches(t, ws[i], prefix)) out.add(t.range)
+                if (tokenMatches(t, w, prefix)) out.add(t.range)
             }
         }
         return out.sortedBy { it.first }

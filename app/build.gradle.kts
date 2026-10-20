@@ -26,8 +26,8 @@ android {
         applicationId = "com.vedalibrary.app"
         minSdk = 26
         targetSdk = 35
-        versionCode = 54
-        versionName = "1.3.6"
+        versionCode = 55
+        versionName = "1.3.7"
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
         buildConfigField("String", "GITHUB_FILES_TOKEN", "\"$githubFilesToken\"")
     }
