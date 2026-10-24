@@ -28,11 +28,56 @@ from tkinter import filedialog, messagebox, ttk
 import llama_client
 import recompose
 
+try:
+    import pdfplumber
+    HAS_PDFPLUMBER = True
+except Exception:
+    HAS_PDFPLUMBER = False
+try:
+    import fitz
+    HAS_FITZ = True
+except Exception:
+    HAS_FITZ = False
+
 HERE = os.path.dirname(os.path.abspath(__file__))
 LECTURES_DIR = os.path.join(os.path.dirname(HERE), "lectures")
 if LECTURES_DIR not in sys.path:
     sys.path.insert(0, LECTURES_DIR)
 import lectures_build
+
+
+# ============================================================ PDF text extraction
+def extract_pdf_text(path):
+    """Извлечь текст из PDF. Возвращает (text, error_msg)."""
+    if HAS_PDFPLUMBER:
+        try:
+            parts = []
+            with pdfplumber.open(path) as pdf:
+                for page in pdf.pages:
+                    t = page.extract_text()
+                    if t:
+                        parts.append(t)
+            text = "\n\n".join(parts)
+            if text.strip():
+                return text, None
+        except Exception as e:
+            pass  # попробуем fitz ниже
+    if HAS_FITZ:
+        try:
+            parts = []
+            doc = fitz.open(path)
+            for page in doc:
+                t = page.get_text("text")
+                if t:
+                    parts.append(t)
+            doc.close()
+            text = "\n\n".join(parts)
+            if text.strip():
+                return text, None
+        except Exception as e:
+            return "", str(e)
+    return "", "Нет доступных PDF-движков (нужен pdfplumber или pymupdf)"
+
 
 AI_VERSION = 2
 
@@ -55,6 +100,7 @@ SYSTEM_JSON = ("Ты — часть конвейера dbcomposer (сборка 
 
 #: автошаблоны границ глав (режим «Автошаблоны», пользовательский regex — выше)
 PRESET_CHAPTER_RES = (
+    r"^(?:Глава|ГЛАВА|CHAPTER|Chapter)\s+(?P<chapter>\d{1,4}|[IVXLCDM]{1,8}|первая|вторая|третья|четвёртая|пятая|шестая|седьмая|восьмая|девятая|десятая|одиннадцатая|двенадцатая|тринадцатая|четырнадцатая|пятнадцатая|шестнадцатая|семнадцатая|восемнадцатая|девятнадцатая|двадцатая)\s*[.:—–-]?\s*(?P<title>.*)$",
     r"^(?:Глава|ГЛАВА|CHAPTER|Chapter)\s+(?P<chapter>\d{1,4}|[IVXLCDM]{1,8})\s*[.:—–-]?\s*(?P<title>.*)$",
     r"^(?:Раздел|РАЗДЕЛ|SECTION|Section)\s+(?P<chapter>\d{1,4})\s*[.:—–-]?\s*(?P<title>.*)$",
     r"^===\s*(?P<chapter>\d{1,4})\s*===$",
@@ -113,8 +159,19 @@ def _roman_to_int(s):
         return None
 
 
+RU_ORDINALS = {
+    "первая": 1, "вторая": 2, "третья": 3, "четвёртая": 4, "пятая": 5,
+    "шестая": 6, "седьмая": 7, "восьмая": 8, "девятая": 9, "десятая": 10,
+    "одиннадцатая": 11, "двенадцатая": 12, "тринадцатая": 13, "четырнадцатая": 14,
+    "пятнадцатая": 15, "шестнадцатая": 16, "семнадцатая": 17, "восемнадцатая": 18,
+    "девятнадцатая": 19, "двадцатая": 20,
+}
+
+
 def _num(v):
-    v = (v or "").strip()
+    v = (v or "").strip().lower()
+    if v in RU_ORDINALS:
+        return RU_ORDINALS[v]
     if RE_ROMAN.match(v):
         n = _roman_to_int(v)
         if n:
@@ -507,25 +564,25 @@ def binding_messages(book_type, basename, paras):
 
 
 def structure_messages(book_title, text):
-    # 30000 симв. ~ до 20k токенов — влезает в контекст 32k даже под русским текстом
-    body = text[:30000]
+    # 50000 симв. ~ до 30k токенов — влезает в контекст 32k+ под русским текстом
+    body = text[:50000]
     if len(text) > len(body):
-        body += "\n\n[...текст обрезан до 30000 символов...]"
+        body += "\n\n[...текст обрезан до 50000 символов...]"
     return [
         {"role": "system", "content": SYSTEM_JSON},
         {"role": "user", "content":
-         "Найди в тексте границы ГЛАВ (и разделов, если есть).\n"
-         "Название книги (подсказка): %s\n"
-         "Верни JSON:\n"
-         '{"book_title": "<название по тексту или подсказке>",'
-         '"chapters": [{"heading": "<ТОЧНАЯ строка-заголовок, скопированная из '
-         'текста БЕЗ изменений>", "number": <порядковый номер с 1>, '
-         '"song": <раздел с 1, если есть>, '
-         '"song_name": "<название раздела, только когда song новый>", '
-         '"title": "<короткий титул>"}]}\n'
-         "Строго: heading — точная подстрока текста (регистр и пунктуация как в "
-         "тексте); chapters — по порядку следования; заголовков нет — "
-         '{"book_title": "...", "chapters": []}.\n---\n%s\n---' % (book_title or "—", body)},
+          "Найди в тексте границы ГЛАВ (и разделов, если есть).\n"
+          "Название книги (подсказка): %s\n"
+          "Верни JSON:\n"
+          '{"book_title": "<название по тексту или подсказке>",'
+          '"chapters": [{"heading": "<ТОЧНАЯ строка-заголовок, скопированная из '
+          'текста БЕЗ изменений>", "number": <порядковый номер с 1>, '
+          '"song": <раздел с 1, если есть>, '
+          '"song_name": "<название раздела, только когда song новый>", '
+          '"title": "<короткий титул>"}]}\n'
+          "Строго: heading — точная подстрока текста (регистр и пунктуация как в "
+          "тексте); chapters — по порядку следования; заголовков нет — "
+          '{"book_title": "...", "chapters": []}.\n---\n%s\n---' % (book_title or "—", body)},
     ]
 
 
@@ -628,11 +685,17 @@ class AIImportTab(ttk.Frame):
 
         r1 = ttk.Frame(srv)
         r1.pack(fill="x", pady=(4, 0))
-        ttk.Label(r1, text="Модель:").pack(side="left")
+        ttk.Label(r1, text="llama-server.exe:").pack(side="left")
+        self.v_exe = tk.StringVar(value=self.cfg.get("exe", ""))
+        ttk.Entry(r1, textvariable=self.v_exe).pack(side="left", fill="x", expand=True, padx=4)
+        ttk.Button(r1, text="…", width=3, command=self._pick_exe).pack(side="left")
+        ttk.Label(r1, text="Модель:").pack(side="left", padx=(8, 2))
         self.v_model = tk.StringVar(value=self.cfg.get("model", ""))
-        ttk.Entry(r1, textvariable=self.v_model).pack(
-            side="left", fill="x", expand=True, padx=4)
+        ttk.Entry(r1, textvariable=self.v_model).pack(side="left", fill="x", expand=True, padx=4)
         ttk.Button(r1, text="…", width=3, command=self._pick_model).pack(side="left")
+        ttk.Label(r1, text="Хост:").pack(side="left", padx=(8, 2))
+        self.v_host = tk.StringVar(value=self.cfg.get("host", "127.0.0.1"))
+        ttk.Entry(r1, textvariable=self.v_host, width=15).pack(side="left")
         ttk.Label(r1, text="Порт:").pack(side="left", padx=(8, 2))
         self.v_port = tk.StringVar(value=str(self.cfg.get("port", 8080)))
         ttk.Entry(r1, textvariable=self.v_port, width=6).pack(side="left")
@@ -644,10 +707,16 @@ class AIImportTab(ttk.Frame):
         ttk.Entry(r2, textvariable=self.v_ctx, width=8).pack(side="left", padx=(2, 6))
         ttk.Label(r2, text="Аргументы:").pack(side="left")
         self.v_extra = tk.StringVar(value=self.cfg.get("extra", ""))
-        ttk.Entry(r2, textvariable=self.v_extra).pack(
-            side="left", fill="x", expand=True, padx=4)
+        ttk.Entry(r2, textvariable=self.v_extra).pack(side="left", fill="x", expand=True, padx=4)
         ttk.Label(r2, text="exe/путь к модели — в полях выше, сохраняется при Запустить",
                   foreground="gray").pack(side="left", padx=4)
+
+    def _pick_exe(self):
+        p = filedialog.askopenfilename(
+            title="llama-server.exe", parent=self,
+            filetypes=[("Executable", "*.exe"), ("Все", "*.*")])
+        if p:
+            self.v_exe.set(p)
 
     def _pick_model(self):
         p = filedialog.askopenfilename(
@@ -657,7 +726,9 @@ class AIImportTab(ttk.Frame):
             self.v_model.set(p)
 
     def _srv_patch(self):
-        patch = {"model": self.v_model.get().strip(), "port": self.v_port.get().strip(),
+        patch = {"exe": self.v_exe.get().strip(), "model": self.v_model.get().strip(),
+                 "host": self.v_host.get().strip(),
+                 "port": self.v_port.get().strip(),
                  "ctx": self.v_ctx.get().strip(), "extra": self.v_extra.get().strip()}
         try:
             patch["port"] = int(patch["port"])
@@ -1127,14 +1198,13 @@ class AIImportTab(ttk.Frame):
     def _cap_hint(self):
         t = (self.v_btype.get() or "").strip().upper().split("-")[0]
         if t in BIG_TYPES:
-            self.lbl_cap.configure(text="лимит тела в приложении: 120 000 симв.")
+            self.lbl_cap.configure(text="лимит тела в приложении: 120 000 симв.", foreground="gray")
         elif t == "GC":
-            self.lbl_cap.configure(text="лимит тела в приложении: 60 000 симв.")
+            self.lbl_cap.configure(text="лимит тела в приложении: 60 000 симв.", foreground="gray")
         else:
             self.lbl_cap.configure(
-                text="⚠ для типа %s в приложении лимит тела 8 000 символов "
-                     "( длинный текст обрежется )" % (t or "?"),
-                foreground="#c0392b")
+                text="для типа %s в приложении лимит 8 000 симв. (в dbcomposer без лимитов)" % (t or "?"),
+                foreground="gray")
 
     def _chmode_ui(self):
         mode = self.v_chmode.get()
@@ -1169,16 +1239,23 @@ class AIImportTab(ttk.Frame):
 
     def t2_load(self):
         p = filedialog.askopenfilename(
-            title="Текст лекции/книги", parent=self,
-            filetypes=[("Текст", "*.txt *.md"), ("Все", "*.*")])
+            title="Текст лекции/книги / PDF", parent=self,
+            filetypes=[("Текст и PDF", "*.txt *.md *.pdf"), ("Текст", "*.txt *.md"), ("PDF", "*.pdf"), ("Все", "*.*")])
         if not p:
             return
-        try:
-            with open(p, "r", encoding="utf-8", errors="replace") as f:
-                text = f.read()
-        except OSError as e:
-            messagebox.showerror("Не читается", str(e))
-            return
+        ext = os.path.splitext(p)[1].lower()
+        if ext == ".pdf":
+            text, err = extract_pdf_text(p)
+            if err:
+                messagebox.showerror("PDF ошибка", err)
+                return
+        else:
+            try:
+                with open(p, "r", encoding="utf-8", errors="replace") as f:
+                    text = f.read()
+            except OSError as e:
+                messagebox.showerror("Не читается", str(e))
+                return
         self.txt2.delete("1.0", "end")
         self.txt2.insert("1.0", text)
         self.v_srcfile.set(os.path.basename(p))

@@ -1,4 +1,33 @@
 {
- "last_folder": "F:/AI/тест2/DB/Книги ачарий",
- "files": {}
+ "last_folder": "F:/AI/Development/Book DB",
+ "files": {
+  "F:/AI/Development/Book DB\\Acharyi_eng.db": [
+   4489216,
+   1790953023.2696342
+  ],
+  "F:/AI/Development/Book DB\\Acharyi_rus.db": [
+   2969600,
+   1791018387.0110688
+  ],
+  "F:/AI/Development/Book DB\\GopalaChampu_rus.db": [
+   3473408,
+   1791013841.5999734
+  ],
+  "F:/AI/Development/Book DB\\Prabhupada_eng.db": [
+   158236672,
+   1791020390.3170216
+  ],
+  "F:/AI/Development/Book DB\\Prabhupada_rus.db": [
+   153735168,
+   1790953221.5178
+  ],
+  "F:/AI/Development/Book DB\\Syamakunda_CC.db": [
+   10469376,
+   1790964272.502442
+  ],
+  "F:/AI/Development/Book DB\\Шри Чайтанья-Бхагавата.db": [
+   733184,
+   1792861348.6076589
+  ]
+ }
 }

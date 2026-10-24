@@ -20,6 +20,8 @@ import recompose
 import lectures_gui
 import audio_gui
 import ai_import
+import delta_gui
+import release_gui
 
 APP_TITLE = "dbcomposer v%s — чистка библиотечных баз" % recompose.TOOLS_VERSION
 CFG_PATH = os.path.join(os.path.dirname(os.path.abspath(__file__)), "dbcomposer.json")
@@ -178,6 +180,10 @@ class App(tk.Tk):
         self.nb.add(self.tab_audio, text="🎧 Базы Аудио")
         self.tab_ai = ai_import.AIImportTab(self.nb, self)
         self.nb.add(self.tab_ai, text="🤖 AI-импорт")
+        self.tab_delta = delta_gui.DeltaTab(self.nb, self)
+        self.nb.add(self.tab_delta, text="📦 Дельта/Каталог")
+        self.tab_release = release_gui.ReleaseTab(self.nb, self)
+        self.nb.add(self.tab_release, text="🚀 Релиз")
         self.nb.bind("<<NotebookTabChanged>>", self.on_tab)
         self.protocol("WM_DELETE_WINDOW", self.on_close)
 
@@ -205,6 +211,10 @@ class App(tk.Tk):
             busy.append("аудио-задача")
         if self.tab_ai.busy:
             busy.append("ИИ-задача")
+        if self.tab_delta.busy:
+            busy.append("дельта/каталог")
+        if self.tab_release.busy:
+            busy.append("релиз")
         if busy:
             messagebox.showwarning(
                 "Занято",

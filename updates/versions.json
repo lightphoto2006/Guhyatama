@@ -64,12 +64,10 @@
       "title": "Книги ачарий (рус)",
       "lang": "rus",
       "file": "Acharyi_rus.db",
-      "version": 5,
+      "version": 6,
       "url": "https://api.github.com/repos/lightphoto2006/Guhyatama-files/releases/assets/607505825",
-      "auth": "github",
       "notes": "Транслит: ш вместо щ (кршна, шри, лакшми).",
-      "next_id": 2,
-      "adopt": false
+      "auth": "github"
     }
   },
   "audio": {

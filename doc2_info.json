@@ -1,0 +1,3110 @@
+{
+  "paragraphs": [
+    {
+      "index": 0,
+      "text": "Рамочный договор на разработку программного обеспечения ",
+      "style": "Heading 1",
+      "alignment": null,
+      "runs": [
+        {
+          "text": "Рамочный договор на ",
+          "bold": null,
+          "italic": null,
+          "underline": null,
+          "font_name": null,
+          "font_size": null,
+          "font_color": null
+        },
+        {
+          "text": "разработку программного",
+          "bold": null,
+          "italic": null,
+          "underline": null,
+          "font_name": null,
+          "font_size": null,
+          "font_color": null
+        },
+        {
+          "text": " обеспечения ",
+          "bold": null,
+          "italic": null,
+          "underline": null,
+          "font_name": null,
+          "font_size": null,
+          "font_color": null
+        }
+      ]
+    },
+    {
+      "index": 1,
+      "text": "Oct 21, 2026",
+      "style": "Normal",
+      "alignment": null,
+      "runs": [
+        {
+          "text": "Oct",
+          "bold": null,
+          "italic": null,
+          "underline": null,
+          "font_name": null,
+          "font_size": null,
+          "font_color": null
+        },
+        {
+          "text": " 21, 2026",
+          "bold": null,
+          "italic": null,
+          "underline": null,
+          "font_name": null,
+          "font_size": null,
+          "font_color": null
+        }
+      ]
+    },
+    {
+      "index": 2,
+      "text": "г. [Москва]. Дата подписания: ",
+      "style": "Normal",
+      "alignment": null,
+      "runs": [
+        {
+          "text": "г. [",
+          "bold": null,
+          "italic": null,
+          "underline": null,
+          "font_name": null,
+          "font_size": null,
+          "font_color": null
+        },
+        {
+          "text": "Москва",
+          "bold": null,
+          "italic": null,
+          "underline": null,
+          "font_name": null,
+          "font_size": null,
+          "font_color": null
+        },
+        {
+          "text": "]. Дата подписания: ",
+          "bold": null,
+          "italic": null,
+          "underline": null,
+          "font_name": null,
+          "font_size": null,
+          "font_color": null
+        }
+      ]
+    },
+    {
+      "index": 3,
+      "text": "Общество с ограниченной ответственностью «[наименование]», именуемое в дальнейшем «Заказчик», в лице [должность, ФИО], действующего на основании [Устава / доверенности № __ от __], с одной стороны, и",
+      "style": "Normal",
+      "alignment": null,
+      "runs": [
+        {
+          "text": "Общество с ограниченной ответственностью «[наименование]», именуемое в дальнейшем ",
+          "bold": null,
+          "italic": null,
+          "underline": null,
+          "font_name": null,
+          "font_size": null,
+          "font_color": null
+        },
+        {
+          "text": "«Заказчик»",
+          "bold": true,
+          "italic": null,
+          "underline": null,
+          "font_name": null,
+          "font_size": null,
+          "font_color": null
+        },
+        {
+          "text": ", в лице [должность, ФИО], действующего на основании [Устава / доверенности № __ от __], с одной стороны, и",
+          "bold": null,
+          "italic": null,
+          "underline": null,
+          "font_name": null,
+          "font_size": null,
+          "font_color": null
+        }
+      ]
+    },
+    {
+      "index": 4,
+      "text": "Индивидуальный предприниматель [ФИО полностью], ОГРНИП [номер], ИНН [номер], именуемый в дальнейшем «Исполнитель», действующий на основании свидетельства о государственной регистрации / записи в ЕГРИП, с другой стороны,",
+      "style": "Normal",
+      "alignment": null,
+      "runs": [
+        {
+          "text": "Индивидуальный предприниматель [ФИО полностью], ОГРНИП [номер], ИНН [номер], именуемый в дальнейшем ",
+          "bold": null,
+          "italic": null,
+          "underline": null,
+          "font_name": null,
+          "font_size": null,
+          "font_color": null
+        },
+        {
+          "text": "«Исполнитель»",
+          "bold": true,
+          "italic": null,
+          "underline": null,
+          "font_name": null,
+          "font_size": null,
+          "font_color": null
+        },
+        {
+          "text": ", действующий на основании свидетельства о государственной регистрации / записи в ЕГРИП, с другой стороны,",
+          "bold": null,
+          "italic": null,
+          "underline": null,
+          "font_name": null,
+          "font_size": null,
+          "font_color": null
+        }
+      ]
+    },
+    {
+      "index": 5,
+      "text": "именуемые совместно «Стороны», заключили настоящий рамочный договор (далее — «Договор») о нижеследующем.",
+      "style": "Normal",
+      "alignment": null,
+      "runs": [
+        {
+          "text": "именуемые совместно ",
+          "bold": null,
+          "italic": null,
+          "underline": null,
+          "font_name": null,
+          "font_size": null,
+          "font_color": null
+        },
+        {
+          "text": "«Стороны»",
+          "bold": true,
+          "italic": null,
+          "underline": null,
+          "font_name": null,
+          "font_size": null,
+          "font_color": null
+        },
+        {
+          "text": ", заключили настоящий рамочный договор (далее — ",
+          "bold": null,
+          "italic": null,
+          "underline": null,
+          "font_name": null,
+          "font_size": null,
+          "font_color": null
+        },
+        {
+          "text": "«Договор»",
+          "bold": true,
+          "italic": null,
+          "underline": null,
+          "font_name": null,
+          "font_size": null,
+          "font_color": null
+        },
+        {
+          "text": ") о нижеследующем.",
+          "bold": null,
+          "italic": null,
+          "underline": null,
+          "font_name": null,
+          "font_size": null,
+          "font_color": null
+        }
+      ]
+    },
+    {
+      "index": 6,
+      "text": "1. Предмет договора и основные понятия",
+      "style": "Heading 2",
+      "alignment": null,
+      "runs": [
+        {
+          "text": "1. Предмет договора и основные понятия",
+          "bold": null,
+          "italic": null,
+          "underline": null,
+          "font_name": null,
+          "font_size": null,
+          "font_color": null
+        }
+      ]
+    },
+    {
+      "index": 7,
+      "text": "1.1. Настоящий Договор является рамочным договором (п. 1 ст. 429.1 ГК РФ). Он определяет общие условия, на которых Исполнитель по заданию Заказчика выполняет работы по разработке и внедрению программного обеспечения и оказывает связанные с ними услуги, а Заказчик принимает и оплачивает результат.",
+      "style": "Normal",
+      "alignment": null,
+      "runs": [
+        {
+          "text": "1.1. Настоящий Договор является рамочным договором (п. 1 ст. 429.1 ГК РФ). Он определяет общие условия, на которых Исполнитель по заданию Заказчика выполняет работы по разработке и внедрению программного обеспечения и оказывает связанные с ними услуги, а Заказчик принимает и оплачивает результат.",
+          "bold": null,
+          "italic": null,
+          "underline": null,
+          "font_name": null,
+          "font_size": null,
+          "font_color": null
+        }
+      ]
+    },
+    {
+      "index": 8,
+      "text": "1.2. Конкретный объём, содержание, срок и стоимость каждой работы согласуются Сторонами в отдельных дополнительных соглашениях к Договору (далее — «Заказ»), оформляемых по форме Приложения № 1. Каждый подписанный Заказ является неотъемлемой частью Договора.",
+      "style": "Normal",
+      "alignment": null,
+      "runs": [
+        {
+          "text": "1.2. Конкретный объём, содержание, срок и стоимость каждой работы согласуются Сторонами в отдельных дополнительных соглашениях к Договору (далее — ",
+          "bold": null,
+          "italic": null,
+          "underline": null,
+          "font_name": null,
+          "font_size": null,
+          "font_color": null
+        },
+        {
+          "text": "«Заказ»",
+          "bold": true,
+          "italic": null,
+          "underline": null,
+          "font_name": null,
+          "font_size": null,
+          "font_color": null
+        },
+        {
+          "text": "), оформляемых по форме Приложения № 1. Каждый подписанный Заказ является неотъемлемой частью Договора.",
+          "bold": null,
+          "italic": null,
+          "underline": null,
+          "font_name": null,
+          "font_size": null,
+          "font_color": null
+        }
+      ]
+    },
+    {
+      "index": 9,
+      "text": "1.3. Сам по себе Договор не обязывает Заказчика выдавать Заказы, а Исполнителя — принимать их. Обязательства по выполнению и оплате работ возникают только после подписания Заказа обеими Сторонами.",
+      "style": "Normal",
+      "alignment": null,
+      "runs": [
+        {
+          "text": "1.3. Сам по себе Договор не обязывает Заказчика выдавать Заказы, а Исполнителя — принимать их. Обязательства по выполнению и оплате работ возникают только после подписания Заказа обеими Сторонами.",
+          "bold": null,
+          "italic": null,
+          "underline": null,
+          "font_name": null,
+          "font_size": null,
+          "font_color": null
+        }
+      ]
+    },
+    {
+      "index": 10,
+      "text": "1.4. К отношениям Сторон применяются положения главы 37 ГК РФ (подряд) и, в части оказания услуг, главы 39 ГК РФ. [Вариант: если работы носят преимущественно научно-технический характер, Стороны могут уточнить это в Заказе.]",
+      "style": "Normal",
+      "alignment": null,
+      "runs": [
+        {
+          "text": "1.4. К отношениям Сторон применяются положения главы 37 ГК РФ (подряд) и, в части оказания услуг, главы 39 ГК РФ. [Вариант: если работы носят преимущественно научно-технический характер, Стороны могут уточнить это в Заказе.]",
+          "bold": null,
+          "italic": null,
+          "underline": null,
+          "font_name": null,
+          "font_size": null,
+          "font_color": null
+        }
+      ]
+    },
+    {
+      "index": 11,
+      "text": "1.5. В Договоре используются понятия:",
+      "style": "Normal",
+      "alignment": null,
+      "runs": [
+        {
+          "text": "1.5. В ",
+          "bold": null,
+          "italic": null,
+          "underline": null,
+          "font_name": null,
+          "font_size": null,
+          "font_color": null
+        },
+        {
+          "text": "Договоре",
+          "bold": null,
+          "italic": null,
+          "underline": null,
+          "font_name": null,
+          "font_size": null,
+          "font_color": null
+        },
+        {
+          "text": " ",
+          "bold": null,
+          "italic": null,
+          "underline": null,
+          "font_name": null,
+          "font_size": null,
+          "font_color": null
+        },
+        {
+          "text": "используются",
+          "bold": null,
+          "italic": null,
+          "underline": null,
+          "font_name": null,
+          "font_size": null,
+          "font_color": null
+        },
+        {
+          "text": " ",
+          "bold": null,
+          "italic": null,
+          "underline": null,
+          "font_name": null,
+          "font_size": null,
+          "font_color": null
+        },
+        {
+          "text": "понятия",
+          "bold": null,
+          "italic": null,
+          "underline": null,
+          "font_name": null,
+          "font_size": null,
+          "font_color": null
+        },
+        {
+          "text": ":",
+          "bold": null,
+          "italic": null,
+          "underline": null,
+          "font_name": null,
+          "font_size": null,
+          "font_color": null
+        }
+      ]
+    },
+    {
+      "index": 12,
+      "text": "Работы — разработка, доработка, тестирование, внедрение, сопровождение ПО и иные действия, указанные в Заказе;",
+      "style": "List Paragraph",
+      "alignment": null,
+      "runs": [
+        {
+          "text": "Работы",
+          "bold": true,
+          "italic": null,
+          "underline": null,
+          "font_name": null,
+          "font_size": null,
+          "font_color": null
+        },
+        {
+          "text": " — разработка, доработка, тестирование, внедрение, сопровождение ПО и иные действия, указанные в Заказе;",
+          "bold": null,
+          "italic": null,
+          "underline": null,
+          "font_name": null,
+          "font_size": null,
+          "font_color": null
+        }
+      ]
+    },
+    {
+      "index": 13,
+      "text": "Результат — программный код, исходные тексты, документация и иные материалы, создаваемые по Заказу;",
+      "style": "List Paragraph",
+      "alignment": null,
+      "runs": [
+        {
+          "text": "Результат",
+          "bold": true,
+          "italic": null,
+          "underline": null,
+          "font_name": null,
+          "font_size": null,
+          "font_color": null
+        },
+        {
+          "text": " — программный код, исходные тексты, документация и иные материалы, создаваемые по Заказу;",
+          "bold": null,
+          "italic": null,
+          "underline": null,
+          "font_name": null,
+          "font_size": null,
+          "font_color": null
+        }
+      ]
+    },
+    {
+      "index": 14,
+      "text": "Техническое задание (ТЗ) — документ, описывающий требования к Результату; может быть частью Заказа или приложением к нему;",
+      "style": "List Paragraph",
+      "alignment": null,
+      "runs": [
+        {
+          "text": "Техническое задание (ТЗ)",
+          "bold": true,
+          "italic": null,
+          "underline": null,
+          "font_name": null,
+          "font_size": null,
+          "font_color": null
+        },
+        {
+          "text": " — документ, описывающий требования к Результату; может быть частью ",
+          "bold": null,
+          "italic": null,
+          "underline": null,
+          "font_name": null,
+          "font_size": null,
+          "font_color": null
+        },
+        {
+          "text": "Заказа",
+          "bold": null,
+          "italic": null,
+          "underline": null,
+          "font_name": null,
+          "font_size": null,
+          "font_color": null
+        },
+        {
+          "text": " ",
+          "bold": null,
+          "italic": null,
+          "underline": null,
+          "font_name": null,
+          "font_size": null,
+          "font_color": null
+        },
+        {
+          "text": "или",
+          "bold": null,
+          "italic": null,
+          "underline": null,
+          "font_name": null,
+          "font_size": null,
+          "font_color": null
+        },
+        {
+          "text": " ",
+          "bold": null,
+          "italic": null,
+          "underline": null,
+          "font_name": null,
+          "font_size": null,
+          "font_color": null
+        },
+        {
+          "text": "приложением",
+          "bold": null,
+          "italic": null,
+          "underline": null,
+          "font_name": null,
+          "font_size": null,
+          "font_color": null
+        },
+        {
+          "text": " к ",
+          "bold": null,
+          "italic": null,
+          "underline": null,
+          "font_name": null,
+          "font_size": null,
+          "font_color": null
+        },
+        {
+          "text": "нему",
+          "bold": null,
+          "italic": null,
+          "underline": null,
+          "font_name": null,
+          "font_size": null,
+          "font_color": null
+        },
+        {
+          "text": ";",
+          "bold": null,
+          "italic": null,
+          "underline": null,
+          "font_name": null,
+          "font_size": null,
+          "font_color": null
+        }
+      ]
+    },
+    {
+      "index": 15,
+      "text": "Этап — часть Работ с отдельным сроком и стоимостью, указанная в Заказе;",
+      "style": "List Paragraph",
+      "alignment": null,
+      "runs": [
+        {
+          "text": "Этап",
+          "bold": true,
+          "italic": null,
+          "underline": null,
+          "font_name": null,
+          "font_size": null,
+          "font_color": null
+        },
+        {
+          "text": " — часть Работ с отдельным сроком и стоимостью, указанная в Заказе;",
+          "bold": null,
+          "italic": null,
+          "underline": null,
+          "font_name": null,
+          "font_size": null,
+          "font_color": null
+        }
+      ]
+    },
+    {
+      "index": 16,
+      "text": "Акт — акт сдачи-приёмки выполненных Работ (Этапа) по форме Приложения № 2.",
+      "style": "List Paragraph",
+      "alignment": null,
+      "runs": [
+        {
+          "text": "Акт",
+          "bold": true,
+          "italic": null,
+          "underline": null,
+          "font_name": null,
+          "font_size": null,
+          "font_color": null
+        },
+        {
+          "text": " — акт сдачи-приёмки выполненных Работ (Этапа) по форме Приложения № 2.",
+          "bold": null,
+          "italic": null,
+          "underline": null,
+          "font_name": null,
+          "font_size": null,
+          "font_color": null
+        }
+      ]
+    },
+    {
+      "index": 17,
+      "text": "2. Порядок оформления Заказов",
+      "style": "Heading 2",
+      "alignment": null,
+      "runs": [
+        {
+          "text": "2. Порядок оформления Заказов",
+          "bold": null,
+          "italic": null,
+          "underline": null,
+          "font_name": null,
+          "font_size": null,
+          "font_color": null
+        }
+      ]
+    },
+    {
+      "index": 18,
+      "text": "2.1. Заказчик направляет Исполнителю запрос на выполнение работ (письмом, по электронной почте или через согласованный трекер задач) с описанием задачи. В течение [3] рабочих дней Исполнитель направляет предварительную оценку объёма, сроков и стоимости либо мотивированный отказ от Заказа.",
+      "style": "Normal",
+      "alignment": null,
+      "runs": [
+        {
+          "text": "2.1. Заказчик направляет Исполнителю запрос на выполнение работ (письмом, по электронной почте или через согласованный трекер задач) с описанием задачи. В течение [3] рабочих дней Исполнитель направляет предварительную оценку объёма, сроков и стоимости либо мотивированный отказ от Заказа.",
+          "bold": null,
+          "italic": null,
+          "underline": null,
+          "font_name": null,
+          "font_size": null,
+          "font_color": null
+        }
+      ]
+    },
+    {
+      "index": 19,
+      "text": "2.2. Заказ должен содержать:",
+      "style": "Normal",
+      "alignment": null,
+      "runs": [
+        {
+          "text": "2.2. ",
+          "bold": null,
+          "italic": null,
+          "underline": null,
+          "font_name": null,
+          "font_size": null,
+          "font_color": null
+        },
+        {
+          "text": "Заказ",
+          "bold": null,
+          "italic": null,
+          "underline": null,
+          "font_name": null,
+          "font_size": null,
+          "font_color": null
+        },
+        {
+          "text": " ",
+          "bold": null,
+          "italic": null,
+          "underline": null,
+          "font_name": null,
+          "font_size": null,
+          "font_color": null
+        },
+        {
+          "text": "должен",
+          "bold": null,
+          "italic": null,
+          "underline": null,
+          "font_name": null,
+          "font_size": null,
+          "font_color": null
+        },
+        {
+          "text": " ",
+          "bold": null,
+          "italic": null,
+          "underline": null,
+          "font_name": null,
+          "font_size": null,
+          "font_color": null
+        },
+        {
+          "text": "содержать",
+          "bold": null,
+          "italic": null,
+          "underline": null,
+          "font_name": null,
+          "font_size": null,
+          "font_color": null
+        },
+        {
+          "text": ":",
+          "bold": null,
+          "italic": null,
+          "underline": null,
+          "font_name": null,
+          "font_size": null,
+          "font_color": null
+        }
+      ]
+    },
+    {
+      "index": 20,
+      "text": "наименование и описание Работ (или ссылку на ТЗ);",
+      "style": "List Paragraph",
+      "alignment": null,
+      "runs": [
+        {
+          "text": "наименование и описание Работ (или ссылку на ТЗ);",
+          "bold": null,
+          "italic": null,
+          "underline": null,
+          "font_name": null,
+          "font_size": null,
+          "font_color": null
+        }
+      ]
+    },
+    {
+      "index": 21,
+      "text": "Этапы, сроки их выполнения и состав Результата по каждому Этапу;",
+      "style": "List Paragraph",
+      "alignment": null,
+      "runs": [
+        {
+          "text": "Этапы, сроки их выполнения и состав Результата по каждому Этапу;",
+          "bold": null,
+          "italic": null,
+          "underline": null,
+          "font_name": null,
+          "font_size": null,
+          "font_color": null
+        }
+      ]
+    },
+    {
+      "index": 22,
+      "text": "стоимость и модель оплаты: фиксированная цена за Этап / Заказ либо почасовая ставка с предельным бюджетом (Заказ с оплатой по времени);",
+      "style": "List Paragraph",
+      "alignment": null,
+      "runs": [
+        {
+          "text": "стоимость и модель оплаты: фиксированная цена за Этап / Заказ либо почасовая ставка с предельным бюджетом (Заказ с оплатой по времени);",
+          "bold": null,
+          "italic": null,
+          "underline": null,
+          "font_name": null,
+          "font_size": null,
+          "font_color": null
+        }
+      ]
+    },
+    {
+      "index": 23,
+      "text": "порядок и сроки оплаты, если они отличаются от раздела 5 Договора;",
+      "style": "List Paragraph",
+      "alignment": null,
+      "runs": [
+        {
+          "text": "порядок и сроки оплаты, если они отличаются от раздела 5 Договора;",
+          "bold": null,
+          "italic": null,
+          "underline": null,
+          "font_name": null,
+          "font_size": null,
+          "font_color": null
+        }
+      ]
+    },
+    {
+      "index": 24,
+      "text": "критерии приёмки и гарантийный срок, если они отличаются от раздела 4 Договора;",
+      "style": "List Paragraph",
+      "alignment": null,
+      "runs": [
+        {
+          "text": "критерии приёмки и гарантийный срок, если они отличаются от раздела 4 Договора;",
+          "bold": null,
+          "italic": null,
+          "underline": null,
+          "font_name": null,
+          "font_size": null,
+          "font_color": null
+        }
+      ]
+    },
+    {
+      "index": 25,
+      "text": "иные условия, требующие согласования по конкретной работе.",
+      "style": "List Paragraph",
+      "alignment": null,
+      "runs": [
+        {
+          "text": "иные условия, требующие согласования по конкретной работе.",
+          "bold": null,
+          "italic": null,
+          "underline": null,
+          "font_name": null,
+          "font_size": null,
+          "font_color": null
+        }
+      ]
+    },
+    {
+      "index": 26,
+      "text": "2.3. Заказ считается заключённым и становится обязательным с момента его подписания обеими Сторонами. Допускается подписание собственноручное, усиленной квалифицированной (или иной согласованной) электронной подписью, а также обмен скан-копиями по адресам электронной почты, указанным в разделе 12 Договора. Переписка в мессенджерах и трекере сама по себе Заказом не является.",
+      "style": "Normal",
+      "alignment": null,
+      "runs": [
+        {
+          "text": "2.3. Заказ считается заключённым и становится обязательным с момента его подписания обеими Сторонами. Допускается подписание собственноручное, усиленной квалифицированной (или иной согласованной) электронной подписью, а также обмен скан-копиями по адресам электронной почты, указанным в разделе 12 Договора. Переписка в мессенджерах и трекере сама по себе Заказом не является.",
+          "bold": null,
+          "italic": null,
+          "underline": null,
+          "font_name": null,
+          "font_size": null,
+          "font_color": null
+        }
+      ]
+    },
+    {
+      "index": 27,
+      "text": "2.4. Если условия Заказа противоречат условиям Договора, приоритет имеет Заказ, но только в части сроков, стоимости, объёма и порядка приёмки конкретных Работ. Во всех остальных вопросах применяется Договор.",
+      "style": "Normal",
+      "alignment": null,
+      "runs": [
+        {
+          "text": "2.4. Если условия Заказа противоречат условиям Договора, приоритет имеет Заказ, но только в части сроков, стоимости, объёма и порядка приёмки конкретных Работ. Во всех остальных вопросах применяется Договор.",
+          "bold": null,
+          "italic": null,
+          "underline": null,
+          "font_name": null,
+          "font_size": null,
+          "font_color": null
+        }
+      ]
+    },
+    {
+      "index": 28,
+      "text": "2.5. Изменение объёма, сроков или стоимости Работ по подписанному Заказу оформляется дополнительным соглашением к этому Заказу. До его подписания Исполнитель вправе продолжать Работы в прежнем объёме и не обязан выполнять дополнительные.",
+      "style": "Normal",
+      "alignment": null,
+      "runs": [
+        {
+          "text": "2.5. Изменение объёма, сроков или стоимости Работ по подписанному Заказу оформляется дополнительным соглашением к этому Заказу. До его подписания Исполнитель вправе продолжать Работы в прежнем объёме и не обязан выполнять дополнительные.",
+          "bold": null,
+          "italic": null,
+          "underline": null,
+          "font_name": null,
+          "font_size": null,
+          "font_color": null
+        }
+      ]
+    },
+    {
+      "index": 29,
+      "text": "2.6. Исполнитель вправе привлекать к выполнению Заказа третьих лиц (субподрядчиков) только с письменного согласия Заказчика. Исполнитель отвечает перед Заказчиком за действия привлечённых лиц как за свои и обеспечивает получение от них прав на Результат в объёме, необходимом для исполнения раздела 6 Договора.",
+      "style": "Normal",
+      "alignment": null,
+      "runs": [
+        {
+          "text": "2.6. Исполнитель вправе привлекать к выполнению Заказа третьих лиц (субподрядчиков) только с письменного согласия Заказчика. Исполнитель отвечает перед Заказчиком за действия привлечённых лиц как за свои и обеспечивает получение от них прав на Результат в объёме, необходимом для исполнения раздела 6 Договора.",
+          "bold": null,
+          "italic": null,
+          "underline": null,
+          "font_name": null,
+          "font_size": null,
+          "font_color": null
+        }
+      ]
+    },
+    {
+      "index": 30,
+      "text": "3. Права и обязанности Сторон",
+      "style": "Heading 2",
+      "alignment": null,
+      "runs": [
+        {
+          "text": "3. Права и обязанности Сторон",
+          "bold": null,
+          "italic": null,
+          "underline": null,
+          "font_name": null,
+          "font_size": null,
+          "font_color": null
+        }
+      ]
+    },
+    {
+      "index": 31,
+      "text": "3.1. Исполнитель обязуется:",
+      "style": "Normal",
+      "alignment": null,
+      "runs": [
+        {
+          "text": "3.1. Исполнитель обязуется:",
+          "bold": null,
+          "italic": null,
+          "underline": null,
+          "font_name": null,
+          "font_size": null,
+          "font_color": null
+        }
+      ]
+    },
+    {
+      "index": 32,
+      "text": "выполнять Работы в соответствии с Заказом, ТЗ и требованиями Договора, своевременно и с надлежащим качеством;",
+      "style": "List Paragraph",
+      "alignment": null,
+      "runs": [
+        {
+          "text": "выполнять Работы в соответствии с Заказом, ТЗ и требованиями Договора, своевременно и с надлежащим качеством;",
+          "bold": null,
+          "italic": null,
+          "underline": null,
+          "font_name": null,
+          "font_size": null,
+          "font_color": null
+        }
+      ]
+    },
+    {
+      "index": 33,
+      "text": "сообщать Заказчику о возникших препятствиях, рисках срыва сроков и обстоятельствах, которые могут повлиять на качество Результата;",
+      "style": "List Paragraph",
+      "alignment": null,
+      "runs": [
+        {
+          "text": "сообщать Заказчику о возникших препятствиях, рисках срыва сроков и обстоятельствах, которые могут повлиять на качество Результата;",
+          "bold": null,
+          "italic": null,
+          "underline": null,
+          "font_name": null,
+          "font_size": null,
+          "font_color": null
+        }
+      ]
+    },
+    {
+      "index": 34,
+      "text": "по запросу Заказчика, но не чаще [одного раза в неделю], предоставлять информацию о ходе выполнения Работ;",
+      "style": "List Paragraph",
+      "alignment": null,
+      "runs": [
+        {
+          "text": "по запросу Заказчика, но не чаще [одного раза в неделю], предоставлять информацию о ходе выполнения Работ;",
+          "bold": null,
+          "italic": null,
+          "underline": null,
+          "font_name": null,
+          "font_size": null,
+          "font_color": null
+        }
+      ]
+    },
+    {
+      "index": 35,
+      "text": "передавать Результат и исходные тексты в порядке, предусмотренном разделом 4 Договора;",
+      "style": "List Paragraph",
+      "alignment": null,
+      "runs": [
+        {
+          "text": "передавать Результат и исходные тексты в порядке, предусмотренном разделом 4 Договора;",
+          "bold": null,
+          "italic": null,
+          "underline": null,
+          "font_name": null,
+          "font_size": null,
+          "font_color": null
+        }
+      ]
+    },
+    {
+      "index": 36,
+      "text": "письменно уведомлять Заказчика об использовании в Результате компонентов с открытой лицензией и сторонних библиотек, а также об ограничениях, которые их лицензии накладывают на Заказчика;",
+      "style": "List Paragraph",
+      "alignment": null,
+      "runs": [
+        {
+          "text": "письменно уведомлять Заказчика об использовании в Результате компонентов с открытой лицензией и сторонних библиотек, а также об ограничениях, которые их лицензии накладывают на Заказчика;",
+          "bold": null,
+          "italic": null,
+          "underline": null,
+          "font_name": null,
+          "font_size": null,
+          "font_color": null
+        }
+      ]
+    },
+    {
+      "index": 37,
+      "text": "не нарушать при выполнении Работ исключительные и иные права третьих лиц.",
+      "style": "List Paragraph",
+      "alignment": null,
+      "runs": [
+        {
+          "text": "не нарушать при выполнении Работ исключительные и иные права третьих лиц.",
+          "bold": null,
+          "italic": null,
+          "underline": null,
+          "font_name": null,
+          "font_size": null,
+          "font_color": null
+        }
+      ]
+    },
+    {
+      "index": 38,
+      "text": "3.2. Исполнитель вправе:",
+      "style": "Normal",
+      "alignment": null,
+      "runs": [
+        {
+          "text": "3.2. ",
+          "bold": null,
+          "italic": null,
+          "underline": null,
+          "font_name": null,
+          "font_size": null,
+          "font_color": null
+        },
+        {
+          "text": "Исполнитель",
+          "bold": null,
+          "italic": null,
+          "underline": null,
+          "font_name": null,
+          "font_size": null,
+          "font_color": null
+        },
+        {
+          "text": " ",
+          "bold": null,
+          "italic": null,
+          "underline": null,
+          "font_name": null,
+          "font_size": null,
+          "font_color": null
+        },
+        {
+          "text": "вправе",
+          "bold": null,
+          "italic": null,
+          "underline": null,
+          "font_name": null,
+          "font_size": null,
+          "font_color": null
+        },
+        {
+          "text": ":",
+          "bold": null,
+          "italic": null,
+          "underline": null,
+          "font_name": null,
+          "font_size": null,
+          "font_color": null
+        }
+      ]
+    },
+    {
+      "index": 39,
+      "text": "самостоятельно определять способы, методы и последовательность выполнения Работ, а также место и режим работы, если иное не следует из Заказа;",
+      "style": "List Paragraph",
+      "alignment": null,
+      "runs": [
+        {
+          "text": "самостоятельно определять способы, методы и последовательность выполнения Работ, а также место и режим работы, если иное не следует из Заказа;",
+          "bold": null,
+          "italic": null,
+          "underline": null,
+          "font_name": null,
+          "font_size": null,
+          "font_color": null
+        }
+      ]
+    },
+    {
+      "index": 40,
+      "text": "выполнять Работы с использованием собственного оборудования, программных средств и каналов связи;",
+      "style": "List Paragraph",
+      "alignment": null,
+      "runs": [
+        {
+          "text": "выполнять Работы с использованием собственного оборудования, программных средств и каналов связи;",
+          "bold": null,
+          "italic": null,
+          "underline": null,
+          "font_name": null,
+          "font_size": null,
+          "font_color": null
+        }
+      ]
+    },
+    {
+      "index": 41,
+      "text": "заключать договоры с другими заказчиками, если это не нарушает раздел 7 Договора и сроки по подписанным Заказам;",
+      "style": "List Paragraph",
+      "alignment": null,
+      "runs": [
+        {
+          "text": "заключать договоры с другими заказчиками, если это не нарушает раздел 7 Договора и сроки по подписанным Заказам;",
+          "bold": null,
+          "italic": null,
+          "underline": null,
+          "font_name": null,
+          "font_size": null,
+          "font_color": null
+        }
+      ]
+    },
+    {
+      "index": 42,
+      "text": "приостановить Работы по Заказу при нарушении Заказчиком сроков оплаты либо непредоставлении необходимых для работы данных и доступов, уведомив его письменно.",
+      "style": "List Paragraph",
+      "alignment": null,
+      "runs": [
+        {
+          "text": "приостановить Работы по Заказу при нарушении Заказчиком сроков оплаты либо непредоставлении необходимых для работы данных и доступов, уведомив его письменно.",
+          "bold": null,
+          "italic": null,
+          "underline": null,
+          "font_name": null,
+          "font_size": null,
+          "font_color": null
+        }
+      ]
+    },
+    {
+      "index": 43,
+      "text": "3.3. Заказчик обязуется:",
+      "style": "Normal",
+      "alignment": null,
+      "runs": [
+        {
+          "text": "3.3. ",
+          "bold": null,
+          "italic": null,
+          "underline": null,
+          "font_name": null,
+          "font_size": null,
+          "font_color": null
+        },
+        {
+          "text": "Заказчик",
+          "bold": null,
+          "italic": null,
+          "underline": null,
+          "font_name": null,
+          "font_size": null,
+          "font_color": null
+        },
+        {
+          "text": " ",
+          "bold": null,
+          "italic": null,
+          "underline": null,
+          "font_name": null,
+          "font_size": null,
+          "font_color": null
+        },
+        {
+          "text": "обязуется",
+          "bold": null,
+          "italic": null,
+          "underline": null,
+          "font_name": null,
+          "font_size": null,
+          "font_color": null
+        },
+        {
+          "text": ":",
+          "bold": null,
+          "italic": null,
+          "underline": null,
+          "font_name": null,
+          "font_size": null,
+          "font_color": null
+        }
+      ]
+    },
+    {
+      "index": 44,
+      "text": "своевременно предоставлять ТЗ, исходные данные, доступы к необходимым системам и иные сведения, без которых Работы невозможны;",
+      "style": "List Paragraph",
+      "alignment": null,
+      "runs": [
+        {
+          "text": "своевременно предоставлять ТЗ, исходные данные, доступы к необходимым системам и иные сведения, без которых Работы невозможны;",
+          "bold": null,
+          "italic": null,
+          "underline": null,
+          "font_name": null,
+          "font_size": null,
+          "font_color": null
+        }
+      ]
+    },
+    {
+      "index": 45,
+      "text": "в согласованные сроки давать ответы на вопросы Исполнителя и согласовывать промежуточные результаты;",
+      "style": "List Paragraph",
+      "alignment": null,
+      "runs": [
+        {
+          "text": "в согласованные сроки давать ответы на вопросы Исполнителя и согласовывать промежуточные результаты;",
+          "bold": null,
+          "italic": null,
+          "underline": null,
+          "font_name": null,
+          "font_size": null,
+          "font_color": null
+        }
+      ]
+    },
+    {
+      "index": 46,
+      "text": "принять надлежащим образом выполненные Работы и оплатить их в порядке, предусмотренном разделом 5 Договора.",
+      "style": "List Paragraph",
+      "alignment": null,
+      "runs": [
+        {
+          "text": "принять надлежащим образом выполненные Работы и оплатить их в порядке, предусмотренном разделом 5 Договора.",
+          "bold": null,
+          "italic": null,
+          "underline": null,
+          "font_name": null,
+          "font_size": null,
+          "font_color": null
+        }
+      ]
+    },
+    {
+      "index": 47,
+      "text": "3.4. Заказчик вправе проверять ход и качество Работ, не вмешиваясь в оперативную деятельность Исполнителя, а также отказаться от Заказа в порядке, предусмотренном разделом 10 Договора.",
+      "style": "Normal",
+      "alignment": null,
+      "runs": [
+        {
+          "text": "3.4. Заказчик вправе проверять ход и качество Работ, не вмешиваясь в оперативную деятельность Исполнителя, а также отказаться от Заказа в порядке, предусмотренном разделом 10 Договора.",
+          "bold": null,
+          "italic": null,
+          "underline": null,
+          "font_name": null,
+          "font_size": null,
+          "font_color": null
+        }
+      ]
+    },
+    {
+      "index": 48,
+      "text": "3.5. Стороны подтверждают, что Договор не создаёт трудовых отношений. Исполнитель не включается в штат Заказчика, не подчиняется правилам внутреннего трудового распорядка, не получает заработную плату и иные гарантии, предусмотренные трудовым законодательством, и самостоятельно несёт расходы, связанные с ведением своей предпринимательской деятельности. Взаимоотношения Сторон носят гражданско-правовой характер, а встречи, созвоны и согласования по ходу Работ не изменяют этот характер.",
+      "style": "Normal",
+      "alignment": null,
+      "runs": [
+        {
+          "text": "3.5. Стороны подтверждают, что Договор не создаёт трудовых отношений. Исполнитель не включается в штат Заказчика, не подчиняется правилам внутреннего трудового распорядка, не получает заработную плату и иные гарантии, предусмотренные трудовым законодательством, и самостоятельно несёт расходы, связанные с ведением своей предпринимательской деятельности. Взаимоотношения Сторон носят гражданско-правовой характер, а встречи, ",
+          "bold": null,
+          "italic": null,
+          "underline": null,
+          "font_name": null,
+          "font_size": null,
+          "font_color": null
+        },
+        {
+          "text": "созвоны",
+          "bold": null,
+          "italic": null,
+          "underline": null,
+          "font_name": null,
+          "font_size": null,
+          "font_color": null
+        },
+        {
+          "text": " и согласования по ходу Работ не изменяют этот характер.",
+          "bold": null,
+          "italic": null,
+          "underline": null,
+          "font_name": null,
+          "font_size": null,
+          "font_color": null
+        }
+      ]
+    },
+    {
+      "index": 49,
+      "text": "4. Сроки, сдача-приёмка и гарантия",
+      "style": "Heading 2",
+      "alignment": null,
+      "runs": [
+        {
+          "text": "4. Сроки, сдача-приёмка и гарантия",
+          "bold": null,
+          "italic": null,
+          "underline": null,
+          "font_name": null,
+          "font_size": null,
+          "font_color": null
+        }
+      ]
+    },
+    {
+      "index": 50,
+      "text": "4.1. Сроки выполнения Работ и их Этапов определяются в Заказе. Срок продлевается на период задержки, если она вызвана действиями или бездействием Заказчика (в частности, несвоевременным предоставлением данных, доступов, согласований) либо обстоятельствами непреодолимой силы.",
+      "style": "Normal",
+      "alignment": null,
+      "runs": [
+        {
+          "text": "4.1. Сроки выполнения Работ и их Этапов определяются в Заказе. Срок продлевается на период задержки, если она вызвана действиями или бездействием Заказчика (в частности, несвоевременным предоставлением данных, доступов, согласований) либо обстоятельствами непреодолимой силы.",
+          "bold": null,
+          "italic": null,
+          "underline": null,
+          "font_name": null,
+          "font_size": null,
+          "font_color": null
+        }
+      ]
+    },
+    {
+      "index": 51,
+      "text": "4.2. Результат каждого Этапа передаётся Заказчику способом, указанным в Заказе (репозиторий, электронная почта, облачное хранилище или иной согласованный канал), вместе с Актом в двух экземплярах либо в электронном виде.",
+      "style": "Normal",
+      "alignment": null,
+      "runs": [
+        {
+          "text": "4.2. Результат каждого Этапа передаётся Заказчику способом, указанным в Заказе (репозиторий, электронная почта, облачное хранилище или иной согласованный канал), вместе с Актом в двух экземплярах либо в электронном виде.",
+          "bold": null,
+          "italic": null,
+          "underline": null,
+          "font_name": null,
+          "font_size": null,
+          "font_color": null
+        }
+      ]
+    },
+    {
+      "index": 52,
+      "text": "4.3. В течение [5] рабочих дней с получения Результата и Акта Заказчик обязан подписать Акт либо направить Исполнителю мотивированные возражения с перечнем выявленных несоответствий ТЗ.",
+      "style": "Normal",
+      "alignment": null,
+      "runs": [
+        {
+          "text": "4.3. В течение [5] рабочих дней с получения Результата и Акта Заказчик обязан подписать Акт либо направить Исполнителю мотивированные возражения с перечнем выявленных несоответствий ТЗ.",
+          "bold": null,
+          "italic": null,
+          "underline": null,
+          "font_name": null,
+          "font_size": null,
+          "font_color": null
+        }
+      ]
+    },
+    {
+      "index": 53,
+      "text": "4.4. Если Заказчик в срок, указанный в п. 4.3, не подписал Акт и не направил мотивированные возражения, Работы считаются принятыми в полном объёме, а Акт — подписанным. Использование Заказчиком Результата в своей деятельности также означает его принятие.",
+      "style": "Normal",
+      "alignment": null,
+      "runs": [
+        {
+          "text": "4.4. Если Заказчик в срок, указанный в п. 4.3, не подписал Акт и не направил мотивированные возражения, Работы считаются принятыми в полном объёме, а Акт — подписанным. Использование Заказчиком Результата в своей деятельности также означает его принятие.",
+          "bold": null,
+          "italic": null,
+          "underline": null,
+          "font_name": null,
+          "font_size": null,
+          "font_color": null
+        }
+      ]
+    },
+    {
+      "index": 54,
+      "text": "4.5. При обоснованных возражениях Исполнитель устраняет недостатки за свой счёт в срок, согласованный Сторонами, а при отсутствии согласования — в течение [10] рабочих дней. Повторная приёмка проводится по тем же правилам. Недостатки, вызванные изменением требований Заказчика после утверждения ТЗ, устранением не подлежат и оформляются новым Заказом или дополнительным соглашением по п. 2.5.",
+      "style": "Normal",
+      "alignment": null,
+      "runs": [
+        {
+          "text": "4.5. При обоснованных возражениях Исполнитель устраняет недостатки за свой счёт в срок, согласованный Сторонами, а при отсутствии согласования — в течение [10] рабочих дней. Повторная приёмка проводится по тем же правилам. Недостатки, вызванные изменением требований Заказчика после утверждения ТЗ, устранением не подлежат и оформляются новым Заказом или дополнительным соглашением по п. 2.5.",
+          "bold": null,
+          "italic": null,
+          "underline": null,
+          "font_name": null,
+          "font_size": null,
+          "font_color": null
+        }
+      ]
+    },
+    {
+      "index": 55,
+      "text": "4.6. Гарантийный срок на Результат составляет [90] календарных дней с даты подписания Акта по соответствующему Этапу, если в Заказе не указано иное. В течение гарантийного срока Исполнитель безвозмездно устраняет дефекты, то есть расхождения Результата с ТЗ. Гарантия не распространяется на сбои, вызванные изменениями сторонних сервисов и платформ, действиями третьих лиц, некорректной эксплуатацией, а также на доработки и новую функциональность.",
+      "style": "Normal",
+      "alignment": null,
+      "runs": [
+        {
+          "text": "4.6. Гарантийный срок на Результат составляет [90] календарных дней с даты подписания Акта по соответствующему Этапу, если в Заказе не указано иное. В течение гарантийного срока Исполнитель безвозмездно устраняет дефекты, то есть расхождения Результата с ТЗ. Гарантия не распространяется на сбои, вызванные изменениями сторонних сервисов и платформ, действиями третьих лиц, некорректной эксплуатацией, а также на доработки и новую функциональность.",
+          "bold": null,
+          "italic": null,
+          "underline": null,
+          "font_name": null,
+          "font_size": null,
+          "font_color": null
+        }
+      ]
+    },
+    {
+      "index": 56,
+      "text": "4.7. Для Заказов с оплатой по времени Исполнитель к Акту прикладывает отчёт о фактически затраченном времени по задачам. Заказчик вправе запросить уточнения по отчёту в сроки, указанные в п. 4.3.",
+      "style": "Normal",
+      "alignment": null,
+      "runs": [
+        {
+          "text": "4.7. Для Заказов с оплатой по времени Исполнитель к Акту прикладывает отчёт о фактически затраченном времени по задачам. Заказчик вправе запросить уточнения по отчёту в сроки, указанные в п. 4.3.",
+          "bold": null,
+          "italic": null,
+          "underline": null,
+          "font_name": null,
+          "font_size": null,
+          "font_color": null
+        }
+      ]
+    },
+    {
+      "index": 57,
+      "text": "5. Стоимость и порядок расчётов",
+      "style": "Heading 2",
+      "alignment": null,
+      "runs": [
+        {
+          "text": "5. Стоимость и порядок расчётов",
+          "bold": null,
+          "italic": null,
+          "underline": null,
+          "font_name": null,
+          "font_size": null,
+          "font_color": null
+        }
+      ]
+    },
+    {
+      "index": 58,
+      "text": "5.1. Стоимость Работ по каждому Заказу устанавливается в Заказе: как фиксированная цена за Заказ или Этап либо как почасовая ставка с указанием предельного бюджета. Стоимость, не согласованная в подписанном Заказе, не подлежит оплате.",
+      "style": "Normal",
+      "alignment": null,
+      "runs": [
+        {
+          "text": "5.1. Стоимость Работ по каждому Заказу устанавливается в Заказе: как фиксированная цена за Заказ или Этап либо как почасовая ставка с указанием предельного бюджета. Стоимость, не согласованная в подписанном Заказе, не подлежит оплате.",
+          "bold": null,
+          "italic": null,
+          "underline": null,
+          "font_name": null,
+          "font_size": null,
+          "font_color": null
+        }
+      ]
+    },
+    {
+      "index": 59,
+      "text": "5.2. Расчёты производятся в рублях РФ в безналичном порядке: Заказчик перечисляет денежные средства с расчётного счёта ООО на расчётный счёт Исполнителя как индивидуального предпринимателя, указанный в разделе 12. Оплата на счета физического лица, наличными или иным способом, не оформленным настоящим Договором, не допускается.",
+      "style": "Normal",
+      "alignment": null,
+      "runs": [
+        {
+          "text": "5.2. Расчёты производятся в рублях РФ в безналичном порядке: Заказчик перечисляет денежные средства с расчётного счёта ООО на расчётный счёт Исполнителя как индивидуального предпринимателя, указанный в разделе 12. Оплата на счета физического лица, наличными или иным способом, не оформленным настоящим Договором, не допускается.",
+          "bold": null,
+          "italic": null,
+          "underline": null,
+          "font_name": null,
+          "font_size": null,
+          "font_color": null
+        }
+      ]
+    },
+    {
+      "index": 60,
+      "text": "5.3. Если в Заказе не указано иное, Заказчик оплачивает Работы так:",
+      "style": "Normal",
+      "alignment": null,
+      "runs": [
+        {
+          "text": "5.3. Если в Заказе не указано иное, Заказчик оплачивает Работы так:",
+          "bold": null,
+          "italic": null,
+          "underline": null,
+          "font_name": null,
+          "font_size": null,
+          "font_color": null
+        }
+      ]
+    },
+    {
+      "index": 61,
+      "text": "аванс в размере [50]% стоимости Заказа или Этапа — в течение [5] рабочих дней с даты подписания Заказа и получения счёта;",
+      "style": "List Paragraph",
+      "alignment": null,
+      "runs": [
+        {
+          "text": "аванс в размере [",
+          "bold": null,
+          "italic": null,
+          "underline": null,
+          "font_name": null,
+          "font_size": null,
+          "font_color": null
+        },
+        {
+          "text": "50]%",
+          "bold": null,
+          "italic": null,
+          "underline": null,
+          "font_name": null,
+          "font_size": null,
+          "font_color": null
+        },
+        {
+          "text": " стоимости Заказа или Этапа — в течение [5] рабочих дней с даты подписания Заказа и получения счёта;",
+          "bold": null,
+          "italic": null,
+          "underline": null,
+          "font_name": null,
+          "font_size": null,
+          "font_color": null
+        }
+      ]
+    },
+    {
+      "index": 62,
+      "text": "остаток — в течение [10] рабочих дней с даты подписания Акта (либо с даты, когда Работы считаются принятыми по п. 4.4).",
+      "style": "List Paragraph",
+      "alignment": null,
+      "runs": [
+        {
+          "text": "остаток — в течение [10] рабочих дней с даты подписания Акта (либо с даты, когда Работы считаются принятыми по п. 4.4).",
+          "bold": null,
+          "italic": null,
+          "underline": null,
+          "font_name": null,
+          "font_size": null,
+          "font_color": null
+        }
+      ]
+    },
+    {
+      "index": 63,
+      "text": "5.4. Для Заказов с оплатой по времени Исполнитель выставляет счёт ежемесячно по итогам отчётного месяца, оплата — в течение [5] рабочих дней с подписания Акта за месяц.",
+      "style": "Normal",
+      "alignment": null,
+      "runs": [
+        {
+          "text": "5.4. Для Заказов с оплатой по времени Исполнитель выставляет счёт ежемесячно по итогам отчётного месяца, оплата — в течение [5] рабочих дней с подписания Акта за месяц.",
+          "bold": null,
+          "italic": null,
+          "underline": null,
+          "font_name": null,
+          "font_size": null,
+          "font_color": null
+        }
+      ]
+    },
+    {
+      "index": 64,
+      "text": "5.5. Основанием для оплаты служат подписанный Заказ, счёт Исполнителя и (для оплаты после выполнения Работ) подписанный Акт. Счета, акты и иные документы могут направляться и подписываться через систему электронного документооборота или по электронной почте с последующим обменом оригиналами по запросу.",
+      "style": "Normal",
+      "alignment": null,
+      "runs": [
+        {
+          "text": "5.5. Основанием для оплаты служат подписанный Заказ, счёт Исполнителя и (для оплаты после выполнения Работ) подписанный Акт. Счета, акты и иные документы могут направляться и подписываться через систему электронного документооборота или по электронной почте с последующим обменом оригиналами по запросу.",
+          "bold": null,
+          "italic": null,
+          "underline": null,
+          "font_name": null,
+          "font_size": null,
+          "font_color": null
+        }
+      ]
+    },
+    {
+      "index": 65,
+      "text": "5.6. Датой оплаты считается дата списания денежных средств с расчётного счёта Заказчика. Банковские комиссии за перевод оплачивает Заказчик.",
+      "style": "Normal",
+      "alignment": null,
+      "runs": [
+        {
+          "text": "5.6. Датой оплаты считается дата списания денежных средств с расчётного счёта Заказчика. Банковские комиссии за перевод оплачивает Заказчик.",
+          "bold": null,
+          "italic": null,
+          "underline": null,
+          "font_name": null,
+          "font_size": null,
+          "font_color": null
+        }
+      ]
+    },
+    {
+      "index": 66,
+      "text": "5.7. Налоги. Исполнитель применяет [патентную систему налогообложения]. [Вариант А: стоимость Работ НДС не облагается, о чём Исполнитель указывает в счёте и Акте.  Каждая Сторона самостоятельно исчисляет и уплачивает налоги, взносы и иные обязательные платежи, относящиеся к её деятельности. Заказчик не является налоговым агентом по доходам Исполнителя по настоящему Договору, а Исполнитель по запросу подтверждает свой статус предпринимателя и систему налогообложения.",
+      "style": "Normal",
+      "alignment": null,
+      "runs": [
+        {
+          "text": "5.7. Налоги. Исполнитель применяет [патентную систему налогообложения]. [Вариант А: стоимость Работ НДС не облагается, о чём Исполнитель указывает в счёте и Акте.  Каждая Сторона самостоятельно исчисляет и уплачивает налоги, взносы и иные обязательные платежи, относящиеся к её деятельности. Заказчик не является налоговым агентом по доходам Исполнителя по настоящему Договору, а Исполнитель по запросу подтверждает свой статус предпринимателя и систему налогообложения.",
+          "bold": null,
+          "italic": null,
+          "underline": null,
+          "font_name": null,
+          "font_size": null,
+          "font_color": null
+        }
+      ]
+    },
+    {
+      "index": 67,
+      "text": "5.8. Расходы, не включённые в стоимость Работ (платные сторонние сервисы, лицензии, облачная инфраструктура и т. п.), возмещаются Заказчиком только при условии их предварительного письменного согласования и подтверждения документами.",
+      "style": "Normal",
+      "alignment": null,
+      "runs": [
+        {
+          "text": "5.8. Расходы, не включённые в стоимость Работ (платные сторонние сервисы, лицензии, облачная инфраструктура и т. п.), возмещаются Заказчиком только при условии их предварительного письменного согласования и подтверждения документами.",
+          "bold": null,
+          "italic": null,
+          "underline": null,
+          "font_name": null,
+          "font_size": null,
+          "font_color": null
+        }
+      ]
+    },
+    {
+      "index": 68,
+      "text": "5.9. При досрочном прекращении Заказа Заказчик оплачивает Работы, фактически выполненные и принятые на дату прекращения, а также подтверждённые документами расходы, согласованные в соответствии с п. 5.8. Полученный аванс засчитывается в эту оплату, неизрасходованный остаток аванса возвращается Заказчику в течение [10] рабочих дней.",
+      "style": "Normal",
+      "alignment": null,
+      "runs": [
+        {
+          "text": "5.9. При досрочном прекращении Заказа Заказчик оплачивает Работы, фактически выполненные и принятые на дату прекращения, а также подтверждённые документами расходы, согласованные в соответствии с п. 5.8. Полученный аванс засчитывается в эту оплату, неизрасходованный остаток аванса возвращается Заказчику в течение [10] рабочих дней.",
+          "bold": null,
+          "italic": null,
+          "underline": null,
+          "font_name": null,
+          "font_size": null,
+          "font_color": null
+        }
+      ]
+    },
+    {
+      "index": 69,
+      "text": "6. Интеллектуальные права",
+      "style": "Heading 2",
+      "alignment": null,
+      "runs": [
+        {
+          "text": "6. Интеллектуальные права",
+          "bold": null,
+          "italic": null,
+          "underline": null,
+          "font_name": null,
+          "font_size": null,
+          "font_color": null
+        }
+      ]
+    },
+    {
+      "index": 70,
+      "text": "6.1. Бессрочное Право на использование Результата (программы для ЭВМ, или доступ к сервису реализующему функционал описанный в заказе) переходит к Заказчику в полном объёме с момента подписания Акта по соответствующему Этапу и [полной оплаты этого Этапа ]. До этого момента Заказчик вправе использовать передаваемый Результат только в объёме, необходимом для проверки и приёмки.  ",
+      "style": "Normal",
+      "alignment": null,
+      "runs": [
+        {
+          "text": "6.1. Бессрочное Право на использование Результата (программы для ЭВМ, или доступ к сервису реализующему функционал описанный в заказе) переходит к Заказчику в полном объёме с момента подписания Акта по соответствующему Этапу и [полной оплаты этого ",
+          "bold": null,
+          "italic": null,
+          "underline": null,
+          "font_name": null,
+          "font_size": null,
+          "font_color": null
+        },
+        {
+          "text": "Этапа ]",
+          "bold": null,
+          "italic": null,
+          "underline": null,
+          "font_name": null,
+          "font_size": null,
+          "font_color": null
+        },
+        {
+          "text": ". До этого момента Заказчик вправе использовать передаваемый Результат только в объёме, необходимом для проверки и приёмки.  ",
+          "bold": null,
+          "italic": null,
+          "underline": null,
+          "font_name": null,
+          "font_size": null,
+          "font_color": null
+        }
+      ]
+    },
+    {
+      "index": 71,
+      "text": "6.2. Бессрочное право передается на весь срок его действия, для всей территории мира, во всех пределах и способами, предусмотренными законом. Вознаграждение за право использования входит в стоимость Работ по Заказу и отдельно не выплачивается.",
+      "style": "Normal",
+      "alignment": null,
+      "runs": [
+        {
+          "text": "6.2. Бессрочное право передается на весь срок его действия, для всей территории мира, во всех пределах и способами, предусмотренными законом. Вознаграждение за право использования входит в стоимость Работ по Заказу и отдельно не выплачивается.",
+          "bold": null,
+          "italic": null,
+          "underline": null,
+          "font_name": null,
+          "font_size": null,
+          "font_color": null
+        }
+      ]
+    },
+    {
+      "index": 72,
+      "text": "6.3. Личные неимущественные права (авторство, право на имя) Исходные тексты, документация и иные охраняемые результаты интеллектуальной деятельности, созданные по Заказу исполнителем, остаются у автора.  ",
+      "style": "Normal",
+      "alignment": null,
+      "runs": [
+        {
+          "text": "6.3. Личные неимущественные права (авторство, право на имя) Исходные тексты, документация и иные охраняемые результаты интеллектуальной деятельности, созданные по Заказу исполнителем, остаются у автора.  ",
+          "bold": null,
+          "italic": null,
+          "underline": null,
+          "font_name": null,
+          "font_size": null,
+          "font_color": null
+        }
+      ]
+    },
+    {
+      "index": 73,
+      "text": "6.4. Права на программные средства, библиотеки, шаблоны и наработки, исходные тексты, документация и иные охраняемые результаты интеллектуальной деятельности, которые Исполнитель создал или приобрёл до начала Работ либо создал независимо от них («Предшествующие разработки»), остаются у Исполнителя. Если Предшествующие разработки включены в Результат и необходимы для его использования, стоимость права на их использования должна быть включена в итоговую стоимость разработки. Исполнитель не праве требовать доплат за них после подписания заказа обеими сторонами.",
+      "style": "Normal",
+      "alignment": null,
+      "runs": [
+        {
+          "text": "6.4. Права на программные средства, библиотеки, шаблоны и наработки, исходные тексты, документация и иные охраняемые результаты интеллектуальной деятельности, которые Исполнитель создал или приобрёл до начала Работ либо создал независимо от них («Предшествующие разработки»), остаются у Исполнителя. Если Предшествующие разработки включены в Результат и необходимы для его использования, стоимость права на их использования должна быть включена в итоговую стоимость разработки. Исполнитель не праве требовать доплат за них после подписания заказа обеими сторонами.",
+          "bold": null,
+          "italic": null,
+          "underline": null,
+          "font_name": null,
+          "font_size": null,
+          "font_color": null
+        }
+      ]
+    },
+    {
+      "index": 74,
+      "text": "6.5. Права на сторонние компоненты, в том числе с открытой лицензией, регулируются лицензиями на эти компоненты. Исполнитель заранее информирует Заказчика о компонентах, лицензия которых накладывает ограничения на использование или распространение Результата (копилефт и т. п.), и не включает их в Результат без письменного согласия Заказчика.",
+      "style": "Normal",
+      "alignment": null,
+      "runs": [
+        {
+          "text": "6.5. Права на сторонние компоненты, в том числе с открытой лицензией, регулируются лицензиями на эти компоненты. Исполнитель заранее информирует Заказчика о компонентах, лицензия которых накладывает ограничения на использование или распространение Результата (копилефт и т. п.), и не включает их в Результат без письменного согласия Заказчика.",
+          "bold": null,
+          "italic": null,
+          "underline": null,
+          "font_name": null,
+          "font_size": null,
+          "font_color": null
+        }
+      ]
+    },
+    {
+      "index": 75,
+      "text": "6.6. Исполнитель гарантирует, что обладает правами, необходимыми для отчуждения исключительного права по п. 6.1, и что Результат создан без нарушения прав третьих лиц, за исключением компонентов, о которых он уведомил Заказчика по п. 6.5. При предъявлении третьими лицами претензий по этому основанию Стороны взаимодействуют для их урегулирования; ответственность Исполнителя определяется разделом 8.",
+      "style": "Normal",
+      "alignment": null,
+      "runs": [
+        {
+          "text": "6.6. Исполнитель гарантирует, что обладает правами, необходимыми для отчуждения исключительного права по п. 6.1, и что Результат создан без нарушения прав третьих лиц, за исключением компонентов, о которых он уведомил Заказчика по п. 6.5. При предъявлении ",
+          "bold": null,
+          "italic": null,
+          "underline": null,
+          "font_name": null,
+          "font_size": null,
+          "font_color": null
+        },
+        {
+          "text": "третьими лицами претензий по этому основанию Стороны взаимодействуют для их урегулирования; ответственность Исполнителя определяется разделом 8.",
+          "bold": null,
+          "italic": null,
+          "underline": null,
+          "font_name": null,
+          "font_size": null,
+          "font_color": null
+        }
+      ]
+    },
+    {
+      "index": 76,
+      "text": "6.7. Исполнитель вправе без раскрытия конфиденциальной информации и технических деталей упоминать факт сотрудничества с Заказчиком и общий характер выполненных работ в своём портфолио, если Заказ или Заказчик в письменной форме не запретили этого.",
+      "style": "Normal",
+      "alignment": null,
+      "runs": [
+        {
+          "text": "6.7. Исполнитель вправе без раскрытия конфиденциальной информации и технических деталей упоминать факт сотрудничества с Заказчиком и общий характер выполненных работ в своём портфолио, если Заказ или Заказчик в письменной форме не запретили этого.",
+          "bold": null,
+          "italic": null,
+          "underline": null,
+          "font_name": null,
+          "font_size": null,
+          "font_color": null
+        }
+      ]
+    },
+    {
+      "index": 77,
+      "text": "7. Конфиденциальность",
+      "style": "Heading 2",
+      "alignment": null,
+      "runs": [
+        {
+          "text": "7. Конфиденциальность",
+          "bold": null,
+          "italic": null,
+          "underline": null,
+          "font_name": null,
+          "font_size": null,
+          "font_color": null
+        }
+      ]
+    },
+    {
+      "index": 78,
+      "text": "7.1. Конфиденциальной признаётся вся информация, которую одна Сторона передала другой в связи с Договором и которая не является общедоступной: исходные тексты, архитектура, данные клиентов и пользователей, финансовые, коммерческие и технические сведения, а также условия Договора и Заказов.",
+      "style": "Normal",
+      "alignment": null,
+      "runs": [
+        {
+          "text": "7.1. Конфиденциальной признаётся вся информация, которую одна Сторона передала другой в связи с Договором и которая не является общедоступной: исходные тексты, архитектура, данные клиентов и пользователей, финансовые, коммерческие и технические сведения, а также условия Договора и Заказов.",
+          "bold": null,
+          "italic": null,
+          "underline": null,
+          "font_name": null,
+          "font_size": null,
+          "font_color": null
+        }
+      ]
+    },
+    {
+      "index": 79,
+      "text": "7.2. Каждая Сторона обязуется не разглашать конфиденциальную информацию другой Стороны третьим лицам, использовать её только для исполнения Договора и защищать с той же степенью заботы, что и собственную, но не ниже разумной. Доступ предоставляется только тем работникам и привлечённым лицам, которым он необходим для исполнения Договора и которые связаны аналогичными обязательствами.",
+      "style": "Normal",
+      "alignment": null,
+      "runs": [
+        {
+          "text": "7.2. Каждая Сторона обязуется не разглашать конфиденциальную информацию другой Стороны третьим лицам, использовать её только для исполнения Договора и защищать с той же степенью заботы, что и собственную, но не ниже разумной. Доступ предоставляется только тем работникам и привлечённым лицам, которым он необходим для исполнения Договора и которые связаны аналогичными обязательствами.",
+          "bold": null,
+          "italic": null,
+          "underline": null,
+          "font_name": null,
+          "font_size": null,
+          "font_color": null
+        }
+      ]
+    },
+    {
+      "index": 80,
+      "text": "7.3. Обязательства по конфиденциальности не распространяются на информацию, которая: стала общедоступной не по вине получившей её Стороны; была известна получившей Стороне до передачи; была получена от третьего лица без нарушения обязательств; должна быть раскрыта по требованию государственных органов в порядке, установленном законом (с уведомлением другой Стороны, если закон это допускает).",
+      "style": "Normal",
+      "alignment": null,
+      "runs": [
+        {
+          "text": "7.3. Обязательства по конфиденциальности не распространяются на информацию, которая: стала общедоступной не по вине получившей её Стороны; была известна получившей Стороне до передачи; была получена от третьего лица без нарушения обязательств; должна быть раскрыта по требованию государственных органов в порядке, установленном законом (с уведомлением другой Стороны, если закон это допускает).",
+          "bold": null,
+          "italic": null,
+          "underline": null,
+          "font_name": null,
+          "font_size": null,
+          "font_color": null
+        }
+      ]
+    },
+    {
+      "index": 81,
+      "text": "7.4. Обязательства по конфиденциальности действуют в течение срока Договора и [3] лет после его прекращения. При прекращении Договора или по запросу Исполнитель удаляет или возвращает материалы Заказчика, не защищённые правами Исполнителя на Предшествующие разработки.",
+      "style": "Normal",
+      "alignment": null,
+      "runs": [
+        {
+          "text": "7.4. Обязательства по конфиденциальности действуют в течение срока Договора и [3] лет после его прекращения. При прекращении Договора или по запросу Исполнитель удаляет или возвращает материалы Заказчика, не защищённые правами Исполнителя на Предшествующие разработки.",
+          "bold": null,
+          "italic": null,
+          "underline": null,
+          "font_name": null,
+          "font_size": null,
+          "font_color": null
+        }
+      ]
+    },
+    {
+      "index": 82,
+      "text": "7.5. Если Заказчик передаёт Исполнителю персональные данные, он самостоятельно обеспечивает законность их обработки и передачи. Условия обработки персональных данных, если она необходима для Работ, Стороны фиксируют в Заказе или отдельном соглашении.",
+      "style": "Normal",
+      "alignment": null,
+      "runs": [
+        {
+          "text": "7.5. Если Заказчик передаёт Исполнителю персональные данные, он самостоятельно обеспечивает законность их обработки и передачи. Условия обработки персональных данных, если она необходима для Работ, Стороны фиксируют в Заказе или отдельном соглашении.",
+          "bold": null,
+          "italic": null,
+          "underline": null,
+          "font_name": null,
+          "font_size": null,
+          "font_color": null
+        }
+      ]
+    },
+    {
+      "index": 83,
+      "text": "8. Ответственность",
+      "style": "Heading 2",
+      "alignment": null,
+      "runs": [
+        {
+          "text": "8. Ответственность",
+          "bold": null,
+          "italic": null,
+          "underline": null,
+          "font_name": null,
+          "font_size": null,
+          "font_color": null
+        }
+      ]
+    },
+    {
+      "index": 84,
+      "text": "8.1. За неисполнение или ненадлежащее исполнение обязательств по Договору Стороны несут ответственность в соответствии с Договором и законодательством РФ.",
+      "style": "Normal",
+      "alignment": null,
+      "runs": [
+        {
+          "text": "8.1. За неисполнение или ненадлежащее исполнение обязательств по Договору Стороны несут ответственность в соответствии с Договором и законодательством РФ.",
+          "bold": null,
+          "italic": null,
+          "underline": null,
+          "font_name": null,
+          "font_size": null,
+          "font_color": null
+        }
+      ]
+    },
+    {
+      "index": 85,
+      "text": "8.2. За просрочку оплаты Заказчик по требованию Исполнителя уплачивает неустойку в размере [0,1]% от просроченной суммы за каждый день просрочки, но не более [10]% этой суммы.",
+      "style": "Normal",
+      "alignment": null,
+      "runs": [
+        {
+          "text": "8.2. За просрочку оплаты Заказчик по требованию Исполнителя уплачивает неустойку в размере [0,",
+          "bold": null,
+          "italic": null,
+          "underline": null,
+          "font_name": null,
+          "font_size": null,
+          "font_color": null
+        },
+        {
+          "text": "1]%",
+          "bold": null,
+          "italic": null,
+          "underline": null,
+          "font_name": null,
+          "font_size": null,
+          "font_color": null
+        },
+        {
+          "text": " от просроченной суммы за каждый день просрочки, но не более [10]% этой суммы.",
+          "bold": null,
+          "italic": null,
+          "underline": null,
+          "font_name": null,
+          "font_size": null,
+          "font_color": null
+        }
+      ]
+    },
+    {
+      "index": 86,
+      "text": "8.3. За просрочку сдачи Результата по вине Исполнителя Заказчик вправе потребовать неустойку в размере [0,1]% от стоимости несданного в срок Этапа за каждый день просрочки, но не более [10]% стоимости этого Этапа.",
+      "style": "Normal",
+      "alignment": null,
+      "runs": [
+        {
+          "text": "8.3. За просрочку сдачи Результата по вине Исполнителя Заказчик вправе потребовать неустойку в размере [0,",
+          "bold": null,
+          "italic": null,
+          "underline": null,
+          "font_name": null,
+          "font_size": null,
+          "font_color": null
+        },
+        {
+          "text": "1]%",
+          "bold": null,
+          "italic": null,
+          "underline": null,
+          "font_name": null,
+          "font_size": null,
+          "font_color": null
+        },
+        {
+          "text": " от стоимости несданного в срок Этапа за каждый день просрочки, но не более [10]% стоимости этого Этапа.",
+          "bold": null,
+          "italic": null,
+          "underline": null,
+          "font_name": null,
+          "font_size": null,
+          "font_color": null
+        }
+      ]
+    },
+    {
+      "index": 87,
+      "text": "8.4. Совокупная ответственность Исполнителя по каждому Заказу (включая неустойки, убытки и возмещение расходов) ограничена суммой, фактически полученной Исполнителем по этому Заказу. Стороны не возмещают друг другу упущенную выгоду и косвенные убытки. Ограничения этого пункта не применяются при умышленном нарушении.",
+      "style": "Normal",
+      "alignment": null,
+      "runs": [
+        {
+          "text": "8.4. Совокупная ответственность Исполнителя по каждому Заказу (включая неустойки, убытки и возмещение расходов) ограничена суммой, фактически полученной Исполнителем по этому ",
+          "bold": null,
+          "italic": null,
+          "underline": null,
+          "font_name": null,
+          "font_size": null,
+          "font_color": null
+        },
+        {
+          "text": "Заказу. Стороны не возмещают друг другу упущенную выгоду и косвенные убытки. Ограничения этого пункта не применяются при умышленном нарушении.",
+          "bold": null,
+          "italic": null,
+          "underline": null,
+          "font_name": null,
+          "font_size": null,
+          "font_color": null
+        }
+      ]
+    },
+    {
+      "index": 88,
+      "text": "8.5. Исполнитель не отвечает за недостатки Результата, возникшие из-за неверных или неполных исходных данных, ТЗ, доступов и материалов Заказчика, внесения Заказчиком или третьими лицами изменений в Результат после его приёмки, а также за эксплуатацию Результата с нарушением документации.",
+      "style": "Normal",
+      "alignment": null,
+      "runs": [
+        {
+          "text": "8.5. Исполнитель не отвечает за недостатки Результата, возникшие из-за неверных или неполных исходных данных, ТЗ, доступов и материалов Заказчика, внесения Заказчиком или третьими лицами изменений в Результат после его приёмки, а также за эксплуатацию Результата с нарушением документации.",
+          "bold": null,
+          "italic": null,
+          "underline": null,
+          "font_name": null,
+          "font_size": null,
+          "font_color": null
+        }
+      ]
+    },
+    {
+      "index": 89,
+      "text": "8.6. Уплата неустойки не освобождает Сторону от исполнения обязательства. Убытки возмещаются в части, не покрытой неустойкой.",
+      "style": "Normal",
+      "alignment": null,
+      "runs": [
+        {
+          "text": "8.6. Уплата неустойки не освобождает Сторону от исполнения обязательства. Убытки возмещаются в части, не покрытой неустойкой.",
+          "bold": null,
+          "italic": null,
+          "underline": null,
+          "font_name": null,
+          "font_size": null,
+          "font_color": null
+        }
+      ]
+    },
+    {
+      "index": 90,
+      "text": "9. Обстоятельства непреодолимой силы",
+      "style": "Heading 2",
+      "alignment": null,
+      "runs": [
+        {
+          "text": "9. Обстоятельства непреодолимой силы",
+          "bold": null,
+          "italic": null,
+          "underline": null,
+          "font_name": null,
+          "font_size": null,
+          "font_color": null
+        }
+      ]
+    },
+    {
+      "index": 91,
+      "text": "9.1. Сторона освобождается от ответственности за неисполнение обязательств, если оно вызвано обстоятельствами непреодолимой силы (стихийные бедствия, военные действия, акты государственных органов, массовые отключения связи и электроэнергии и т. п.), которые она не могла предвидеть и предотвратить.",
+      "style": "Normal",
+      "alignment": null,
+      "runs": [
+        {
+          "text": "9.1. Сторона освобождается от ответственности за неисполнение обязательств, если оно вызвано обстоятельствами непреодолимой силы (стихийные бедствия, военные действия, акты государственных органов, массовые отключения связи и электроэнергии и т. п.), которые она не могла предвидеть и предотвратить.",
+          "bold": null,
+          "italic": null,
+          "underline": null,
+          "font_name": null,
+          "font_size": null,
+          "font_color": null
+        }
+      ]
+    },
+    {
+      "index": 92,
+      "text": "9.2. Сторона, для которой возникла невозможность исполнения, письменно уведомляет другую Сторону в течение [5] рабочих дней с момента её возникновения и по запросу представляет подтверждающие документы. Сроки исполнения продлеваются на время действия таких обстоятельств. Если они длятся более [60] календарных дней, любая Сторона вправе отказаться от затронутого Заказа без возмещения убытков, а Заказчик оплачивает фактически выполненные Работы.",
+      "style": "Normal",
+      "alignment": null,
+      "runs": [
+        {
+          "text": "9.2. Сторона, для которой возникла невозможность исполнения, письменно уведомляет другую Сторону в течение [5] рабочих дней с момента её возникновения и по запросу представляет подтверждающие документы. Сроки исполнения продлеваются на время действия таких обстоятельств. Если они длятся более [60] календарных дней, любая Сторона вправе отказаться от затронутого Заказа без возмещения убытков, а Заказчик оплачивает фактически выполненные Работы.",
+          "bold": null,
+          "italic": null,
+          "underline": null,
+          "font_name": null,
+          "font_size": null,
+          "font_color": null
+        }
+      ]
+    },
+    {
+      "index": 93,
+      "text": "10. Срок действия и прекращение Договора",
+      "style": "Heading 2",
+      "alignment": null,
+      "runs": [
+        {
+          "text": "10. Срок действия и прекращение Договора",
+          "bold": null,
+          "italic": null,
+          "underline": null,
+          "font_name": null,
+          "font_size": null,
+          "font_color": null
+        }
+      ]
+    },
+    {
+      "index": 94,
+      "text": "10.1. Договор вступает в силу с даты подписания и действует [до 30 декабря 2027 года]. Если ни одна Сторона не заявила о прекращении за [30] календарных дней до окончания срока, Договор автоматически продлевается на каждый следующий календарный год.",
+      "style": "Normal",
+      "alignment": null,
+      "runs": [
+        {
+          "text": "10.1. Договор вступает в силу с даты подписания и действует [до 30 декабря 2027 года]. Если ни одна Сторона не заявила о прекращении за [30] календарных дней до окончания срока, Договор автоматически продлевается на каждый следующий календарный год.",
+          "bold": null,
+          "italic": null,
+          "underline": null,
+          "font_name": null,
+          "font_size": null,
+          "font_color": null
+        }
+      ]
+    },
+    {
+      "index": 95,
+      "text": "10.2. Прекращение или истечение срока Договора не прекращает действие подписанных Заказов, которые продолжают исполняться на условиях Договора до завершения, если Стороны не договорились об ином.",
+      "style": "Normal",
+      "alignment": null,
+      "runs": [
+        {
+          "text": "10.2. Прекращение или истечение срока Договора не прекращает действие подписанных Заказов, которые продолжают исполняться на условиях Договора до завершения, если Стороны не договорились об ином.",
+          "bold": null,
+          "italic": null,
+          "underline": null,
+          "font_name": null,
+          "font_size": null,
+          "font_color": null
+        }
+      ]
+    },
+    {
+      "index": 96,
+      "text": "10.3. Любая Сторона вправе отказаться от Договора, письменно уведомив другую Сторону не менее чем за [30] календарных дней, при условии урегулирования расчётов по уже начатым Заказам в соответствии с п. 5.9.",
+      "style": "Normal",
+      "alignment": null,
+      "runs": [
+        {
+          "text": "10.3. Любая Сторона вправе отказаться от Договора, письменно уведомив другую Сторону не менее чем за [30] календарных дней, при условии урегулирования расчётов по уже начатым Заказам в соответствии с п. 5.9.",
+          "bold": null,
+          "italic": null,
+          "underline": null,
+          "font_name": null,
+          "font_size": null,
+          "font_color": null
+        }
+      ]
+    },
+    {
+      "index": 97,
+      "text": "10.4. Заказчик вправе в любой момент отказаться от отдельного Заказа, письменно уведомив Исполнителя и оплатив фактически выполненные Работы и согласованные расходы (п. 5.9). Исполнитель вправе отказаться от Заказа при существенном нарушении Заказчиком условий оплаты или обязательств по предоставлению данных, если нарушение не устранено в течение [10] рабочих дней после письменного уведомления.",
+      "style": "Normal",
+      "alignment": null,
+      "runs": [
+        {
+          "text": "10.4. Заказчик вправе в любой момент отказаться от отдельного Заказа, письменно уведомив Исполнителя и оплатив фактически выполненные Работы и согласованные расходы (п. 5.9). Исполнитель вправе отказаться от Заказа при существенном нарушении Заказчиком условий оплаты или обязательств по предоставлению данных, если нарушение не устранено в течение [10] рабочих дней после письменного уведомления.",
+          "bold": null,
+          "italic": null,
+          "underline": null,
+          "font_name": null,
+          "font_size": null,
+          "font_color": null
+        }
+      ]
+    },
+    {
+      "index": 98,
+      "text": "10.5. После прекращения Договора разделы 6, 7, 8 и 11 продолжают действовать в той мере, в какой это необходимо для их исполнения.",
+      "style": "Normal",
+      "alignment": null,
+      "runs": [
+        {
+          "text": "10.5. После прекращения Договора разделы 6, 7, 8 и 11 продолжают действовать в той мере, в какой это необходимо для их исполнения.",
+          "bold": null,
+          "italic": null,
+          "underline": null,
+          "font_name": null,
+          "font_size": null,
+          "font_color": null
+        }
+      ]
+    },
+    {
+      "index": 99,
+      "text": "11. Порядок разрешения споров",
+      "style": "Heading 2",
+      "alignment": null,
+      "runs": [
+        {
+          "text": "11. Порядок разрешения споров",
+          "bold": null,
+          "italic": null,
+          "underline": null,
+          "font_name": null,
+          "font_size": null,
+          "font_color": null
+        }
+      ]
+    },
+    {
+      "index": 100,
+      "text": "11.1. Споры решаются путём переговоров. До обращения в суд Сторона направляет другой Стороне письменную претензию. Срок рассмотрения претензии — [30] календарных дней с даты её получения.",
+      "style": "Normal",
+      "alignment": null,
+      "runs": [
+        {
+          "text": "11.1. Споры решаются путём переговоров. До обращения в суд Сторона направляет другой Стороне письменную претензию. Срок рассмотрения претензии — [30] календарных дней с даты её получения.",
+          "bold": null,
+          "italic": null,
+          "underline": null,
+          "font_name": null,
+          "font_size": null,
+          "font_color": null
+        }
+      ]
+    },
+    {
+      "index": 101,
+      "text": "11.2. Если спор не урегулирован в претензионном порядке, он передаётся на рассмотрение Арбитражного суда [города / субъекта РФ] по месту нахождения [ответчика / Заказчика].",
+      "style": "Normal",
+      "alignment": null,
+      "runs": [
+        {
+          "text": "11.2. Если спор не урегулирован в претензионном порядке, он передаётся на рассмотрение Арбитражного суда [города / субъекта РФ] по месту нахождения [ответчика / Заказчика].",
+          "bold": null,
+          "italic": null,
+          "underline": null,
+          "font_name": null,
+          "font_size": null,
+          "font_color": null
+        }
+      ]
+    },
+    {
+      "index": 102,
+      "text": "11.3. К отношениям Сторон применяется право Российской Федерации.",
+      "style": "Normal",
+      "alignment": null,
+      "runs": [
+        {
+          "text": "11.3. К отношениям Сторон применяется право Российской Федерации.",
+          "bold": null,
+          "italic": null,
+          "underline": null,
+          "font_name": null,
+          "font_size": null,
+          "font_color": null
+        }
+      ]
+    },
+    {
+      "index": 103,
+      "text": "12. Прочие условия, реквизиты и подписи",
+      "style": "Heading 2",
+      "alignment": null,
+      "runs": [
+        {
+          "text": "12. Прочие условия, реквизиты и подписи",
+          "bold": null,
+          "italic": null,
+          "underline": null,
+          "font_name": null,
+          "font_size": null,
+          "font_color": null
+        }
+      ]
+    },
+    {
+      "index": 104,
+      "text": "12.1. Договор, Заказы, Акты и иные юридически значимые документы могут направляться по электронной почте на адреса, указанные ниже, и считаются полученными в день отправки (а отправленные после 18:00 по местному времени получателя — на следующий рабочий день). Каждая Сторона обязана оперативно сообщать об изменении адресов и реквизитов; до получения такого уведомления исполнение по прежним реквизитам считается надлежащим.",
+      "style": "Normal",
+      "alignment": null,
+      "runs": [
+        {
+          "text": "12.1. Договор, Заказы, Акты и иные юридически значимые документы могут направляться по электронной почте на адреса, указанные ниже, и считаются полученными в день отправки (а отправленные после 18:00 по местному времени получателя — на следующий рабочий день). Каждая Сторона обязана оперативно сообщать об изменении адресов и реквизитов; до получения такого уведомления исполнение по прежним реквизитам считается надлежащим.",
+          "bold": null,
+          "italic": null,
+          "underline": null,
+          "font_name": null,
+          "font_size": null,
+          "font_color": null
+        }
+      ]
+    },
+    {
+      "index": 105,
+      "text": "12.2. Изменения и дополнения к Договору действительны, если совершены в письменной форме и подписаны обеими Сторонами.",
+      "style": "Normal",
+      "alignment": null,
+      "runs": [
+        {
+          "text": "12.2. Изменения и дополнения к Договору действительны, если совершены в письменной форме и подписаны обеими Сторонами.",
+          "bold": null,
+          "italic": null,
+          "underline": null,
+          "font_name": null,
+          "font_size": null,
+          "font_color": null
+        }
+      ]
+    },
+    {
+      "index": 106,
+      "text": "12.3. Недействительность отдельного условия Договора не влечёт недействительности остальных его условий.",
+      "style": "Normal",
+      "alignment": null,
+      "runs": [
+        {
+          "text": "12.3. Недействительность отдельного условия Договора не влечёт недействительности остальных его условий.",
+          "bold": null,
+          "italic": null,
+          "underline": null,
+          "font_name": null,
+          "font_size": null,
+          "font_color": null
+        }
+      ]
+    },
+    {
+      "index": 107,
+      "text": "12.4. Договор составлен в двух экземплярах, по одному для каждой Стороны, имеющих равную юридическую силу, либо подписан в электронном виде.",
+      "style": "Normal",
+      "alignment": null,
+      "runs": [
+        {
+          "text": "12.4. Договор составлен в двух экземплярах, по одному для каждой Стороны, имеющих равную юридическую силу, либо подписан в электронном виде.",
+          "bold": null,
+          "italic": null,
+          "underline": null,
+          "font_name": null,
+          "font_size": null,
+          "font_color": null
+        }
+      ]
+    },
+    {
+      "index": 108,
+      "text": "12.5. Приложения: № 1 — форма Заказа (дополнительного соглашения); № 2 — форма Акта сдачи-приёмки.",
+      "style": "Normal",
+      "alignment": null,
+      "runs": [
+        {
+          "text": "12.5. Приложения: № 1 — форма Заказа (дополнительного соглашения); № 2 — форма Акта сдачи-приёмки.",
+          "bold": null,
+          "italic": null,
+          "underline": null,
+          "font_name": null,
+          "font_size": null,
+          "font_color": null
+        }
+      ]
+    },
+    {
+      "index": 109,
+      "text": "12.6. Реквизиты и подписи Сторон:",
+      "style": "Normal",
+      "alignment": null,
+      "runs": [
+        {
+          "text": "12.6. ",
+          "bold": null,
+          "italic": null,
+          "underline": null,
+          "font_name": null,
+          "font_size": null,
+          "font_color": null
+        },
+        {
+          "text": "Реквизиты",
+          "bold": null,
+          "italic": null,
+          "underline": null,
+          "font_name": null,
+          "font_size": null,
+          "font_color": null
+        },
+        {
+          "text": " и ",
+          "bold": null,
+          "italic": null,
+          "underline": null,
+          "font_name": null,
+          "font_size": null,
+          "font_color": null
+        },
+        {
+          "text": "подписи",
+          "bold": null,
+          "italic": null,
+          "underline": null,
+          "font_name": null,
+          "font_size": null,
+          "font_color": null
+        },
+        {
+          "text": " ",
+          "bold": null,
+          "italic": null,
+          "underline": null,
+          "font_name": null,
+          "font_size": null,
+          "font_color": null
+        },
+        {
+          "text": "Сторон",
+          "bold": null,
+          "italic": null,
+          "underline": null,
+          "font_name": null,
+          "font_size": null,
+          "font_color": null
+        },
+        {
+          "text": ":",
+          "bold": null,
+          "italic": null,
+          "underline": null,
+          "font_name": null,
+          "font_size": null,
+          "font_color": null
+        }
+      ]
+    },
+    {
+      "index": 110,
+      "text": "Приложение № 1. Форма Заказа (дополнительного соглашения)",
+      "style": "Heading 2",
+      "alignment": null,
+      "runs": [
+        {
+          "text": "Приложение № 1. Форма Заказа (дополнительного соглашения)",
+          "bold": null,
+          "italic": null,
+          "underline": null,
+          "font_name": null,
+          "font_size": null,
+          "font_color": null
+        }
+      ]
+    },
+    {
+      "index": 111,
+      "text": "Дополнительное соглашение № [номер] от [дата] к Рамочному договору № [номер] от [дата]",
+      "style": "Normal",
+      "alignment": null,
+      "runs": [
+        {
+          "text": "Дополнительное соглашение № [номер] от [дата] к Рамочному договору № [номер] от [дата]",
+          "bold": true,
+          "italic": null,
+          "underline": null,
+          "font_name": null,
+          "font_size": null,
+          "font_color": null
+        }
+      ]
+    },
+    {
+      "index": 112,
+      "text": "ООО «[наименование]» («Заказчик») и ИП [ФИО] («Исполнитель») договорились о следующем:",
+      "style": "Normal",
+      "alignment": null,
+      "runs": [
+        {
+          "text": "ООО «[наименование]» («Заказчик») и ИП [ФИО] («Исполнитель») договорились о следующем:",
+          "bold": null,
+          "italic": null,
+          "underline": null,
+          "font_name": null,
+          "font_size": null,
+          "font_color": null
+        }
+      ]
+    },
+    {
+      "index": 113,
+      "text": "Предмет Заказа. Исполнитель выполняет следующие Работы: [краткое описание]. Подробные требования изложены в ТЗ: [приложение / ссылка].",
+      "style": "List Paragraph",
+      "alignment": null,
+      "runs": [
+        {
+          "text": "Предмет Заказа. Исполнитель выполняет следующие Работы: [краткое описание]. ",
+          "bold": null,
+          "italic": null,
+          "underline": null,
+          "font_name": null,
+          "font_size": null,
+          "font_color": null
+        },
+        {
+          "text": "Подробные",
+          "bold": null,
+          "italic": null,
+          "underline": null,
+          "font_name": null,
+          "font_size": null,
+          "font_color": null
+        },
+        {
+          "text": " ",
+          "bold": null,
+          "italic": null,
+          "underline": null,
+          "font_name": null,
+          "font_size": null,
+          "font_color": null
+        },
+        {
+          "text": "требования",
+          "bold": null,
+          "italic": null,
+          "underline": null,
+          "font_name": null,
+          "font_size": null,
+          "font_color": null
+        },
+        {
+          "text": " ",
+          "bold": null,
+          "italic": null,
+          "underline": null,
+          "font_name": null,
+          "font_size": null,
+          "font_color": null
+        },
+        {
+          "text": "изложены",
+          "bold": null,
+          "italic": null,
+          "underline": null,
+          "font_name": null,
+          "font_size": null,
+          "font_color": null
+        },
+        {
+          "text": " в ТЗ: [",
+          "bold": null,
+          "italic": null,
+          "underline": null,
+          "font_name": null,
+          "font_size": null,
+          "font_color": null
+        },
+        {
+          "text": "приложение",
+          "bold": null,
+          "italic": null,
+          "underline": null,
+          "font_name": null,
+          "font_size": null,
+          "font_color": null
+        },
+        {
+          "text": " / ",
+          "bold": null,
+          "italic": null,
+          "underline": null,
+          "font_name": null,
+          "font_size": null,
+          "font_color": null
+        },
+        {
+          "text": "ссылка",
+          "bold": null,
+          "italic": null,
+          "underline": null,
+          "font_name": null,
+          "font_size": null,
+          "font_color": null
+        },
+        {
+          "text": "].",
+          "bold": null,
+          "italic": null,
+          "underline": null,
+          "font_name": null,
+          "font_size": null,
+          "font_color": null
+        }
+      ]
+    },
+    {
+      "index": 114,
+      "text": "Этапы, сроки и Результат:",
+      "style": "List Paragraph",
+      "alignment": null,
+      "runs": [
+        {
+          "text": "Этапы",
+          "bold": null,
+          "italic": null,
+          "underline": null,
+          "font_name": null,
+          "font_size": null,
+          "font_color": null
+        },
+        {
+          "text": ", ",
+          "bold": null,
+          "italic": null,
+          "underline": null,
+          "font_name": null,
+          "font_size": null,
+          "font_color": null
+        },
+        {
+          "text": "сроки",
+          "bold": null,
+          "italic": null,
+          "underline": null,
+          "font_name": null,
+          "font_size": null,
+          "font_color": null
+        },
+        {
+          "text": " и ",
+          "bold": null,
+          "italic": null,
+          "underline": null,
+          "font_name": null,
+          "font_size": null,
+          "font_color": null
+        },
+        {
+          "text": "Результат",
+          "bold": null,
+          "italic": null,
+          "underline": null,
+          "font_name": null,
+          "font_size": null,
+          "font_color": null
+        },
+        {
+          "text": ":",
+          "bold": null,
+          "italic": null,
+          "underline": null,
+          "font_name": null,
+          "font_size": null,
+          "font_color": null
+        }
+      ]
+    },
+    {
+      "index": 115,
+      "text": "Общая стоимость Заказа: [сумма] руб. [НДС не облагается / в т. ч. НДС по ставке __]. Модель оплаты: [фиксированная цена / почасовая ставка [сумма] руб./час, бюджет не более [сумма] руб.].",
+      "style": "List Paragraph",
+      "alignment": null,
+      "runs": [
+        {
+          "text": "Общая стоимость Заказа: [сумма] руб. [НДС не облагается / в т. ч. НДС по ставке __]. Модель оплаты: [фиксированная цена / почасовая ставка [сумма] руб./час, бюджет не более [сумма] руб.].",
+          "bold": null,
+          "italic": null,
+          "underline": null,
+          "font_name": null,
+          "font_size": null,
+          "font_color": null
+        }
+      ]
+    },
+    {
+      "index": 116,
+      "text": "Порядок оплаты: [по разделу 5 Договора / иной порядок: аванс []%, остаток в течение [] рабочих дней с подписания Акта].",
+      "style": "List Paragraph",
+      "alignment": null,
+      "runs": [
+        {
+          "text": "Порядок оплаты: [по разделу 5 Договора / иной порядок: аванс ",
+          "bold": null,
+          "italic": null,
+          "underline": null,
+          "font_name": null,
+          "font_size": null,
+          "font_color": null
+        },
+        {
+          "text": "[",
+          "bold": null,
+          "italic": null,
+          "underline": null,
+          "font_name": null,
+          "font_size": null,
+          "font_color": null
+        },
+        {
+          "text": "]%",
+          "bold": true,
+          "italic": null,
+          "underline": null,
+          "font_name": null,
+          "font_size": null,
+          "font_color": null
+        },
+        {
+          "text": ", остаток в течение [",
+          "bold": true,
+          "italic": null,
+          "underline": null,
+          "font_name": null,
+          "font_size": null,
+          "font_color": null
+        },
+        {
+          "text": "] рабочих дней с подписания Акта].",
+          "bold": null,
+          "italic": null,
+          "underline": null,
+          "font_name": null,
+          "font_size": null,
+          "font_color": null
+        }
+      ]
+    },
+    {
+      "index": 117,
+      "text": "Критерии приёмки: [описание].",
+      "style": "List Paragraph",
+      "alignment": null,
+      "runs": [
+        {
+          "text": "Критерии",
+          "bold": null,
+          "italic": null,
+          "underline": null,
+          "font_name": null,
+          "font_size": null,
+          "font_color": null
+        },
+        {
+          "text": " ",
+          "bold": null,
+          "italic": null,
+          "underline": null,
+          "font_name": null,
+          "font_size": null,
+          "font_color": null
+        },
+        {
+          "text": "приёмки",
+          "bold": null,
+          "italic": null,
+          "underline": null,
+          "font_name": null,
+          "font_size": null,
+          "font_color": null
+        },
+        {
+          "text": ": [",
+          "bold": null,
+          "italic": null,
+          "underline": null,
+          "font_name": null,
+          "font_size": null,
+          "font_color": null
+        },
+        {
+          "text": "описание",
+          "bold": null,
+          "italic": null,
+          "underline": null,
+          "font_name": null,
+          "font_size": null,
+          "font_color": null
+        },
+        {
+          "text": "].",
+          "bold": null,
+          "italic": null,
+          "underline": null,
+          "font_name": null,
+          "font_size": null,
+          "font_color": null
+        }
+      ]
+    },
+    {
+      "index": 118,
+      "text": "Гарантийный срок: [по п. 4.6 Договора / иной срок].",
+      "style": "List Paragraph",
+      "alignment": null,
+      "runs": [
+        {
+          "text": "Гарантийный срок: [по п. 4.6 Договора / иной срок].",
+          "bold": null,
+          "italic": null,
+          "underline": null,
+          "font_name": null,
+          "font_size": null,
+          "font_color": null
+        }
+      ]
+    },
+    {
+      "index": 119,
+      "text": "Особые условия (доступы, окружение, зависимости от третьих лиц, переход прав на Результат): [при наличии].",
+      "style": "List Paragraph",
+      "alignment": null,
+      "runs": [
+        {
+          "text": "Особые условия (доступы, окружение, зависимости от третьих лиц, переход прав на Результат): [при наличии].",
+          "bold": null,
+          "italic": null,
+          "underline": null,
+          "font_name": null,
+          "font_size": null,
+          "font_color": null
+        }
+      ]
+    },
+    {
+      "index": 120,
+      "text": "Остальные условия определяются Рамочным договором. Настоящий Заказ вступает в силу с даты подписания обеими Сторонами.",
+      "style": "List Paragraph",
+      "alignment": null,
+      "runs": [
+        {
+          "text": "Остальные условия определяются Рамочным договором. Настоящий Заказ вступает в силу с даты подписания обеими Сторонами.",
+          "bold": null,
+          "italic": null,
+          "underline": null,
+          "font_name": null,
+          "font_size": null,
+          "font_color": null
+        }
+      ]
+    },
+    {
+      "index": 121,
+      "text": "Подписи: Заказчик [должность, ФИО] / Исполнитель ИП [ФИО]",
+      "style": "Normal",
+      "alignment": null,
+      "runs": [
+        {
+          "text": "Подписи: Заказчик [должность, ФИО] / Исполнитель ИП [ФИО]",
+          "bold": null,
+          "italic": null,
+          "underline": null,
+          "font_name": null,
+          "font_size": null,
+          "font_color": null
+        }
+      ]
+    },
+    {
+      "index": 122,
+      "text": "Приложение № 2. Форма Акта сдачи-приёмки",
+      "style": "Heading 2",
+      "alignment": null,
+      "runs": [
+        {
+          "text": "Приложение № 2. Форма Акта сдачи-приёмки",
+          "bold": null,
+          "italic": null,
+          "underline": null,
+          "font_name": null,
+          "font_size": null,
+          "font_color": null
+        }
+      ]
+    },
+    {
+      "index": 123,
+      "text": "Акт № [номер] от [дата] к Дополнительному соглашению № [номер] от [дата] к Рамочному договору № [номер] от [дата]",
+      "style": "Normal",
+      "alignment": null,
+      "runs": [
+        {
+          "text": "Акт № [номер] от [дата] к Дополнительному соглашению № [номер] от [дата] к Рамочному договору № [номер] от [дата]",
+          "bold": true,
+          "italic": null,
+          "underline": null,
+          "font_name": null,
+          "font_size": null,
+          "font_color": null
+        }
+      ]
+    },
+    {
+      "index": 124,
+      "text": "Исполнитель выполнил, а Заказчик принял следующие Работы (Этап): [наименование, описание Результата].",
+      "style": "Normal",
+      "alignment": null,
+      "runs": [
+        {
+          "text": "Исполнитель выполнил, а Заказчик принял следующие Работы (Этап): [наименование, описание Результата].",
+          "bold": null,
+          "italic": null,
+          "underline": null,
+          "font_name": null,
+          "font_size": null,
+          "font_color": null
+        }
+      ]
+    },
+    {
+      "index": 125,
+      "text": "Стоимость выполненных Работ: [сумма] руб. [НДС не облагается / в т. ч. НДС __].",
+      "style": "Normal",
+      "alignment": null,
+      "runs": [
+        {
+          "text": "Стоимость выполненных Работ: [сумма] руб. [НДС не облагается / в т. ч. НДС __].",
+          "bold": null,
+          "italic": null,
+          "underline": null,
+          "font_name": null,
+          "font_size": null,
+          "font_color": null
+        }
+      ]
+    },
+    {
+      "index": 126,
+      "text": "Работы выполнены в полном объёме, в установленный срок. Заказчик претензий по объёму, качеству и срокам не имеет. Исключительное право на Результат переходит к Заказчику в порядке, предусмотренном разделом 6 Договора.",
+      "style": "Normal",
+      "alignment": null,
+      "runs": [
+        {
+          "text": "Работы выполнены в полном объёме, в установленный срок. Заказчик претензий по объёму, качеству и срокам не имеет. Исключительное право на Результат переходит к Заказчику в порядке, предусмотренном разделом 6 Договора.",
+          "bold": null,
+          "italic": null,
+          "underline": null,
+          "font_name": null,
+          "font_size": null,
+          "font_color": null
+        }
+      ]
+    },
+    {
+      "index": 127,
+      "text": "Подписи: Заказчик [должность, ФИО] / Исполнитель ИП [ФИО]",
+      "style": "Normal",
+      "alignment": null,
+      "runs": [
+        {
+          "text": "Подписи: Заказчик [должность, ФИО] / Исполнитель ИП [ФИО]",
+          "bold": null,
+          "italic": null,
+          "underline": null,
+          "font_name": null,
+          "font_size": null,
+          "font_color": null
+        }
+      ]
+    }
+  ],
+  "styles": {
+    "Normal": {
+      "font_name": null,
+      "font_size": null,
+      "bold": null,
+      "italic": null,
+      "space_before": null,
+      "space_after": null,
+      "line_spacing": null
+    },
+    "Heading 1": {
+      "font_name": null,
+      "font_size": 16.0,
+      "bold": true,
+      "italic": null,
+      "space_before": 18.0,
+      "space_after": 6.0,
+      "line_spacing": null
+    },
+    "Heading 2": {
+      "font_name": null,
+      "font_size": 13.0,
+      "bold": true,
+      "italic": null,
+      "space_before": 14.0,
+      "space_after": 5.0,
+      "line_spacing": null
+    },
+    "Heading 3": {
+      "font_name": null,
+      "font_size": 12.0,
+      "bold": true,
+      "italic": null,
+      "space_before": 12.0,
+      "space_after": 4.0,
+      "line_spacing": null
+    },
+    "Heading 4": {
+      "font_name": null,
+      "font_size": null,
+      "bold": true,
+      "italic": null,
+      "space_before": null,
+      "space_after": null,
+      "line_spacing": null
+    },
+    "Heading 5": {
+      "font_name": null,
+      "font_size": null,
+      "bold": true,
+      "italic": null,
+      "space_before": null,
+      "space_after": null,
+      "line_spacing": null
+    },
+    "Heading 6": {
+      "font_name": null,
+      "font_size": null,
+      "bold": null,
+      "italic": true,
+      "space_before": null,
+      "space_after": null,
+      "line_spacing": null
+    },
+    "Title": {
+      "font_name": null,
+      "font_size": 28.0,
+      "bold": null,
+      "italic": null,
+      "space_before": null,
+      "space_after": 4.0,
+      "line_spacing": null
+    },
+    "Quote": {
+      "font_name": null,
+      "font_size": null,
+      "bold": null,
+      "italic": true,
+      "space_before": null,
+      "space_after": null,
+      "line_spacing": null
+    },
+    "Code": {
+      "font_name": "Consolas",
+      "font_size": 10.0,
+      "bold": null,
+      "italic": null,
+      "space_before": null,
+      "space_after": null,
+      "line_spacing": 1.0
+    },
+    "List Paragraph": {
+      "font_name": null,
+      "font_size": null,
+      "bold": null,
+      "italic": null,
+      "space_before": null,
+      "space_after": null,
+      "line_spacing": null
+    },
+    "annotation text": {
+      "font_name": null,
+      "font_size": 10.0,
+      "bold": null,
+      "italic": null,
+      "space_before": null,
+      "space_after": null,
+      "line_spacing": 1.0
+    }
+  },
+  "sections": [
+    {
+      "page_width": 21.59,
+      "page_height": 27.94,
+      "left_margin": 2.54,
+      "right_margin": 2.54,
+      "top_margin": 2.54,
+      "bottom_margin": 2.54
+    }
+  ]
+}

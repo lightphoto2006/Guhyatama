@@ -1,0 +1,1 @@
+F:\AI\portable-files\python\python.exe: can't open file 'F:\\AI\\\u0442\u0435\u0441\u04422\\vlm_ocr.py': [Errno 2] No such file or directory
