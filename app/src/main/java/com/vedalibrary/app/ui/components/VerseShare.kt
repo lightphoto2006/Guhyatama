@@ -68,11 +68,21 @@ object VerseShare {
     fun isLectureBook(bookId: String?): Boolean =
         bookId?.split("-")?.getOrNull(1)?.uppercase() in setOf("SCC", "SSB", "SBG", "SBRS")
 
-    /** Прозаические книги (целая глава — один кусок): перевод обычным начертанием,
-     *  как тела лекций, а не жирным (жирный — только для коротких переводов стихов) */
+    /** Известные «стихотворные» типы — для них рисуется номер стиха, жирный перевод и т.д. */
+    private val VERSE_TYPES = setOf("SB","BG","CC","ISO","NOI","BS","KB","NOD","TQK","GT","CG","BG72")
     private val PROSE_TYPES = setOf("GC")
-    fun isProseBook(bookId: String?): Boolean =
-        bookId?.split("-")?.getOrNull(1)?.uppercase() in PROSE_TYPES
+
+    /** Прозаические книги (целая глава — один кусок): перевод обычным начертанием,
+     *  как тела лекций, а не жирным (жирный — только для коротких переводов стихов).
+     *  Любой новый/неизвестный тип (CHB, LTRX и т.п.) автоматически считается прозой. */
+    fun isProseBook(bookId: String?): Boolean {
+        val t = bookId?.split("-")?.getOrNull(1)?.uppercase() ?: return false
+        if (t in PROSE_TYPES) return true
+        if (t.isEmpty()) return false
+        if (t in VERSE_TYPES) return false
+        if (isLectureBook(bookId)) return false
+        return true
+    }
 
     /** Книги, где number — номер лекции/письма, а не стиха: диапазоны («34-35»)
      *  считать строками. Лекции обоих авторов + письма + беседы */
@@ -103,6 +113,11 @@ object VerseShare {
 
     /** Та же ссылка без сущностей — для лёгких строк списков (считается один раз в VM, а не на рекомпозицию) */
     fun refLight(bookLang: String?, bookId: String?, chapterId: String, number: String): String {
+        // Прозаические книги: подпись «Глава N» без сырого типа
+        if (isProseBook(bookId)) {
+            val num = chapterNum(chapterId)
+            return if (num != null) "Глава $num" else "Глава"
+        }
         val type = bookId?.split("-")?.getOrNull(1)?.uppercase() ?: ""
         val code = if (bookLang == "rus") RU[type] ?: type.ifBlank { "•" } else type.ifBlank { "•" }
         val num = chapterNum(chapterId)

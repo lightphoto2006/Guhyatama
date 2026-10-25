@@ -266,14 +266,13 @@ class LibraryDbImporter @Inject constructor(
         val total = sq.rawQuery("SELECT COUNT(*) FROM textnums WHERE book_id=$gbBook", null).use { it.moveToFirst(); it.getInt(0) }
         var done = 0
         var words = 0
-        // Лекции Шьямакунды: тело целиком в translation (десятки КБ) — резать на 8000 нельзя,
-        // иначе лекция обрывается на полуслове. Обычным книгам лимит оставляем (память/FTS)
-        // Лекции Шьямакунды: тело целиком в translation (десятки КБ) — резать на 8000 нельзя,
+        // Лекции Шьямакунды: тело целиком в translation (десятки КБ) — резать нельзя,
         // иначе лекция обрывается на полуслове. Проза ачарьев (GC) — куски до десятков КБ.
-        // Обычным книгам лимит оставляем (память/FTS)
+        // Большие книги и новые/неизвестные типы (CHB, LTRX и т.п.) — тоже целиком,
+        // лимит больше не режет главы прозы.
         val codeTop = bookId.split("-").getOrNull(1)?.uppercase()
         val bodyCap = if (codeTop in setOf("SCC", "SSB", "SBG", "SBRS")) 120000
-        else if (codeTop == "GC") 60000 else 8000
+        else if (codeTop == "GC") 60000 else 120000
         val keyToId = HashMap<String, String>(total.coerceAtMost(60000))
         val seenIds = HashMap<String, Int>(total.coerceAtMost(60000))
         var batch = ArrayList<Verse>(300)

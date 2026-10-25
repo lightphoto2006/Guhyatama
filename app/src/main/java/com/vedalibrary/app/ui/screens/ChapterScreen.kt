@@ -277,10 +277,14 @@ fun androidx.compose.foundation.lazy.LazyListScope.verseItems(
                         lineHeight = lineSize * 1.35f
                     )
                 } else {
+                    val isProse = remember(item.row.id) {
+                        com.vedalibrary.app.ui.components.VerseShare.isProseBook(item.row.bookId)
+                    }
                     Text(
                         item.ref,
                         style = MaterialTheme.typography.bodyLarge,
-                        fontWeight = androidx.compose.ui.text.font.FontWeight.Bold
+                        fontWeight = if (isProse) androidx.compose.ui.text.font.FontWeight.Normal
+                        else androidx.compose.ui.text.font.FontWeight.Bold
                     )
                     val listSize = if (fontSizeSp > 0) fontSizeSp.sp else MaterialTheme.typography.bodyMedium.fontSize
                     // На ColorOS Compose-Justify молча не работает — там бокс
