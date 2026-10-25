@@ -104,7 +104,7 @@ def next_db_tag(token, repo=FILES_REPO):
     return "db-v%d" % (maxlen + 1)
 
 
-def create_release(token, repo, tag, name, body, target_commitish=""):
+def create_release(token, repo, tag, name, body, target_commitish="", prerelease=False):
     st, d = gh_json(
         "https://api.github.com/repos/%s/releases" % repo,
         token, method="POST", data=json.dumps({
@@ -112,7 +112,7 @@ def create_release(token, repo, tag, name, body, target_commitish=""):
             "name": name,
             "body": body,
             "draft": True,
-            "prerelease": False,
+            "prerelease": prerelease,
             **({"target_commitish": target_commitish} if target_commitish else {}),
         }).encode("utf-8"),
         headers={"Content-Type": "application/json"})
@@ -196,13 +196,19 @@ def publish_catalog(token, path, repo=None, tag="catalog",
 
     rel = get_release_by_tag(token, repo, tag)
     if rel is None:
-        # Создаём черновик
-        rel = create_release(token, repo, tag, name, "технический релиз каталога")
+        # Создаём черновик (catalog — всегда prerelease)
+        rel = create_release(token, repo, tag, name, "технический релиз каталога", prerelease=True)
         rid = rel["id"]
         upload_asset(token, repo, rid, path, name="catalog.json", ctype=ctype)
         publish_release(token, repo, rid)
     else:
         rid = rel["id"]
+        # Помечаем как prerelease, если ещё не отмечен
+        if not rel.get("prerelease"):
+            gh_json(
+                "https://api.github.com/repos/%s/releases/%d" % (repo, rid),
+                token, method="PATCH", data=json.dumps({"prerelease": True}).encode("utf-8"),
+                headers={"Content-Type": "application/json"})
         # Удаляем старый ассет catalog.json, если есть
         for a in rel.get("assets", []):
             if a.get("name") == "catalog.json":
