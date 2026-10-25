@@ -220,10 +220,14 @@ class AppUpdater @Inject constructor(
 
     private fun installOrThrow(apk: File): Boolean {
         if (Build.VERSION.SDK_INT >= 26) {
+            // Прямой вызов canRequestPackageInstalls() на API 24/25 роняет приложение
+            // (NoSuchMethodError при верификации/вызове) — дергаем только рефлексией.
             val noPermission = try {
-                !ctx.packageManager.canRequestPackageInstalls()
+                val pm = ctx.packageManager
+                val m = pm.javaClass.getMethod("canRequestPackageInstalls")
+                !(m.invoke(pm) as? Boolean ?: true)
             } catch (t: Throwable) {
-                false // на старых прошивках метод может вести себя непредсказуемо
+                false
             }
             if (noPermission) {
                 ctx.startActivity(
