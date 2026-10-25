@@ -411,7 +411,7 @@ fun HtmlText(
             // (Layout.* те же значения, lint WrongConstant). minSdk 26 — гейт по SDK не нужен.
             // breakStrategy выставляем явно: на части прошивок дефолт SIMPLE, с ним
             // justification местами не применяется. Остальным секциям стратегию не трогаем.
-            val manual = justify && !center && colorOs
+            val manual = justify && !center
             (tv as? JustifyTextView)?.let { it.justifyManual = manual; it.eraseArgb = bgArgb }
             if (justify && !center && Build.VERSION.SDK_INT >= 26) {
                 if (colorOs) {
@@ -452,7 +452,7 @@ fun JustifiedPreviewText(
     val colorOs = remember { isColorOs() }
     val center = align == TextAlign.Center
     val justify = align == TextAlign.Justify
-    if (!colorOs) {
+    if (!colorOs && Build.VERSION.SDK_INT >= 26) {
         Text(
             text,
             modifier = modifier,
