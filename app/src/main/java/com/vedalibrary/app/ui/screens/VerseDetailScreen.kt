@@ -363,17 +363,17 @@ fun VerseDetailScreen(
                 val translationHtml = remember(verse.id, book?.language) {
                     if (book?.language == "rus") GbHtml.cyrillicTerms(verse.translation) else verse.translation!!
                 }
-                // Тело лекции — обычным начертанием (жирным только короткие переводы стихов)
                 val lectureBody = remember(book?.id) { VerseShare.isLectureBook(book?.id) }
                 val proseBody = remember(book?.id) { VerseShare.isProseBook(book?.id) }
-                HtmlText(translationHtml, Modifier.fillMaxWidth().padding(vertical = 8.dp), center = centerBlock, justify = justifyBlock, fontSizeSp = font, bold = !lectureBody && !proseBody, onSaveNote = { vm.addNote(verse.id, it) }, onAsk = ::askIt, highlight = hl, onVerseRef = ::openRef,
+                HtmlText(translationHtml, Modifier.fillMaxWidth().padding(vertical = 8.dp), center = centerBlock && !proseBody, justify = justifyBlock, fontSizeSp = font, bold = !lectureBody && !proseBody, onSaveNote = { vm.addNote(verse.id, it) }, onAsk = ::askIt, highlight = hl, onVerseRef = ::openRef,
                     refSong = lecCtx?.first, refCh = lecCtx?.second, refWork = lecCtx?.third)
             }
             if (pur && !verse.purport.isNullOrBlank()) item {
                 val purportHtml = remember(verse.id, book?.language) {
                     if (book?.language == "rus") GbHtml.cyrillicTerms(verse.purport) else verse.purport!!
                 }
-                HtmlText(purportHtml, Modifier.fillMaxWidth().padding(vertical = 8.dp), center = centerBlock, justify = justifyBlock, fontSizeSp = font, onSaveNote = { vm.addNote(verse.id, it) }, onAsk = ::askIt, highlight = hl, onVerseRef = ::openRef,
+                val proseBody = remember(book?.id) { VerseShare.isProseBook(book?.id) }
+                HtmlText(purportHtml, Modifier.fillMaxWidth().padding(vertical = 8.dp), center = centerBlock && !proseBody, justify = justifyBlock, fontSizeSp = font, onSaveNote = { vm.addNote(verse.id, it) }, onAsk = ::askIt, highlight = hl, onVerseRef = ::openRef,
                     refSong = lecCtx?.first, refCh = lecCtx?.second, refWork = lecCtx?.third)
             }
             item { RelatedSections(vm, onNavigate) }

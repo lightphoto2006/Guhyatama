@@ -1,13 +1,13 @@
 {
   "catalogVersion": 1,
   "apk": {
-    "versionCode": 64,
-    "versionName": "1.3.16",
-    "url": "https://github.com/lightphoto2006/Guhyatama/releases/download/v1.3.16/Guhyatama-1.3.16.apk",
-    "file": "F:\\\\AI\\\\Development\\\\Guhyatama\\\\releases\\\\Guhyatama-1.3.16.apk",
-    "notes": "Что нового:\n- Исправлено падение при открытии книг-проз (главы без стихов) на Android 7–7.1: метод из Android 8 больше не вызывается.\n- Для книг-проз (GC/CHB) больше не показывается «Стихов: N» в списке глав.\n- Остальное как в 1.3.15.",
+    "versionCode": 65,
+    "versionName": "1.3.17",
+    "url": "https://github.com/lightphoto2006/Guhyatama/releases/download/v1.3.17/Guhyatama-1.3.17.apk",
+    "file": "F:\\\\AI\\\\Development\\\\Guhyatama\\\\releases\\\\Guhyatama-1.3.17.apk",
+    "notes": "Что нового:\n- Книги-проза: текст больше не центрируется и не показывает номер «главы-стиха»; читается как обычный текст.\n- Остальное как в 1.3.16.",
     "size": 6056878,
-    "sha256": "d7453f4660d9b6c2c114a1401a48b9b9ca070d8224a0d3f902faf8d2437fe312"
+    "sha256": "10eb3072a77c34079ab41eb743528298af773b49959494e62b334be5e0e4afaa"
   },
   "books": [
     {

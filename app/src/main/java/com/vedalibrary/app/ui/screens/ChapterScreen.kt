@@ -236,6 +236,9 @@ fun androidx.compose.foundation.lazy.LazyListScope.verseItems(
             else ""
         }
         var showMenu by remember(item.row.id) { mutableStateOf(false) }
+        val isProse = remember(item.row.id) {
+            com.vedalibrary.app.ui.components.VerseShare.isProseBook(item.row.bookId)
+        }
         // Box-якорь: иначе DropdownMenu в LazyColumn всплывает вверху экрана
         androidx.compose.foundation.layout.Box {
             // Вместо ListItem: у M3-ListItem нет contentPadding (внутренние 16dp
@@ -277,16 +280,15 @@ fun androidx.compose.foundation.lazy.LazyListScope.verseItems(
                         lineHeight = lineSize * 1.35f
                     )
                 } else {
-                    val isProse = remember(item.row.id) {
-                        com.vedalibrary.app.ui.components.VerseShare.isProseBook(item.row.bookId)
+                    if (!isProse) {
+                        Text(
+                            item.ref,
+                            style = MaterialTheme.typography.bodyLarge,
+                            fontWeight = androidx.compose.ui.text.font.FontWeight.Bold
+                        )
                     }
-                    Text(
-                        item.ref,
-                        style = MaterialTheme.typography.bodyLarge,
-                        fontWeight = if (isProse) androidx.compose.ui.text.font.FontWeight.Normal
-                        else androidx.compose.ui.text.font.FontWeight.Bold
-                    )
                     val listSize = if (fontSizeSp > 0) fontSizeSp.sp else MaterialTheme.typography.bodyMedium.fontSize
+                    val proseAlign = if (isProse) TextAlign.Start else textAlign
                     // На ColorOS Compose-Justify молча не работает — там бокс
                     // переключается на ручную доводку (JustifyTextView), на остальном
                     // — ровно этот Compose Text, что был
@@ -294,7 +296,7 @@ fun androidx.compose.foundation.lazy.LazyListScope.verseItems(
                         full,
                         modifier = Modifier.fillMaxWidth(),
                         fontSizeSp = listSize.value,
-                        align = textAlign,
+                        align = proseAlign,
                         color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
                 }
