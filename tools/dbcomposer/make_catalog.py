@@ -10,6 +10,10 @@ make_catalog — собирает catalog.json для автообновлени
 Секции: apk (руками в versions.json), books (файлы .db), audio (аудиопаки .db,
 дельты — позже). Ключ книги стабилен (имя файла-источника), версия растёт
 с каждым выпуском — приложение сравнивает и качает только новое.
+
+При отсутствии исходных .db в --src: берёт size/sha256 из существующего
+выходного каталога (--out), если там есть запись с тем же ключом и URL.
+Если и там пусто — оставляет 0/"" и печатает «ФАЙЛ НЕ НАЙДЕН … (размеров нет)».
 """
 import argparse
 import hashlib
@@ -76,6 +80,34 @@ def fingerprint(p):
     return out
 
 
+def _load_prev_catalog(out_path):
+    """Загрузить предыдущий каталог из --out, если он существует.
+    Если --out не существует (первый запуск) — пробуем updates/catalog.json."""
+    candidates = [out_path]
+    # fallback: если --out не существует, берём updates/catalog.json
+    if out_path and not os.path.exists(out_path):
+        fallback = os.path.join(ROOT, "updates", "catalog.json")
+        if fallback not in candidates and os.path.exists(fallback):
+            candidates.append(fallback)
+    for path in candidates:
+        try:
+            with open(path, encoding="utf-8") as f:
+                cat = json.load(f)
+            # Build lookup: (section, key) -> {size, sha256, url}
+            prev = {}
+            for section_name in ("books", "audio"):
+                for item in cat.get(section_name, []):
+                    prev[(section_name, item["key"])] = {
+                        "size": item.get("size", 0),
+                        "sha256": item.get("sha256", ""),
+                        "url": item.get("url", ""),
+                    }
+            return prev
+        except Exception:
+            continue
+    return {}
+
+
 def main(argv):
     ap = argparse.ArgumentParser(description="Сборка catalog.json для автообновлений")
     ap.add_argument("--src", default=os.path.join(ROOT, "DB"),
@@ -88,6 +120,10 @@ def main(argv):
     if not os.path.exists(a.versions):
         print("Нет sidecar: %s (образец: updates/versions.example.json)" % a.versions)
         return 1
+
+    # Загружаем предыдущий каталог для fallback size/sha256
+    prev_catalog = _load_prev_catalog(a.out)
+
     with open(a.versions, encoding="utf-8") as f:
         side = json.load(f)
 
@@ -134,9 +170,32 @@ def main(argv):
                 print("%s/%s: v%s, %.0f МБ ok" % (
                     name, key, entry["version"], entry["size"] / 1048576))
             else:
-                entry["size"] = 0
-                entry["sha256"] = ""
-                print("%s/%s: ФАЙЛ НЕ НАЙДЕН (%s) — только метаданные" % (name, key, p))
+                # Файл не найден в --src: пробуем взять size/sha256 из предыдущего каталога
+                prev_key = (name, key)
+                if prev_key in prev_catalog:
+                    prev_entry = prev_catalog[prev_key]
+                    # Проверяем, что URL совпадает
+                    if prev_entry["url"] == entry["url"]:
+                        if prev_entry["size"] > 0 and prev_entry["sha256"]:
+                            entry["size"] = prev_entry["size"]
+                            entry["sha256"] = prev_entry["sha256"]
+                            print("%s/%s: ФАЙЛ НЕ НАЙДЕН (%s) — размеры из прошлого каталога" % (
+                                name, key, p))
+                        else:
+                            entry["size"] = 0
+                            entry["sha256"] = ""
+                            print("%s/%s: ФАЙЛ НЕ НАЙДЕН (%s) — (размеров нет)" % (
+                                name, key, p))
+                    else:
+                        entry["size"] = 0
+                        entry["sha256"] = ""
+                        print("%s/%s: ФАЙЛ НЕ НАЙДЕН (%s) — (размеров нет)" % (
+                            name, key, p))
+                else:
+                    entry["size"] = 0
+                    entry["sha256"] = ""
+                    print("%s/%s: ФАЙЛ НЕ НАЙДЕН (%s) — (размеров нет)" % (
+                        name, key, p))
             items.append(entry)
         return items
 
@@ -149,7 +208,7 @@ def main(argv):
     apk = dict(side.get("apk") or {})  # копия: не мутируем исходный side
     afn = apk.get("file", "")
     if afn:
-        ap = afn if os.path.isabs(afn) else os.path.join(a.src, afn)
+        ap = afn if os.path.isabs(apk.get("file", "")) else os.path.join(a.src, afn)
         if os.path.exists(ap):
             apk["size"] = os.path.getsize(ap)
             apk["sha256"] = sha256(ap)

@@ -27,8 +27,8 @@
       "notes": "Первая публикация в каталоге. Полная русская библиотека.",
       "lang": "rus",
       "auth": "github",
-      "size": 0,
-      "sha256": ""
+      "size": 153735168,
+      "sha256": "b411bac2be1adce65f6617c3df0717dbe3186bf4b3ef2367ba285ea2b52ddc83"
     },
     {
       "key": "Prabhupada_eng",
@@ -39,8 +39,8 @@
       "lang": "eng",
       "auth": "github",
       "adopt": false,
-      "size": 0,
-      "sha256": ""
+      "size": 158236672,
+      "sha256": "8085a1f75da2b28e964b16fb6baad0035a9ae11e7f897836e6eb35796a7964c1"
     },
     {
       "key": "Acharyi_eng",
@@ -50,8 +50,8 @@
       "notes": "Первая публикация в каталоге.",
       "lang": "eng",
       "auth": "github",
-      "size": 0,
-      "sha256": ""
+      "size": 4489216,
+      "sha256": "ed598a9c745ed8fc6183609796b8e0a554ab2cf438b8b72039b991401423c269"
     },
     {
       "key": "Syamakunda_CC",
@@ -62,8 +62,8 @@
       "lang": "rus",
       "auth": "github",
       "adopt": false,
-      "size": 0,
-      "sha256": ""
+      "size": 10469376,
+      "sha256": "fdf966fadd9d509faccf072e1530e5165334146f2fc7655140ffd28cd71d4bc1"
     },
     {
       "key": "Syamakunda_BRS",
@@ -74,8 +74,8 @@
       "lang": "rus",
       "auth": "github",
       "adopt": false,
-      "size": 0,
-      "sha256": ""
+      "size": 13209600,
+      "sha256": "450e948d1fc5ebf3a0407f2a30b0631f0897c89add3c083566ae1ceee4dc6936"
     },
     {
       "key": "Acharyi_rus",
@@ -86,8 +86,8 @@
       "lang": "rus",
       "auth": "github",
       "adopt": false,
-      "size": 0,
-      "sha256": ""
+      "size": 2969600,
+      "sha256": "c4ea0642d4b8c79d98026707e84a0e1d262e5fdcbae367e15f235df80aeb9dad"
     }
   ],
   "audio": [
@@ -99,8 +99,8 @@
       "notes": "Первая публикация в каталоге.",
       "lang": "rus",
       "auth": "github",
-      "size": 0,
-      "sha256": ""
+      "size": 131887104,
+      "sha256": "7f11380e0035289347eb18df15636e16a730f11ba636bc5e7ca44c56c5260ac6"
     },
     {
       "key": "SBA_Canto1",
@@ -110,8 +110,8 @@
       "notes": "Первая публикация в каталоге. Opus 24k.",
       "lang": "rus",
       "auth": "github",
-      "size": 0,
-      "sha256": ""
+      "size": 48357376,
+      "sha256": "0f182a2dae73f49e61b2f36369f86d42464fd6da49f0abdfce4c5ce6faac3f51"
     }
   ]
 }
