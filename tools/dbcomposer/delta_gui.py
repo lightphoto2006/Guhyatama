@@ -51,6 +51,7 @@ class DeltaTab(ttk.Frame):
         self.log = tk.Text(logf, height=6, wrap="word")
         self.log.pack(side="left", fill="both", expand=True)
         self.log.bind("<Key>", uicommon.log_key)
+        uicommon.attach_log_menu(self.log)
 
     def _build_delta_db_tab(self, nb):
         t = ttk.Frame(nb, padding=6)

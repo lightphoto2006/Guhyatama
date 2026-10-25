@@ -743,6 +743,7 @@ class AIImportTab(ttk.Frame):
         self.log = tk.Text(logf, height=6, wrap="word")
         self.log.pack(side="left", fill="both", expand=True)
         self.log.bind("<Key>", uicommon.log_key)
+        uicommon.attach_log_menu(self.log)
         self.after(150, self.poll)
 
     # ------------------------------------------------------- сервер --------

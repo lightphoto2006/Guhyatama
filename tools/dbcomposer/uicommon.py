@@ -1,6 +1,44 @@
 # -*- coding: utf-8 -*-
 """Общие UI-утилиты для вкладок dbcomposer (stdlib, без tkinter-импорта сверх нужного)."""
 
+import tkinter as tk
+
+
+def attach_log_menu(widget):
+    """Контекстное меню правой кнопки для лог-виджета:
+    «Копировать» (выделенный текст → буфер) и «Выделить всё».
+    Возвращает объект tk.Menu, привязанный к widget._ctx_menu."""
+    menu = tk.Menu(widget, tearoff=0)
+
+    def _copy():
+        try:
+            sel = widget.get("sel.first", "sel.last")
+            widget.clipboard_clear()
+            widget.clipboard_append(sel)
+        except Exception:
+            pass
+
+    def _select_all():
+        widget.tag_add("sel", "1.0", "end-1c")
+
+    menu.add_command(label="Копировать", command=_copy)
+    menu.add_command(label="Выделить всё", command=_select_all)
+
+    def _show_menu(ev):
+        try:
+            menu.tk_popup(ev.x_root, ev.y_root)
+        finally:
+            try:
+                menu.grab_release()
+            except Exception:
+                pass
+
+    widget._ctx_menu = menu
+    widget.bind("<Button-3>", _show_menu)
+    widget.bind("<Button-2>", _show_menu)
+    widget.bind("<Control-Button-1>", _show_menu)
+    return menu
+
 
 def log_key(ev):
     """Лог только для чтения. Ctrl+A — выделить всё, Ctrl+C/Insert — копировать.

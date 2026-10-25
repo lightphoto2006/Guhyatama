@@ -151,6 +151,8 @@ class LecturesTab(ttk.Frame):
 
         self.log = tk.Text(self, height=7, wrap="word")
         self.log.pack(fill="both", expand=False, padx=6, pady=(0, 6))
+        self.log.bind("<Key>", uicommon.log_key)
+        uicommon.attach_log_menu(self.log)
         self.after(150, self.poll)
 
     def on_activate(self):

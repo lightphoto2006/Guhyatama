@@ -182,6 +182,7 @@ class App(tk.Tk):
         self.log = tk.Text(build, height=9, wrap="word")
         self.log.pack(fill="both", expand=False, padx=6, pady=(0, 6))
         self.log.bind("<Key>", uicommon.log_key)
+        uicommon.attach_log_menu(self.log)
 
         # вкладки-инструменты (бывшие отдельные окна). Создаются сразу, но
         # тяжёлая инициализация — при первом показе (см. on_tab/on_activate)
