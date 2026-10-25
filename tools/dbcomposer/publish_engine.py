@@ -27,6 +27,18 @@ class PublishError(Exception):
     pass
 
 
+def books_count(db_path):
+    """Число книг в базе (0, если не открылась)."""
+    try:
+        con = sqlite3.connect("file:%s?mode=ro" % db_path, uri=True)
+        try:
+            return con.execute("SELECT COUNT(*) FROM books").fetchone()[0]
+        finally:
+            con.close()
+    except Exception:
+        return 0
+
+
 # ====================================================================== guess_key
 # ======================================================================
 

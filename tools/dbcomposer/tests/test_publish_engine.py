@@ -1407,6 +1407,58 @@ def test_delta_size_based_unchanged():
 
 
 # ======================================================================
+# i) books_count
+# ======================================================================
+def test_books_count():
+    print("=== i) books_count ===")
+    tmpdir = tempfile.mkdtemp(prefix="bookscount_")
+
+    def _make_db(path, n_books):
+        con = sqlite3.connect(path)
+        try:
+            con.execute("CREATE TABLE books(_id INTEGER PRIMARY KEY, sort INTEGER, "
+                        "author TEXT, title TEXT, desc TEXT, type TEXT, "
+                        "levels INTEGER, hasSanskrit INTEGER, hasPurport INTEGER, "
+                        "hasColorStructure INTEGER, isSongBook INTEGER, "
+                        "text_size INTEGER, purport_size INTEGER, "
+                        "text_begin_raw TEXT, text_end_raw TEXT, "
+                        "web_abbrev TEXT, compare_code TEXT, "
+                        "issue TEXT, isSimple INTEGER)")
+            for i in range(1, n_books + 1):
+                con.execute("INSERT INTO books(_id,sort,type) VALUES (?,?,?)",
+                            (i, i, 'SCC'))
+            con.commit()
+        finally:
+            con.close()
+
+    # 0 книг
+    db0 = os.path.join(tmpdir, "zero.db")
+    _make_db(db0, 0)
+    check(publish_engine.books_count(db0) == 0, "0 книг → 0")
+
+    # 1 книга
+    db1 = os.path.join(tmpdir, "one.db")
+    _make_db(db1, 1)
+    check(publish_engine.books_count(db1) == 1, "1 книга → 1")
+
+    # 3 книги
+    db3 = os.path.join(tmpdir, "three.db")
+    _make_db(db3, 3)
+    check(publish_engine.books_count(db3) == 3, "3 книги → 3")
+
+    # несуществующий файл
+    check(publish_engine.books_count("/nonexistent.db") == 0,
+          "несуществующий файл → 0")
+
+    # обычный файл не как база
+    bad = os.path.join(tmpdir, "notadb.txt")
+    with open(bad, "w") as f:
+        f.write("hello")
+    check(publish_engine.books_count(bad) == 0,
+          "не база → 0")
+
+
+# ======================================================================
 # main
 # ======================================================================
 def main():
@@ -1420,6 +1472,7 @@ def main():
     test_publish_book_new_no_title()
     test_delta_disabled_by_composition_change()
     test_delta_size_based_unchanged()
+    test_books_count()
 
     print("")
     print("Итого проверок: %d, провалов: %d" % (checks, fails))

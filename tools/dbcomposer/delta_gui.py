@@ -512,12 +512,41 @@ class DeltaTab(ttk.Frame):
                                    "Для новой книги укажите название.")
             return
 
+        # Проверка: не публикуем ли случайно сборник вместо полной книги
+        import publish_engine
+        new_n = publish_engine.books_count(new)
+        old_n = 0
+        if not is_new:
+            try:
+                with open(os.path.join(ROOT, "updates", "versions.json"), encoding="utf-8") as f:
+                    vdata = json.load(f)
+                for sec in ("books", "audio"):
+                    meta = vdata.get(sec, {}).get(key, {})
+                    if meta:
+                        old_file = meta.get("file", "")
+                        if old_file and os.path.isfile(old_file):
+                            old_n = publish_engine.books_count(old_file)
+                        break
+            except Exception:
+                pass
+        if old_n >= 2 and new_n < old_n:
+            if not messagebox.askyesno(
+                "Состав книги уменьшился",
+                "В опубликованной базе %d книг, в новой — %d.\n"
+                "Ты уверен, что публикуешь сборник, а не одну книгу?" % (old_n, new_n),
+                parent=self,
+            ):
+                return
+
         # Сводка
         delta_info = " (будет собрана дельта)" if delta_checked else ""
         new_book_label = " (НОВАЯ книга)" if is_new else ""
         summary = ("Книга: %s%s\n"
                     "Версия: %s\n"
-                    "Файл: %s%s" % (key, new_book_label, self.v_pub_ver.cget("text"), new, delta_info))
+                    "Книг в новой базе: %d\n"
+                    "Файл: %s%s" % (
+                        key, new_book_label, self.v_pub_ver.cget("text"),
+                        new_n, new, delta_info))
         if not messagebox.askyesno("Публиковать?", summary, parent=self):
             return
 
