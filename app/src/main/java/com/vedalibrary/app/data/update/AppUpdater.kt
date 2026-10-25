@@ -57,6 +57,9 @@ class AppUpdater @Inject constructor(
             conn = (URL(CATALOG_URL).openConnection() as HttpURLConnection).apply {
                 connectTimeout = 15000
                 readTimeout = 15000
+                if (this is javax.net.ssl.HttpsURLConnection) {
+                    sslSocketFactory = ExtraTrust.socketFactory(ctx)
+                }
             }
             if (conn.responseCode == 200) {
                 lastCatalogError = null
@@ -74,6 +77,9 @@ class AppUpdater @Inject constructor(
             conn = (URL(CATALOG_URL_RAW).openConnection() as HttpURLConnection).apply {
                 connectTimeout = 15000
                 readTimeout = 15000
+                if (this is javax.net.ssl.HttpsURLConnection) {
+                    sslSocketFactory = ExtraTrust.socketFactory(ctx)
+                }
             }
             if (conn.responseCode == 200) {
                 lastCatalogError = null
@@ -92,6 +98,9 @@ class AppUpdater @Inject constructor(
                 connectTimeout = 15000
                 readTimeout = 15000
                 setRequestProperty("Accept", "application/vnd.github+json")
+                if (this is javax.net.ssl.HttpsURLConnection) {
+                    sslSocketFactory = ExtraTrust.socketFactory(ctx)
+                }
             }
             if (conn.responseCode == 200) {
                 val json = JSONObject(conn.inputStream.bufferedReader().readText())

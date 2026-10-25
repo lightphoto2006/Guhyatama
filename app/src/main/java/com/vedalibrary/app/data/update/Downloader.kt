@@ -58,6 +58,7 @@ suspend fun Downloader.fetchStream(
     onProgress: (done: Long, total: Long) -> Unit = { _, _ -> },
     headers: Map<String, String> = emptyMap()
 ): File = withContext(Dispatchers.IO) {
+    val sslFactory = ExtraTrust.socketFactory(ctx)
     var conn: HttpURLConnection? = null
     var redirectCount = 0
     var currentUrl = url
@@ -76,6 +77,9 @@ suspend fun Downloader.fetchStream(
             conn.instanceFollowRedirects = false
             headersMap.forEach { (k, v) -> conn.setRequestProperty(k, v) }
             conn.doInput = true
+            if (conn is javax.net.ssl.HttpsURLConnection) {
+                conn.sslSocketFactory = sslFactory
+            }
             val code = conn.responseCode
 
             if (code in 300..399) {
@@ -136,7 +140,7 @@ private fun HttpURLConnection.getHeaderFieldLong(name: String, default: Long): L
 /** Общая качалка (APK, книги, аудиопаки): системный DownloadManager с докачкой.
  *  Кидает исключение с текстом для UI. */
 @Singleton
-class Downloader @Inject constructor(@ApplicationContext private val ctx: Context) {
+class Downloader @Inject constructor(@ApplicationContext internal val ctx: Context) {
     private val active = Collections.synchronizedSet(mutableSetOf<Long>())
 
     suspend fun fetch(
