@@ -52,9 +52,26 @@ class AppUpdater @Inject constructor(
         var conn: HttpURLConnection? = null
         val errors = mutableListOf<String>()
 
-        // --- 1. Raw-запрос ---
+        // --- 1. Asset-ссылка (техрелиз с тегом catalog) ---
         try {
             conn = (URL(CATALOG_URL).openConnection() as HttpURLConnection).apply {
+                connectTimeout = 15000
+                readTimeout = 15000
+            }
+            if (conn.responseCode == 200) {
+                lastCatalogError = null
+                return@withContext JSONObject(conn.inputStream.bufferedReader().readText())
+            } else {
+                errors += "asset: HTTP ${conn.responseCode}"
+            }
+        } catch (e: Exception) {
+            errors += "asset: ${e.javaClass.simpleName}: ${e.message}"
+            Log.e("Updater", "catalog fetch failed (asset)", e)
+        } finally { try { conn?.disconnect() } catch (_: Exception) { } }
+
+        // --- 2. Raw из main (fallback) ---
+        try {
+            conn = (URL(CATALOG_URL_RAW).openConnection() as HttpURLConnection).apply {
                 connectTimeout = 15000
                 readTimeout = 15000
             }
@@ -69,7 +86,7 @@ class AppUpdater @Inject constructor(
             Log.e("Updater", "catalog fetch failed (raw)", e)
         } finally { try { conn?.disconnect() } catch (_: Exception) { } }
 
-        // --- 2. API-запрос (contents) ---
+        // --- 3. API-запрос (contents) ---
         try {
             conn = (URL(CATALOG_URL_API).openConnection() as HttpURLConnection).apply {
                 connectTimeout = 15000
@@ -94,7 +111,7 @@ class AppUpdater @Inject constructor(
             Log.e("Updater", "catalog fetch failed (api)", e)
         } finally { try { conn?.disconnect() } catch (_: Exception) { } }
 
-        // --- Оба упали ---
+        // --- Все упали ---
         lastCatalogError = if (errors.isEmpty()) "причина неизвестна"
             else errors.joinToString("; ").take(200)
         null

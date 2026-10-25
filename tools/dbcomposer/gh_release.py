@@ -155,8 +155,64 @@ def delete_release(token, repo, release_id, tag=None):
                 raise
 
 
+def get_release_by_tag(token, repo, tag):
+    """GET /repos/{repo}/releases/tags/{tag} → dict или None (404 → None)."""
+    try:
+        st, d = gh_json(
+            "https://api.github.com/repos/%s/releases/tags/%s" % (repo, tag),
+            token)
+        if st != 200:
+            return None
+        return d
+    except GHError as e:
+        if e.status == 404:
+            return None
+        raise
+
+
+def delete_asset(token, repo, asset_id):
+    """DELETE /repos/{repo}/releases/assets/{id}."""
+    gh("https://api.github.com/repos/%s/releases/assets/%d" % (repo, asset_id),
+       token, method="DELETE")
+
+
 def asset_api_url(repo, asset_id):
     return "https://api.github.com/repos/%s/releases/assets/%d" % (repo, asset_id)
+
+
+def publish_catalog(token, path, repo=None, tag="catalog",
+                    name="Каталог обновлений (технический)"):
+    """Публикует файл как ассет catalog.json в релизе с тегом tag.
+
+    - Если релиз по тегу есть — удаляет ассет с именем catalog.json (если найден)
+      и загружает новый.
+    - Если нет — создаёт черновик, загружает, публикует.
+    - Возвращает URL: https://github.com/{repo}/releases/download/{tag}/catalog.json
+    """
+    repo = repo or APP_REPO
+    with open(path, "rb") as f:
+        blob = f.read()
+    ctype = "application/json"
+
+    rel = get_release_by_tag(token, repo, tag)
+    if rel is None:
+        # Создаём черновик
+        rel = create_release(token, repo, tag, name, "технический релиз каталога")
+        rid = rel["id"]
+        upload_asset(token, repo, rid, path, name="catalog.json", ctype=ctype)
+        publish_release(token, repo, rid)
+    else:
+        rid = rel["id"]
+        # Удаляем старый ассет catalog.json, если есть
+        for a in rel.get("assets", []):
+            if a.get("name") == "catalog.json":
+                delete_asset(token, repo, a["id"])
+                break
+        upload_asset(token, repo, rid, path, name="catalog.json", ctype=ctype)
+        if rel.get("draft"):
+            publish_release(token, repo, rid)
+
+    return "https://github.com/%s/releases/download/%s/catalog.json" % (repo, tag)
 
 
 # --- CLI --------------------------------------------------------------------
@@ -189,6 +245,11 @@ def main(argv):
         rid, t = rel["id"], rel["tag_name"]
         delete_release(token, repo, rid, t)
         print("create+delete ok (%s, id %d), права есть" % (t, rid))
+        return 0
+    if cmd == "catalog":
+        path = argv[3] if len(argv) > 3 else os.path.join(ROOT, "catalog.json")
+        url = publish_catalog(token, path, repo=APP_REPO)
+        print(url)
         return 0
     print(__doc__)
     return 1

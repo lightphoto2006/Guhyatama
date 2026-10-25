@@ -3,8 +3,13 @@ package com.vedalibrary.app.data.update
 import org.json.JSONObject
 
 /** Адрес каталога обновлений. Лежит в публичном репозитории (только APK + каталог,
- *  текстов книг там нет): поменять на свой после создания репозитория. */
+ *  текстов книг там нет): поменять на свой после создания репозитория.
+ *  Ассет техрелиза с тегом catalog — без устаревшего кэша CDN. */
 const val CATALOG_URL =
+    "https://github.com/lightphoto2006/Guhyatama/releases/download/catalog/catalog.json"
+
+/** Запасной источник — raw из main (fallback, если ассет ещё не опубликован). */
+const val CATALOG_URL_RAW =
     "https://raw.githubusercontent.com/lightphoto2006/Guhyatama/main/catalog.json"
 
 /** Запасной источник того же файла через API GitHub (если raw-хост недоступен). */

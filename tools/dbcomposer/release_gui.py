@@ -341,6 +341,16 @@ class ReleaseTab(ttk.Frame):
                              " catalog.json, коммит и пуш — одним нажатием",
                   foreground="gray").pack(side="left")
 
+        ttk.Separator(t, orient="horizontal").pack(fill="x", pady=8)
+
+        btnf2 = ttk.Frame(t)
+        btnf2.pack(fill="x", pady=2)
+        self.b_publish_catalog = ttk.Button(btnf2, text="📤 Обновить catalog.json в релизе (catalog)",
+                                            command=self._publish_catalog_only)
+        self.b_publish_catalog.pack(side="left")
+        ttk.Label(btnf2, text=" — только каталог как ассет релиза (без git-коммита)",
+                  foreground="gray").pack(side="left")
+
         ttk.Label(t, text="Публикация: книги/аудио → Guhyatama-files (тег db-vN),"
                           " APK → Guhyatama (тег vX.Y.Z). Перед публикацией шаг 3"
                           " должен быть СОХРАНЁН («Сохранить в versions.json»).",
@@ -638,6 +648,7 @@ class ReleaseTab(ttk.Frame):
             self._patch_catalog_worker(say, sec, key,
                                        size=full_size, sha=full_sha,
                                        dsize=delta_size, dsha=delta_sha)
+            self._publish_catalog_worker(say)
             self._git_push_worker(say, sec, key, meta, tag)
             self.q.put(("done", "публикация завершена: %s" % tag))
         except gh_release.GHError as e:
@@ -719,6 +730,33 @@ class ReleaseTab(ttk.Frame):
             say("git commit: %s" % ((r.stderr or r.stdout or "").strip()[:200]))
         run(["push", "origin", "HEAD:main"])  # клиент читает каталог из main
         say("git: запушено (%s)" % msg)
+
+    def _publish_catalog_worker(self, say):
+        """Публикация catalog.json ассетом в релиз с тегом catalog."""
+        token = gh_release.get_token()
+        if not token:
+            raise RuntimeError("нет токена (githubFilesToken в local.properties)")
+        url = gh_release.publish_catalog(token, os.path.join(ROOT, "catalog.json"))
+        say("каталог опубликован ассетом: %s" % url)
+
+    def _publish_catalog_only(self):
+        """Отдельная кнопка: только публикация catalog.json в релиз (без git)."""
+        if self.busy:
+            return
+        self.set_busy(True)
+        self.say("публикация catalog.json в релиз: запуск…")
+        threading.Thread(target=self._publish_catalog_bg, daemon=True).start()
+
+    def _publish_catalog_bg(self):
+        def say(t):
+            self.q.put(("log", str(t)))
+        try:
+            self._publish_catalog_worker(say)
+            self.q.put(("done", "catalog.json опубликован в релиз"))
+        except gh_release.GHError as e:
+            self.q.put(("error", "GitHub: %s" % e.message[:300]))
+        except Exception as e:
+            self.q.put(("error", str(e)))
 
     def _pick(self, var, title, filetypes):
         p = filedialog.askopenfilename(title=title, filetypes=filetypes, parent=self)
