@@ -563,11 +563,27 @@ def binding_messages(book_type, basename, paras):
     ]
 
 
-def structure_messages(book_title, text):
-    # 50000 симв. ~ до 30k токенов — влезает в контекст 32k+ под русским текстом
-    body = text[:50000]
-    if len(text) > len(body):
-        body += "\n\n[...текст обрезан до 50000 символов...]"
+STRUCT_CHUNK = 28000
+STRUCT_OVERLAP = 2000
+
+
+def structure_chunks(text):
+    """Нарезка текста на перекрывающиеся чанки для детекции глав."""
+    if len(text) <= STRUCT_CHUNK:
+        return [text]
+    chunks = []
+    pos = 0
+    while pos < len(text):
+        end = min(pos + STRUCT_CHUNK, len(text))
+        chunks.append(text[pos:end])
+        if end >= len(text):
+            break
+        pos = end - STRUCT_OVERLAP
+    return chunks
+
+
+def _structure_prompt(book_title, body, footer):
+    """Сборка единого промпта для structure_messages."""
     return [
         {"role": "system", "content": SYSTEM_JSON},
         {"role": "user", "content":
@@ -582,8 +598,49 @@ def structure_messages(book_title, text):
           '"title": "<короткий титул>"}]}\n'
           "Строго: heading — точная подстрока текста (регистр и пунктуация как в "
           "тексте); chapters — по порядку следования; заголовков нет — "
-          '{"book_title": "...", "chapters": []}.\n---\n%s\n---' % (book_title or "—", body)},
+          '{"book_title": "...", "chapters": []}.\n---\n%s\n---%s' % (book_title or "—", body, footer)},
     ]
+
+
+def structure_messages_chunk(book_title, chunk, idx, total):
+    """Сообщения для одного чанка (idx — 1-based номер куска, total — всего кусков)."""
+    if total > 1:
+        footer = "\n\n[...фрагмент %d из %d...]" % (idx, total)
+    else:
+        footer = ""
+    return _structure_prompt(book_title, chunk, footer)
+
+
+def structure_messages(book_title, text):
+    """Обёртка с одним чанком (для обратной совместимости с тестами и GUI)."""
+    chunks = structure_chunks(text)
+    body = chunks[0]
+    if len(chunks) > 1:
+        footer = "\n\n[...фрагмент 1 из %d...]" % len(chunks)
+    else:
+        footer = ""
+    return _structure_prompt(book_title, body, footer)
+
+
+def llm_find_headings_all(chat_fn, book_title, text):
+    """Детекция глав по ВСЕМУ тексту: чанки + сборка + дедупликация."""
+    chunks = structure_chunks(text)
+    all_chapters = []
+    seen = set()
+    book_title_out = None
+    for i, chunk in enumerate(chunks, 1):
+        resp = chat_fn(structure_messages_chunk(book_title, chunk, i, len(chunks)))
+        ch_list = resp.get("chapters", [])
+        if book_title_out is None and resp.get("book_title"):
+            book_title_out = resp["book_title"]
+        for ch in ch_list:
+            heading = ch.get("heading", "")
+            number = ch.get("number", 0)
+            key = (heading, number)
+            if key not in seen and heading not in {c["heading"] for c in all_chapters}:
+                seen.add(key)
+                all_chapters.append(ch)
+    return {"book_title": book_title_out or book_title or "—", "chapters": all_chapters}
 
 
 def meta_messages(instruction, field, books, allowed_types):

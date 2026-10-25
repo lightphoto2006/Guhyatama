@@ -195,14 +195,80 @@ msgs = ai.binding_messages("SCC", "разное.docx", ["первый абзац
 check("prompt: привязка — system+user, JSON-схема",
       msgs[0]["role"] == "system" and "song" in msgs[1]["content"]
       and "верни json" in msgs[1]["content"].lower(), msgs[1]["content"][:120])
-msgs = ai.structure_messages("Книга", "х" * 50000)
-check("prompt: структура обрезан <= 31500", len(msgs[1]["content"]) <= 31500
-      and "обрезан" in msgs[1]["content"] and "song_name" in msgs[1]["content"],
-      len(msgs[1]["content"]))
+long_text = "х" * 70000
+msgs = ai.structure_messages("Книга", long_text)
+body = msgs[1]["content"]
+check("prompt: структура обрезан (тело <= STRUCT_CHUNK + footer)",
+      ai.STRUCT_CHUNK <= len(body) <= ai.STRUCT_CHUNK + 700
+      and "фрагмент 1 из 3" in body
+      and "song_name" in body,
+      len(body))
 books_json = [{"idx": 0, "title": "а", "author": "б", "type": "SCC"}]
 msgs = ai.meta_messages("инструкция", "title,author", books_json, ["SCC"])
 check("prompt: метаданные — книги в JSON",
       json.dumps(books_json, ensure_ascii=False) in msgs[1]["content"], msgs[1]["content"])
+
+# ------------------------------------------------------------ structure_chunks ---
+big = "а" * 70000
+chunks = ai.structure_chunks(big)
+check("chunks: >=3 куска из 70k", len(chunks) >= 3, len(chunks))
+check("chunks: каждый <= STRUCT_CHUNK", all(len(c) <= ai.STRUCT_CHUNK for c in chunks),
+      [(len(c), i) for i, c in enumerate(chunks)])
+check("chunks: перехлёст (след. < пред. + 28000)",
+      all(chunks[i+1].startswith(chunks[i][ai.STRUCT_CHUNK - ai.STRUCT_OVERLAP:])
+          for i in range(len(chunks) - 1)),
+      "нет перехлёста")
+
+# ------------------------------------------------------------ llm_find_headings_all ---
+def _mock_chat_fn_factory():
+    """Возвращает chat_fn: 1-й вызов -> Главы 1, 2-й -> Главы 2."""
+    call_count = [0]
+    def chat_fn(msgs):
+        call_count[0] += 1
+        if call_count[0] == 1:
+            return {"book_title": "Кн", "chapters": [{"heading": "Глава 1", "number": 1}]}
+        return {"chapters": [{"heading": "Глава 2", "number": 2}]}
+    return chat_fn
+
+# два куска -> два вызова
+mock1 = _mock_chat_fn_factory()
+res1 = ai.llm_find_headings_all(mock1, "Кн", "а" * 30000 + "б" * 30000)
+check("llm_all: 2 куска -> 2 заголовка",
+      len(res1["chapters"]) == 2 and res1["book_title"] == "Кн",
+      res1["chapters"])
+check("llm_all: порядок сохранён",
+      res1["chapters"][0]["heading"] == "Глава 1"
+      and res1["chapters"][1]["heading"] == "Глава 2",
+      res1["chapters"])
+
+# дубль заголовка во 2-м куске -> не дублируется
+def _mock_dup():
+    call_count = [0]
+    def chat_fn(msgs):
+        call_count[0] += 1
+        if call_count[0] == 1:
+            return {"chapters": [{"heading": "Глава 1", "number": 1}]}
+        return {"chapters": [{"heading": "Глава 1", "number": 1}]}
+    return chat_fn
+
+mock2 = _mock_dup()
+res2 = ai.llm_find_headings_all(mock2, "Кн", "а" * 30000 + "б" * 30000)
+check("llm_all: дубль heading не дублируется", len(res2["chapters"]) == 1,
+      [c["heading"] for c in res2["chapters"]])
+
+# короткий текст -> ровно 1 вызов
+def _mock_single():
+    call_count = [0]
+    def chat_fn(msgs):
+        call_count[0] += 1
+        return {"chapters": [{"heading": "Единственная", "number": 1}]}
+    return chat_fn, call_count
+
+mock3, cc = _mock_single()
+res3 = ai.llm_find_headings_all(mock3, "Кн", "короткий текст")
+check("llm_all: короткий текст -> 1 вызов", cc[0] == 1, cc[0])
+check("llm_all: короткий текст -> 1 глава", len(res3["chapters"]) == 1,
+      res3["chapters"])
 
 # extract_json / chat_json-обвязка (без сервера — только разбор)
 import llama_client                                   # noqa: E402
