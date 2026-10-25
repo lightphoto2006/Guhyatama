@@ -28,6 +28,7 @@ from tkinter import filedialog, messagebox, ttk
 import llama_client
 import recompose
 import uicommon
+import autodetect
 
 try:
     import pdfplumber
@@ -1055,6 +1056,8 @@ class AIImportTab(ttk.Frame):
                         self.set_busy(False)
                     elif kind == "t2_struct":
                         self._show_struct(item[1], item[2])
+                    elif kind == "t2_autodetect_result":
+                        self._t2_autodetect_apply(item[1], item[2])
                 except Exception as e:
                     # поломка одного сообщения не должна убить диспетчер
                     self.say("ошибка обработки: %s" % e)
@@ -1312,6 +1315,8 @@ class AIImportTab(ttk.Frame):
                   foreground="gray").pack(anchor="w")
         self.v_chre = tk.StringVar(value=self.cfg.get("t2_chre", ""))
         ttk.Entry(chf, textvariable=self.v_chre).pack(fill="x", pady=2)
+        ttk.Button(chf, text="✂ Из выделенной строки",
+                   command=self.t2_regex_from_selection).pack(anchor="w", pady=(2, 0))
         self.v_intro = tk.BooleanVar(value=self.cfg.get("t2_intro", True))
         ttk.Checkbutton(chf, text="шапка до первого заголовка → «Введение»",
                         variable=self.v_intro).pack(anchor="w")
@@ -1367,6 +1372,9 @@ class AIImportTab(ttk.Frame):
         pb.pack(fill="x", pady=(4, 0))
         self.b_parse = ttk.Button(pb, text="Разобрать", command=self.t2_parse)
         self.b_parse.pack(side="left")
+        self.b_autodetect = ttk.Button(pb, text="🔎 Автоопределить",
+                                        command=self.t2_autodetect)
+        self.b_autodetect.pack(side="left", padx=4)
         self.b_save = ttk.Button(pb, text="Собрать .db…", command=self.t2_save)
         self.b_save.pack(side="left", padx=4)
         self.b_open = ttk.Button(pb, text="Открыть в Сборке", command=self.t2_open,
@@ -1470,6 +1478,49 @@ class AIImportTab(ttk.Frame):
                     opts["_hint_no_verses"] = True
         struct = build_structure(text, opts)
         self._show_struct(struct, "правила")
+
+    def t2_autodetect(self):
+        text = self.txt2.get("1.0", "end")
+        if not text.strip():
+            self.say("пусто — вставь или загрузи текст")
+            return
+        self.after(0, lambda: self._t2_autodetect_bg(text))
+
+    def _t2_autodetect_bg(self, text):
+        import threading
+        try:
+            opts, report = autodetect.autodetect(text)
+        except Exception as e:
+            self.q.put(("log", "автоопределение ОШИБКА: %s" % e))
+            self.q.put(("busy", False))
+            return
+        self.q.put(("t2_autodetect_result", opts, report))
+
+    def _t2_autodetect_apply(self, opts, report):
+        self.v_chmode.set(opts.get("ch_mode", "regex"))
+        self.v_chre.set(opts.get("chapter_re", ""))
+        self.v_vmode.set(opts.get("v_mode", "none"))
+        self.v_vre.set(opts.get("verse_re", ""))
+        self._chmode_ui()
+        for line in report:
+            self.say(line)
+        self.t2_parse()
+
+    def t2_regex_from_selection(self):
+        try:
+            sel = self.txt2.get("sel.first", "sel.last").strip()
+        except tk.TclError:
+            self.say("сначала выдели строку-пример заголовка")
+            return
+        if not sel:
+            self.say("выделение пусто")
+            return
+        regex = autodetect.regex_from_sample(sel)
+        self.v_chmode.set("regex")
+        self.v_chre.set(regex)
+        self._chmode_ui()
+        self.t2_parse()
+        self.say("regex из выделения: %s" % regex)
 
     def t2_llm_structure(self):
         text = self.txt2.get("1.0", "end")
