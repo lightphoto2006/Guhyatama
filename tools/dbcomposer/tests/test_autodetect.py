@@ -170,8 +170,8 @@ if m:
 # ============================================================ regex_from_sample — порядковое слово
 sample2 = "Глава первая. Введение"
 regex2 = regex_from_sample(sample2)
-check("regex_from_sample: порядковое слово — содержит (?P<chapter>[а-яё]+)",
-      "(?P<chapter>[а-яё]+)" in regex2, regex2)
+check("regex_from_sample: порядковое слово — содержит (?P<chapter>[а-яёА-ЯЁ]+)",
+      "(?P<chapter>[а-яёА-ЯЁ]+)" in regex2, regex2)
 check("regex_from_sample: содержит (?P<title>.*)",
       "(?P<title>.*)" in regex2, regex2)
 m2 = re.match(regex2, sample2)

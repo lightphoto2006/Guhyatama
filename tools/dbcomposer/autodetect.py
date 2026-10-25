@@ -57,7 +57,7 @@ ROMAN_RE = re.compile(r"^[IVXLCDM]+$")
 
 # Дополнительный шаблон: «Глава первая. Название»
 HEADINGS_ORDINAL_RE = re.compile(
-    r"^(?:Глава|ГЛАВА|Chapter|CHAPTER)\s+(?P<chapter>[а-яё]+)\s*[.:—–-]?\s*(?P<title>.*)$",
+    r"^(?:Глава|ГЛАВА|Chapter|CHAPTER)\s+(?P<chapter>[а-яёА-ЯЁ]+)\s*[.:—–-]?\s*(?P<title>.*)$",
     re.I,
 )
 
@@ -531,6 +531,6 @@ def regex_from_sample(line):
         if word in line.lower():
             idx = line.lower().index(word)
             before = re.escape(line[:idx])
-            return r"^%s(?P<chapter>[а-яё]+)\s*[.:—–-]?\s*(?P<title>.*)$" % before
+            return r"^%s(?P<chapter>[а-яёА-ЯЁ]+)\s*[.:—–-]?\s*(?P<title>.*)$" % before
     return r"^%s(?P<chapter>.+)(?P<title>.*)$" % re.escape(line)
 
