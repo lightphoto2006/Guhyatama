@@ -9,8 +9,8 @@ import sys
 import threading
 import tkinter as tk
 from tkinter import filedialog, messagebox, ttk
-import webbrowser
 
+import gh_release
 import dbcommon
 
 HERE = os.path.dirname(os.path.abspath(__file__))
@@ -60,6 +60,7 @@ class ReleaseTab(ttk.Frame):
         self.repo = "lightphoto2006/Guhyatama"
         self.files_repo = "lightphoto2006/Guhyatama-files"
         self._build_ui()
+        self._refresh_publish_hint()
         self._refresh_versions_list()
         self._refresh_book_keys()  # автозагрузка ключей при старте
         self.after(150, self.poll)
@@ -68,9 +69,11 @@ class ReleaseTab(ttk.Frame):
         """Вызывается при показе вкладки (см. App.on_tab)."""
         self._refresh_book_keys()
         self._refresh_versions_list()
+        self._refresh_publish_hint()
 
     def _build_ui(self):
         nb = ttk.Notebook(self)
+        self.nb = nb
         nb.pack(fill="both", expand=True, padx=6, pady=6)
 
         # --- Шаг 1: Подготовка ---
@@ -290,6 +293,13 @@ class ReleaseTab(ttk.Frame):
         ttk.Entry(row, textvariable=self.v_cat_out).pack(side="left", fill="x", expand=True, padx=4)
         ttk.Button(row, text="Обзор…", command=lambda: self._pick_save(self.v_cat_out, "Сохранить каталог", [("JSON", "*.json")])).pack(side="left")
 
+        row = ttk.Frame(t)
+        row.pack(fill="x", pady=2)
+        ttk.Label(row, text="versions:", width=12).pack(side="left")
+        self.v_cat_versions = tk.StringVar(value=VERSIONS_JSON)
+        ttk.Entry(row, textvariable=self.v_cat_versions).pack(side="left", fill="x", expand=True, padx=4)
+        ttk.Button(row, text="Обзор…", command=lambda: self._pick(self.v_cat_versions, "versions.json", [("JSON", "*.json")])).pack(side="left")
+
         btnf = ttk.Frame(t)
         btnf.pack(fill="x", pady=6)
         self.b_make_catalog = ttk.Button(btnf, text="Собрать catalog.json", command=self._run_make_catalog)
@@ -316,21 +326,24 @@ class ReleaseTab(ttk.Frame):
         btnf = ttk.Frame(t)
         btnf.pack(fill="x", pady=6)
         ttk.Button(btnf, text="Обновить список", command=self._refresh_upload_list).pack(side="left")
-        ttk.Button(btnf, text="Открыть GitHub Releases (основной)", command=lambda: webbrowser.open(gh_releases_page(self.repo))).pack(side="left", padx=4)
-        ttk.Button(btnf, text="Открыть GitHub Releases (файлы)", command=lambda: webbrowser.open(gh_releases_page(self.files_repo))).pack(side="left", padx=4)
 
         ttk.Separator(t, orient="horizontal").pack(fill="x", pady=8)
 
-        ttk.Label(t, text="Инструкция:", foreground="gray").pack(anchor="w")
-        instr = (
-            "1. Зайдите на GitHub Releases → Create a new release\n"
-            "2. Tag: vX.Y.Z (для APK) или просто загрузите файлы в Guhyatama-files\n"
-            "3. Перетащите файлы из списка выше (новый .db, delta.db)\n"
-            "4. После загрузки скопируйте URL ассетов (кнопка копировать ссылку)\n"
-            "5. Вставьте URL в versions.json (шаг 3) → соберите catalog.json (шаг 4)\n"
-            "6. Залейте catalog.json в Guhyatama-files (или обновите через API)"
-        )
-        ttk.Label(t, text=instr, foreground="gray", wraplength=700, justify="left").pack(fill="x")
+        self.l_publish_hint = ttk.Label(t, text="", wraplength=700, justify="left")
+        self.l_publish_hint.pack(anchor="w", pady=(0, 4))
+
+        pubf = ttk.Frame(t)
+        pubf.pack(fill="x")
+        self.b_publish = ttk.Button(pubf, text="🚀 Опубликовать релиз", command=self._publish_release)
+        self.b_publish.pack(side="left")
+        ttk.Label(pubf, text=" — релиз+ассеты в GitHub, URL в versions.json,"
+                             " catalog.json, коммит и пуш — одним нажатием",
+                  foreground="gray").pack(side="left")
+
+        ttk.Label(t, text="Публикация: книги/аудио → Guhyatama-files (тег db-vN),"
+                          " APK → Guhyatama (тег vX.Y.Z). Перед публикацией шаг 3"
+                          " должен быть СОХРАНЁН («Сохранить в versions.json»).",
+                  foreground="gray", wraplength=700, justify="left").pack(fill="x", pady=(2, 0))
 
     def _refresh_book_keys(self):
         data = load_versions()
@@ -501,6 +514,211 @@ class ReleaseTab(ttk.Frame):
         self._refresh_upload_list()
         self.nb.select(4)
 
+    # --- публикация: роль кнопки — вся цепочка одним нажатием --------------------
+
+    def _refresh_publish_hint(self):
+        has = bool(gh_release.get_token())
+        self.l_publish_hint.configure(
+            text=("Токен: ok (git credential / local.properties)" if has
+                  else "Токен НЕ найден (githubFilesToken в local.properties / git credential)"))
+
+    def _resolve_file(self, fn):
+        """Абсолютный путь файла: сам путь, либо DB/, releases/, updates/."""
+        fn = (fn or "").strip()
+        if not fn:
+            raise RuntimeError("пустой путь файла")
+        if os.path.isabs(fn):
+            if not os.path.exists(fn):
+                raise RuntimeError("файл не найден: %s" % fn)
+            return fn
+        for base in (DB_DIR, RELEASES_DIR, UPDATES_DIR):
+            p = os.path.join(base, fn)
+            if os.path.exists(p):
+                return p
+        raise RuntimeError("файл не найден ни в DB/, ни в releases/, ни в updates/: %s" % fn)
+
+    @staticmethod
+    def _sha256(path):
+        import hashlib
+        h = hashlib.sha256()
+        with open(path, "rb") as f:
+            for chunk in iter(lambda: f.read(1 << 20), b""):
+                h.update(chunk)
+        return h.hexdigest()
+
+    def _publish_release(self):
+        """Кнопка «Опубликовать»: вся цепочка в фоне. Работает по СОХРАНЁННОМУ
+        versions.json (шаг 3) — пользователь сначала сохраняет, потом публикует."""
+        if self.busy:
+            return
+        data = load_versions()
+        sec = self.v_release_type.get()
+        key = self.v_ver_key.get().strip()
+        if sec == "apk":
+            meta = dict(data.get("apk", {}))
+            if not meta.get("versionCode"):
+                messagebox.showwarning("Пусто", "Сначала заполните и сохраните apk в шаге 3")
+                return
+        else:
+            meta = dict(data.get(sec, {}).get(key, {}))
+            if not meta:
+                messagebox.showwarning("Пусто", "Сначала заполните и сохраните запись в шаге 3")
+                return
+        if not messagebox.askyesno(
+                "Публиковать?",
+                "%s • файл: %s\nВерсия: %s\n\nОпубликовать релиз на GitHub?"
+                % (key or "apk", meta.get("file", "?"),
+                   meta.get("version", meta.get("versionName", "?"))),
+                parent=self):
+            return
+        self.set_busy(True)
+        self.say("публикация: запуск…")
+        threading.Thread(target=self._publish_worker, args=(sec, key, meta),
+                         daemon=True).start()
+
+    def _publish_worker(self, sec, key, meta):
+        def say(t):
+            self.q.put(("log", str(t)))
+        try:
+            token = gh_release.get_token()
+            if not token:
+                raise RuntimeError("нет токена (githubFilesToken в local.properties)")
+            if sec == "apk":
+                repo = gh_release.APP_REPO
+                tag = "v%s" % meta["versionName"]
+                fpath = self._resolve_file(meta.get("file", ""))
+                body = ["APK v%s (versionCode %s)" % (meta["versionName"], meta["versionCode"])]
+            else:
+                repo = gh_release.FILES_REPO
+                version = int(meta["version"])
+                if version <= 0:
+                    raise RuntimeError("версия книги не указана (шаг 3)")
+                tag = gh_release.next_db_tag(token, repo)
+                fpath = self._resolve_file(meta.get("file", ""))
+                body = ["%s — v%d (%s, %s)" % (meta.get("title", key), version, key,
+                                               meta.get("lang", ""))]
+            notes = (meta.get("notes") or "").strip()
+            if notes:
+                body += ["", notes]
+            body += ["", "sha256 (%s): `%s`" % (os.path.basename(fpath), self._sha256(fpath))]
+            say("тег: %s → %s" % (tag, repo))
+            rel = gh_release.create_release(token, repo, tag, tag, "\n".join(body))
+            rid = rel["id"]
+            say("черновик создан (id %s)" % rid)
+            up = gh_release.upload_asset(token, repo, rid, fpath)
+            full_url = gh_release.asset_api_url(repo, up["id"])
+            full_size = up.get("size") or os.path.getsize(fpath)
+            full_sha = self._sha256(fpath)
+            say("ассет: %s" % full_url)
+            delta_url, delta_size, delta_sha = "", 0, ""
+            d = meta.get("delta") or {}
+            if int(d.get("from") or 0) > 0:
+                dpath = self._resolve_file(d.get("file", ""))
+                up2 = gh_release.upload_asset(token, repo, rid, dpath)
+                delta_url = gh_release.asset_api_url(repo, up2["id"])
+                delta_size = up2.get("size") or os.path.getsize(dpath)
+                delta_sha = self._sha256(dpath)
+                say("дельта: %s" % delta_url)
+            gh_release.publish_release(token, repo, rid)
+            say("релиз опубликован: %s" % gh_release.gh_release_url(repo, tag))
+            # вписываем в versions.json ТОЛЬКО url/delta.url — поля шага 3 не трогаем
+            data = load_versions()
+            m = data.get("apk", {}) if sec == "apk" else data.get(sec, {}).get(key)
+            if m is None:
+                raise RuntimeError("запись %s исчезла из versions.json" % key)
+            m["url"] = full_url
+            if delta_url and isinstance(m.get("delta"), dict):
+                m["delta"]["url"] = delta_url
+            err = save_versions(data)
+            if err:
+                raise RuntimeError(err)
+            say("versions.json: URL указывают на asset-ссылки")
+            self._regen_catalog_worker(say)
+            self._patch_catalog_worker(say, sec, key,
+                                       size=full_size, sha=full_sha,
+                                       dsize=delta_size, dsha=delta_sha)
+            self._git_push_worker(say, sec, key, meta, tag)
+            self.q.put(("done", "публикация завершена: %s" % tag))
+        except gh_release.GHError as e:
+            self.q.put(("error", "GitHub: %s" % e.message[:300]))
+        except Exception as e:
+            self.q.put(("error", str(e)))
+
+    def _regen_catalog_worker(self, say):
+        cmd = [PY, os.path.join(HERE, "make_catalog.py"), "--src", DB_DIR,
+               "--out", CATALOG_JSON]
+        say("make_catalog: запуск…")
+        p = subprocess.run(cmd, capture_output=True, text=True,
+                           encoding="utf-8", errors="replace", timeout=900)
+        out = ((p.stdout or "") + (p.stderr or "")).strip()
+        if p.returncode != 0:
+            raise RuntimeError("make_catalog: код %s\n%s" % (p.returncode, out[-800:]))
+        say("make_catalog: ok")
+
+    def _load_catalog(self):
+        with open(CATALOG_JSON, encoding="utf-8") as f:
+            return json.load(f)
+
+    def _save_catalog(self, data):
+        err = dbcommon.atomic_write_bytes(
+            CATALOG_JSON, json.dumps(data, ensure_ascii=False, indent=2).encode("utf-8"))
+        if err:
+            raise RuntimeError(err)
+
+    def _copy_catalog_to_root(self, say):
+        with open(CATALOG_JSON, "rb") as f:
+            err = dbcommon.atomic_write_bytes(os.path.join(ROOT, "catalog.json"), f.read())
+        if err:
+            raise RuntimeError(err)
+        say("каталог скопирован в корень (catalog.json)")
+
+    def _patch_catalog_worker(self, say, sec, key, size, sha, dsize, dsha):
+        """make_catalog может не найти исходные .db в DB/ (их там давно нет) и
+        обнуляет size/sha256 — публикуемый ключ патчем получает реальные значения."""
+        if sec == "apk":
+            self._copy_catalog_to_root(say)
+            return
+        c = self._load_catalog()
+        entry = None
+        for e in c.get(sec, []):
+            if e.get("key") == key:
+                entry = e
+                break
+        if entry is None:
+            raise RuntimeError("в catalog.json нет записи %s.%s" % (sec, key))
+        entry["size"] = size
+        entry["sha256"] = sha
+        if dsize and dsha:
+            entry["deltaSize"] = dsize
+            entry["deltaSha"] = dsha
+            say("каталог: size/sha256 + deltaSize/deltaSha записаны")
+        else:
+            say("каталог: size/sha256 записаны (дельты нет)")
+        self._save_catalog(c)
+        self._copy_catalog_to_root(say)
+
+    def _git_push_worker(self, say, sec, key, meta, tag):
+        files = ["updates/versions.json", "updates/catalog.json", "catalog.json"]
+        if sec == "apk":
+            msg = "release: v%s (vc%s) — каталог %s" % (meta["versionName"],
+                                                       meta["versionCode"], tag)
+        else:
+            msg = "books: %s v%d — каталог %s" % (key, meta.get("version", 0), tag)
+
+        def run(args, allow_fail=False):
+            r = subprocess.run(["git"] + args, cwd=ROOT, capture_output=True,
+                               text=True, encoding="utf-8", errors="replace")
+            if r.returncode != 0 and not allow_fail:
+                raise RuntimeError("git %s: %s" % (args[0], (r.stderr or r.stdout)[-400:]))
+            return r
+
+        run(["add"] + files)
+        r = run(["commit", "-m", msg, "--"] + files, allow_fail=True)
+        if r.returncode != 0:
+            say("git commit: %s" % ((r.stderr or r.stdout or "").strip()[:200]))
+        run(["push"])
+        say("git: запушено (%s)" % msg)
+
     def _pick(self, var, title, filetypes):
         p = filedialog.askopenfilename(title=title, filetypes=filetypes, parent=self)
         if p:
@@ -526,7 +744,7 @@ class ReleaseTab(ttk.Frame):
     def set_busy(self, v):
         self.busy = v
         state = "disabled" if v else "normal"
-        for b in (self.b_make_delta, self.b_make_catalog, self.b_step1_next, self.b_step2_next, self.b_step3_next, self.b_step4_next):
+        for b in (self.b_make_delta, self.b_make_catalog, self.b_step1_next, self.b_step2_next, self.b_step3_next, self.b_step4_next, self.b_publish):
             b.configure(state=state)
         if v:
             self.prog.start(12)
