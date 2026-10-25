@@ -9,6 +9,7 @@ git push и публикует catalog в релиз.
 import hashlib
 import json
 import os
+import sqlite3
 import subprocess
 import sys
 
@@ -73,6 +74,46 @@ def guess_key(old_file, data=None):
 
 # ====================================================================== publish_book
 # ======================================================================
+
+def _db_composition_changed(old_file, new_file):
+    """Сравнивает состав книг и обложки двух баз.
+
+    Возвращает True, если состав книг (books._id, books.type) ИЛИ
+    набор обложек/их sha256 отличаются.
+    """
+    def _get_books(db_path):
+        con = sqlite3.connect("file:%s?mode=ro" % db_path, uri=True)
+        try:
+            return con.execute(
+                "SELECT _id, type FROM books ORDER BY _id").fetchall()
+        finally:
+            con.close()
+
+    def _get_covers(db_path):
+        """(book_id, sha256) для каждой обложки."""
+        con = sqlite3.connect("file:%s?mode=ro" % db_path, uri=True)
+        try:
+            rows = con.execute(
+                "SELECT c.book_id, i.content FROM covers c "
+                "JOIN images i ON i.image_id = c.image_id "
+                "ORDER BY c.book_id, c.image_id").fetchall()
+            out = []
+            for book_id, content in rows:
+                h = hashlib.sha256()
+                h.update(content)
+                out.append((book_id, h.hexdigest()))
+            return out
+        finally:
+            con.close()
+
+    old_books = _get_books(old_file)
+    new_books = _get_books(new_file)
+    if old_books != new_books:
+        return True
+    old_covers = _get_covers(old_file)
+    new_covers = _get_covers(new_file)
+    return old_covers != new_covers
+
 
 def _sha256(path):
     h = hashlib.sha256()
@@ -168,11 +209,15 @@ def _git_push(files, msg):
 
 
 def publish_book(token, key, new_file, notes, delta_file="", delta_from=0,
-                 version=None, log=print, title=None, lang="rus", sec="books"):
+                 version=None, log=print, title=None, lang="rus", sec="books",
+                 old_file=None):
     """Публикует книгу одной кнопкой.
 
     Если ``key`` уже есть в ``sec`` — обновляет запись.
     Если ``key`` отсутствует — создаёт новую запись (title обязателен).
+
+    ``old_file`` — путь к предыдущей .db. Если задан вместе с ``delta_file``,
+    сравнивает состав книг и обложки; при расхождении дельта игнорируется.
 
     Возвращает {"tag", "url", "size", "sha256", "delta_url", "version", "prev_version"}.
     """
@@ -235,6 +280,20 @@ def publish_book(token, key, new_file, notes, delta_file="", delta_from=0,
     if delta_file and os.path.isfile(delta_file):
         if prev_version == 0:
             log("первая публикация — дельта не нужна")
+        elif old_file and os.path.isfile(old_file):
+            # Сравниваем состав книг и обложки old vs new
+            if _db_composition_changed(old_file, new_file_abs):
+                log("состав книг/обложки изменились — публикую полный файл")
+            elif dbcommon.delta_is_useless(os.path.abspath(delta_file), new_file_abs):
+                log("дельта бесполезна — публикую без неё")
+            else:
+                delta_abs = os.path.abspath(delta_file)
+                up2 = gh_release.upload_asset(token, gh_release.FILES_REPO, rid, delta_abs)
+                delta_url = gh_release.asset_api_url(gh_release.FILES_REPO, up2["id"])
+                delta_size = up2.get("size") or os.path.getsize(delta_abs)
+                delta_sha = _sha256(delta_abs)
+                delta_ok = True
+                log("дельта: %s (%d байт)" % (delta_url, delta_size))
         elif dbcommon.delta_is_useless(os.path.abspath(delta_file), new_file_abs):
             log("дельта бесполезна — публикую без неё")
         else:

@@ -584,6 +584,7 @@ class DeltaTab(ttk.Frame):
                 log=say,
                 title=title,
                 lang=lang,
+                old_file=old if delta_checked else None,
             )
             self.q.put(("pub_done", "Опубликовано: %s" % result["url"]))
             self.q.put(("pub_refresh", ""))

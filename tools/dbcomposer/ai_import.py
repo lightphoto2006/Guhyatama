@@ -500,7 +500,8 @@ def split_chapters(paras, opts):
 
 def split_verses(paras, opts):
     """Абзацы главы -> стихи [(txt_no, text)].
-    v_mode: para (абзац = стих) | number (номер в строке) | none (глава целиком)."""
+    v_mode: para (абзац = стих, нумерация 1..N) | number (номер в строке, «0»
+            для преамбулы) | none (глава целиком, txt_no = «0»)."""
     mode = opts.get("v_mode", "para")
     join_wraps = opts.get("join_wraps", True)
     strip_md = opts.get("strip_md", True)
@@ -520,7 +521,7 @@ def split_verses(paras, opts):
         return re.sub(r"[ \t]+", " ", s).strip()
 
     if mode == "none":
-        return [("1", finish("\n\n".join(paras)))] if any(p.strip() for p in paras) else []
+        return [("0", finish("\n\n".join(paras)))] if any(p.strip() for p in paras) else []
     if mode == "para":
         out = []
         for i, p in enumerate(paras, 1):

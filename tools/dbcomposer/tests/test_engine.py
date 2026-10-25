@@ -440,6 +440,9 @@ check("none: 1 глава, title = book_title",
 check("none: одна глава, один стих",
       s_none["stats"]["chapters"] == 1 and s_none["stats"]["verses"] == 1,
       s_none["stats"])
+check("none: txt_no = «0» (глава целиком, не «стих 1»)",
+      s_none["chapters"][0]["verses"] == [("0", "Один абзац.")],
+      s_none["chapters"][0]["verses"])
 
 # ------------------------------------------------------ hint_no_verses ---
 s_hint = ai.build_structure(
