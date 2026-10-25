@@ -171,6 +171,8 @@ class App(tk.Tk):
         self.e_out = tk.StringVar(value=os.path.join(os.path.expanduser("~"), "clean_library.db"))
         ttk.Entry(out, textvariable=self.e_out).pack(side="left", fill="x", expand=True, padx=4)
         ttk.Button(out, text="Обзор…", command=self.pick_out).pack(side="left")
+        self.b_cover = ttk.Button(out, text="🖼 Обложка…", command=self.cover_for_selected)
+        self.b_cover.pack(side="left", padx=2)
         self.b_build = ttk.Button(out, text="СОБРАТЬ", command=self.start_build)
         self.b_build.pack(side="left", padx=6)
         self.b_stop_build = ttk.Button(out, text="СТОП", command=self.stop_build, state="disabled")
@@ -484,6 +486,20 @@ class App(tk.Tk):
                                          filetypes=[("SQLite", "*.db")])
         if p:
             self.e_out.set(p)
+
+    def cover_for_selected(self):
+        sel = self.tv.selection()
+        if not sel:
+            messagebox.showwarning("Обложка", "Выбери книгу в таблице")
+            return
+        iid = sel[0]
+        r = self.rows[iid]
+        p = filedialog.askopenfilename(title="Обложка книги (JPEG/PNG)",
+                                       filetypes=[("Изображение", "*.jpg *.jpeg *.png"), ("Все", "*.*")])
+        if p:
+            self.covers[(r['file'], r['book_id'])] = ('file', p)
+            self.refresh_cover_marks()
+            self.say("Обложка: %s → %s" % (os.path.basename(p), r['new_title']))
 
     def stop_build(self):
         if self.building:
@@ -860,8 +876,8 @@ class ContentWin(tk.Toplevel):
             self.preview_info.configure(text="")
 
     def cover_from_file(self):
-        p = filedialog.askopenfilename(title="JPEG для обложки",
-                                       filetypes=[("JPEG", "*.jpg *.jpeg"), ("Все", "*.*")])
+        p = filedialog.askopenfilename(title="JPEG/PNG для обложки",
+                                       filetypes=[("Изображение", "*.jpg *.jpeg *.png"), ("Все", "*.*")])
         if p:
             self.app.covers[self._imgkey()] = ('file', p)
             self.load_images()
