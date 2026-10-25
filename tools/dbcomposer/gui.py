@@ -566,8 +566,11 @@ class App(tk.Tk):
 
     def run_build(self, spec_path, out):
         try:
-            report = recompose.build(spec_path, out, True, cancel=self.build_cancel)
-            self.msg_q.put(("done", "ГОТОВО: %s\n%s" % (out, report)))
+            res = recompose.build(spec_path, out, True, cancel=self.build_cancel)
+            if str(res).startswith("ОТМЕНЕНО"):
+                self.msg_q.put(("done", str(res)))
+            else:
+                self.msg_q.put(("done", "ГОТОВО: %s\n%s" % (out, res)))
         except Exception as e:
             import traceback
             self.msg_q.put(("done", "ОШИБКА:\n%s" % traceback.format_exc()))
