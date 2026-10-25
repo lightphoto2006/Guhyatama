@@ -12,19 +12,8 @@ from tkinter import filedialog, messagebox, ttk
 
 import gh_release
 import dbcommon
+from dbcommon import DELTA_MAX_RATIO, delta_is_useless
 import uicommon
-
-DELTA_MAX_RATIO = 0.98
-
-
-def delta_is_useless(delta_path, full_path, max_ratio=DELTA_MAX_RATIO):
-    """True, если дельта почти не меньше полного файла — качать полный выгоднее."""
-    try:
-        d = os.path.getsize(delta_path)
-        f = os.path.getsize(full_path)
-    except OSError:
-        return False
-    return f > 0 and d >= f * max_ratio
 
 
 def step3_differs(sec, fields, saved):
