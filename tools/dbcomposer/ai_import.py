@@ -864,6 +864,7 @@ class AIImportTab(ttk.Frame):
         self._t3props = {}   # iid строки ревью -> {base_iid, field, value, ...}
         self._t3n = 0
         self._last_out = None
+        self._text_before_auto = None  # исходный текст до автоопределения
         self._btns = []
 
         self._build_server_bar()
@@ -1057,7 +1058,7 @@ class AIImportTab(ttk.Frame):
                     elif kind == "t2_struct":
                         self._show_struct(item[1], item[2])
                     elif kind == "t2_autodetect_result":
-                        self._t2_autodetect_apply(item[1], item[2])
+                        self._t2_autodetect_apply(item[1], item[2], item[3] if len(item) > 3 else "")
                 except Exception as e:
                     # поломка одного сообщения не должна убить диспетчер
                     self.say("ошибка обработки: %s" % e)
@@ -1375,6 +1376,9 @@ class AIImportTab(ttk.Frame):
         self.b_autodetect = ttk.Button(pb, text="🔎 Автоопределить",
                                         command=self.t2_autodetect)
         self.b_autodetect.pack(side="left", padx=4)
+        self.b_restore = ttk.Button(pb, text="↩ Вернуть исходный текст",
+                                     command=self.t2_restore, state="disabled")
+        self.b_restore.pack(side="left", padx=4)
         self.b_save = ttk.Button(pb, text="Собрать .db…", command=self.t2_save)
         self.b_save.pack(side="left", padx=4)
         self.b_open = ttk.Button(pb, text="Открыть в Сборке", command=self.t2_open,
@@ -1484,24 +1488,40 @@ class AIImportTab(ttk.Frame):
         if not text.strip():
             self.say("пусто — вставь или загрузи текст")
             return
+        self._text_before_auto = text
+        self.b_restore.configure(state="normal")
         self.after(0, lambda: self._t2_autodetect_bg(text))
+
+    def t2_restore(self):
+        if self._text_before_auto is None:
+            return
+        self.txt2.delete("1.0", "end")
+        self.txt2.insert("1.0", self._text_before_auto)
+        self._text_before_auto = None
+        self.b_restore.configure(state="disabled")
+        self.say("текст возвращён к исходному")
 
     def _t2_autodetect_bg(self, text):
         import threading
         try:
-            opts, report = autodetect.autodetect(text)
+            opts, report, normalized_text = autodetect.autodetect(text)
         except Exception as e:
             self.q.put(("log", "автоопределение ОШИБКА: %s" % e))
             self.q.put(("busy", False))
             return
-        self.q.put(("t2_autodetect_result", opts, report))
+        self.q.put(("t2_autodetect_result", opts, report, normalized_text))
 
-    def _t2_autodetect_apply(self, opts, report):
+    def _t2_autodetect_apply(self, opts, report, normalized_text):
         self.v_chmode.set(opts.get("ch_mode", "regex"))
         self.v_chre.set(opts.get("chapter_re", ""))
         self.v_vmode.set(opts.get("v_mode", "none"))
         self.v_vre.set(opts.get("verse_re", ""))
         self._chmode_ui()
+        # подставляем нормализованный текст в txt2
+        if normalized_text and normalized_text != self.txt2.get("1.0", "end"):
+            self.txt2.delete("1.0", "end")
+            self.txt2.insert("1.0", normalized_text)
+            self.say("текст нормализован: заголовки отделены")
         for line in report:
             self.say(line)
         self.t2_parse()

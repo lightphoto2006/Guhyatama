@@ -1,5 +1,6 @@
 # -*- coding: utf-8 -*-
-"""Тесты модуля autodetect: главы, названия, стихи, СОДЕРЖАНИЕ, regex из выделения."""
+"""Тесты модуля autodetect: главы, названия, стихи, СОДЕРЖАНИЕ, regex из выделения,
+нормализация, построчный детект."""
 import os
 import re
 import sys
@@ -10,9 +11,13 @@ import ai_import as _ai  # noqa: E402
 from autodetect import (  # noqa: E402
     autodetect,
     detect_headings,
+    detect_headings_lines,
     detect_verses,
+    detect_verses_lines,
+    normalize_lines,
     regex_from_sample,
     strip_toc,
+    strip_toc_lines,
 )
 
 FAILED = []
@@ -132,7 +137,7 @@ full_text = (
     "Гл. 1 ...\n"
     "Гл. 2 ...\n"
 )
-opts, report = autodetect(full_text)
+opts, report, normalized_text = autodetect(full_text)
 check("autodetect: ch_mode = regex", opts["ch_mode"] == "regex", opts["ch_mode"])
 check("autodetect: chapter_re не пуст", bool(opts["chapter_re"]), opts["chapter_re"])
 check("autodetect: v_mode = none", opts["v_mode"] == "none", opts["v_mode"])
@@ -142,6 +147,8 @@ check("autodetect: report содержит уверенность",
       any("уверенность" in r for r in report), report)
 check("autodetect: report содержит кол-во глав",
       any("глав:" in r for r in report), report)
+# нормализация: пустые строки вокруг заголовков
+check("autodetect: normalized_text не пуст", bool(normalized_text), normalized_text)
 
 
 # ============================================================ regex_from_sample
@@ -174,9 +181,89 @@ if m2:
 
 
 # ============================================================ autodetect — пустой текст
-opts_empty, report_empty = autodetect("")
+opts_empty, report_empty, norm_empty = autodetect("")
 check("autodetect: пустой текст -> ch_mode = none",
       opts_empty["ch_mode"] == "none", opts_empty["ch_mode"])
+
+
+# ============================================================ Нормализация: пустые строки вокруг заголовков
+norm_text = (
+    "Глава первая\n"
+    "Краткое изложение\n"
+    "текст главы 1.\n"
+    "\n"
+    "Глава вторая\n"
+    "Явление Кришны\n"
+    "текст главы 2.\n"
+)
+opts_n, report_n, normalized_n = autodetect(norm_text)
+check("normalize: пустая строка после 'Глава первая'",
+      "Глава первая\n\n" in normalized_n, normalized_n)
+check("normalize: пустая строка после 'Глава вторая'",
+      "Глава вторая\n\n" in normalized_n, normalized_n)
+check("normalize: пустая строка перед 'Глава вторая'",
+      "\n\nГлава вторая" in normalized_n, normalized_n)
+
+
+# ============================================================ Построчный детект: 2 главы
+line_text = (
+    "Глава первая\n"
+    "Название\n"
+    "текст\n"
+    "Глава вторая\n"
+    "Название2\n"
+    "текст2\n"
+    "Глава третья\n"
+    "Название3\n"
+    "текст3\n"
+)
+opts_l, report_l, norm_l = autodetect(line_text)
+check("line_detect: 3 главы",
+      any("глав: 3" in r for r in report_l), report_l)
+check("line_detect: ch_mode = regex",
+      opts_l["ch_mode"] == "regex", opts_l["ch_mode"])
+
+
+# ============================================================ Ложные номера страниц НЕ считаются стихами
+fake_pages = "\n".join(str(i) for i in range(1, 21))
+opts_f, report_f, norm_f = autodetect(fake_pages)
+check("fake_pages: v_mode = none (числа страниц ≠ стихи)",
+      opts_f["v_mode"] == "none", opts_f["v_mode"])
+
+
+# ============================================================ strip_toc_lines: вторая половина текста
+half_text = (
+    "Глава первая\n"
+    "текст гл1\n"
+    "Глава вторая\n"
+    "текст гл2\n"
+    "СОДЕРЖАНИЕ\n"
+    "Гл. 1 ...\n"
+    "Гл. 2 ...\n"
+    "Гл. 3 ...\n"
+)
+lines = [l.strip() for l in half_text.replace("\r\n", "\n").split("\n")]
+cleaned_l, removed_l, note_l = strip_toc_lines(lines)
+check("strip_toc_lines: обнаружил СОДЕРЖАНИЕ", removed_l > 0, removed_l)
+check("strip_toc_lines: заметка содержит СОДЕРЖАНИЕ", "СОДЕРЖАНИЕ" in note_l, note_l)
+
+
+# ============================================================ detect_headings_lines: порядковые слова
+ordinal_text = (
+    "Глава первая. Введение\n"
+    "текст\n"
+    "Глава вторая. Оглавление\n"
+    "текст\n"
+    "Глава третья. Заключительная\n"
+    "текст\n"
+)
+lines_o = [l.strip() for l in ordinal_text.replace("\r\n", "\n").split("\n")]
+profile_o = detect_headings_lines(lines_o)
+check("ordinal: нашёл профиль", profile_o is not None, profile_o)
+if profile_o:
+    check("ordinal: >= 3 глав", profile_o["count"] >= 3, profile_o["count"])
+    check("ordinal: номера монотонны", profile_o["numbers"] == [1, 2, 3], profile_o["numbers"])
+    check("ordinal: title_mode = same (заголовки содержат title)", profile_o["title_mode"] == "same", profile_o["title_mode"])
 
 
 # ============================================================ summary
