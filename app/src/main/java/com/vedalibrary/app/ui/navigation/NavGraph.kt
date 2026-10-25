@@ -61,6 +61,12 @@ fun VedaNavGraph() {
         Routes.QUESTIONS to "❓",
         Routes.CARDS to "⭐"
     )
+    val backEntry by nav.currentBackStackEntryAsState()
+    val cur = backEntry?.destination?.route
+    val readingRoutes = setOf(Routes.READER, Routes.CHAPTER, Routes.VERSE,
+                              Routes.DICT, Routes.ILLUS, Routes.SETTINGS,
+                              Routes.ASK, Routes.ASK_EDIT)
+    val inReading = cur in readingRoutes
     Scaffold(
         bottomBar = {
             // Низкая панель (значки те же 30sp) + ОТДЕЛЬНАЯ зона под системные кнопки.
@@ -76,29 +82,24 @@ fun VedaNavGraph() {
                         NavigationBarItem(
                             selected = selected == r,
                             onClick = {
-                            selected = r
-                            // Стандартная мультивкладочность: стек вкладок не растёт
-                            // (saveState кладёт прежнюю вкладку, restoreState при
-                            // возврате достаёт её же с состоянием), «назад» не гоняет
-                            // по всем визитам (LIB→SEARCH→LIB раньше плодил копии).
-                            // Тап по уже открытой главной — no-op: иначе entry
-                            // пересоздаётся и список скроллится вверх.
-                            val onLib = r == Routes.LIB &&
-                                nav.currentBackStackEntry?.destination?.route == r &&
-                                nav.previousBackStackEntry == null
-                            if (!onLib) {
-                                nav.navigate(r) {
-                                    launchSingleTop = true
-                                    popUpTo(Routes.LIB) { saveState = true }
-                                    // restoreState ТОЛЬКО не для LIB: у главной нет
-                                    // своего saved state, а popUpTo(saveState) как раз
-                                    // кладёт в backStackMap[LIB] только что снятый стек
-                                    // (settings и т.п.) — restore тут же возвращал бы
-                                    // его, и тап по 📚 превращался в no-op
-                                    restoreState = r != Routes.LIB
+                                val was = selected
+                                selected = r
+                                if (inReading) {
+                                    nav.navigate(r) { launchSingleTop = true }
+                                } else if (r == Routes.LIB) {
+                                    while (true) {
+                                        val top = nav.currentBackStackEntry?.destination?.route
+                                        if (top == null || top == Routes.LIB || top in readingRoutes) break
+                                        if (!nav.popBackStack()) break
+                                    }
+                                } else if (was != r) {
+                                    nav.navigate(r) {
+                                        launchSingleTop = true
+                                        popUpTo(Routes.LIB) { saveState = true }
+                                        restoreState = true
+                                    }
                                 }
-                            }
-                        },
+                            },
                             icon = { Text(e, fontSize = 30.sp) }
                         )
                     }
