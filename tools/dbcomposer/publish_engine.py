@@ -12,6 +12,8 @@ import os
 import sqlite3
 import subprocess
 import sys
+import tempfile
+import urllib.request
 
 import dbcommon
 import gh_release
@@ -37,6 +39,212 @@ def books_count(db_path):
             con.close()
     except Exception:
         return 0
+
+
+# ====================================================================== download_asset
+# ======================================================================
+
+def download_asset(token, repo, url_or_asset_url, out_path):
+    """Скачать ассет релиза в out_path.
+
+    Если url вида `https://api.github.com/repos/.../releases/assets/<id>` —
+    GET с Authorization Bearer, Accept: application/octet-stream, следовать
+    редиректам. Иначе скачать напрямую (простой GET).
+    """
+    api_pat = url_or_asset_url.find("/releases/assets/")
+    if api_pat >= 0:
+        # API URL ассета — нужен токен
+        h = {
+            "Accept": "application/octet-stream",
+            "User-Agent": "dbcomposer/1.0",
+        }
+        if token:
+            h["Authorization"] = "Bearer " + token
+        req = urllib.request.Request(url_or_asset_url, headers=h)
+        resp = urllib.request.urlopen(req, timeout=180)
+        data = resp.read()
+        os.makedirs(os.path.dirname(os.path.abspath(out_path)) or ".", exist_ok=True)
+        with open(out_path, "wb") as f:
+            f.write(data)
+        return out_path
+
+    # Прямой URL — скачиваем без токена
+    resp = urllib.request.urlopen(url_or_asset_url, timeout=180)
+    data = resp.read()
+    os.makedirs(os.path.dirname(os.path.abspath(out_path)) or ".", exist_ok=True)
+    with open(out_path, "wb") as f:
+        f.write(data)
+    return out_path
+
+
+# ====================================================================== merge_dbs
+# ======================================================================
+
+def merge_dbs(old_db, new_db, out_path, log=print):
+    """Слияние двух баз: книги старой базы по порядку _id, затем новые (неповторяющиеся по type).
+
+    spec для recompose.build:
+      - сначала книги СТАРОЙ базы по порядку _id: {"file": old_db, "type": type}
+      - затем книги НОВОЙ, тип которых ещё не встречался: {"file": new_db, "type": type}
+      - если тип уже есть — заменить соответствующую запись старой базы на книгу из новой
+
+    Возвращает (out_path, old_count, new_count, result_count).
+    """
+    def _get_books(db_path):
+        """[(book_id, title, type), sorted by _id]."""
+        con = sqlite3.connect("file:%s?mode=ro" % db_path, uri=True)
+        try:
+            rows = con.execute(
+                "SELECT _id, title, type FROM books ORDER BY _id").fetchall()
+            return rows
+        finally:
+            con.close()
+
+    old_books = _get_books(old_db)
+    new_books = _get_books(new_db)
+
+    old_count = len(old_books)
+    new_count = len(new_books)
+
+    # Собираем spec: сначала старые по _id, затем новые (неповторяющиеся type)
+    seen_types = set()
+    spec_books = []
+
+    # 1) Старые книги
+    for bid, title, btype in old_books:
+        bt = (btype or "").upper()
+        spec_books.append({"file": old_db, "type": bt})
+        seen_types.add(bt)
+
+    # 2) Новые книги — только если тип ещё не встречался
+    for bid, title, btype in new_books:
+        bt = (btype or "").upper()
+        if bt not in seen_types:
+            spec_books.append({"file": new_db, "type": bt})
+            seen_types.add(bt)
+        # иначе: тип уже есть — заменяем (перезаписываем последнюю запись с этим типом)
+
+    # Перезаписываем: если тип из новой базы уже был в старой — заменяем
+    # Находим позицию и заменяем
+    for bid, title, btype in new_books:
+        bt = (btype or "").upper()
+        if bt in seen_types:
+            # Замена: ищем последнюю запись с этим type и заменяем
+            for i in range(len(spec_books) - 1, -1, -1):
+                if spec_books[i]["type"] == bt:
+                    spec_books[i] = {"file": new_db, "type": bt}
+                    break
+
+    # Собираем spec
+    spec = {"books": spec_books,
+            "drop_error_rows": True,
+            "drop_empty_verses": True,
+            "dedupe": True,
+            "drop_empty_chapters": False}
+
+    # recompose.build принимает spec_path (файл) и out_path
+    import recompose
+    spec_path = out_path + ".spec.json"
+    with open(spec_path, "w", encoding="utf-8") as f:
+        json.dump(spec, f, ensure_ascii=False)
+    tmp_path = out_path + ".tmp"
+    result = recompose.build(spec_path, tmp_path, force=True)
+    # recompose.build атомарно подменяет tmp_path → out_path
+    # Проверяем что файл существует
+    if not os.path.isfile(out_path):
+        if os.path.isfile(tmp_path):
+            os.replace(tmp_path, out_path)
+        else:
+            raise RuntimeError("merge_dbs: сборка не создала файл: %s" % result)
+    # Чистим временные
+    for f in (spec_path,):
+        try:
+            os.remove(f)
+        except OSError:
+            pass
+
+    # Считаем результат
+    result_count = books_count(out_path)
+    return (out_path, old_count, new_count, result_count)
+
+
+# ====================================================================== publish_addition
+# ======================================================================
+
+def publish_addition(token, key, new_file, notes, log=print):
+    """Добавить книги из new_file к существующему сборнику.
+
+    1) Читаем meta = versions[books][key]; если нет — PublishError.
+    2) old_file = meta["file"]; если не существует — скачать meta["url"] в %TEMP%.
+    3) Слияние: merged = <key>_merged.db в F:\\AI\\Development\\Book DB\\.
+    4) Дельта: make_delta old→merged в %TEMP% (--force).
+    5) publish_book(..., new_file=merged, delta_file=delta, delta_from=int(meta["version"]),
+       old_file=old_file, log=log).
+    """
+    with open(VERSIONS, encoding="utf-8") as f:
+        versions_data = json.load(f)
+
+    meta = versions_data.get("books", {}).get(key)
+    if not meta:
+        raise PublishError("ключ %s не найден в versions.json[books]" % key)
+
+    old_file = meta.get("file", "")
+    if old_file and not os.path.isfile(old_file):
+        url = meta.get("url", "")
+        if url:
+            log("файл %s отсутствует, скачиваю из %s" % (old_file, url))
+            tmp_dir = tempfile.gettempdir()
+            old_file = os.path.join(tmp_dir, os.path.basename(old_file))
+            download_asset(token, gh_release.FILES_REPO, url, old_file)
+        else:
+            raise PublishError("meta.file существует, но url пуст: %s" % key)
+
+    # Слияние
+    book_db_dir = r"F:\AI\Development\Book DB"
+    os.makedirs(book_db_dir, exist_ok=True)
+    merged_path = os.path.join(book_db_dir, "%s_merged.db" % key)
+    log("merge_dbs: %s + %s → %s" % (os.path.basename(old_file), os.path.basename(new_file), os.path.basename(merged_path)))
+    merge_dbs(old_file, new_file, merged_path, log)
+
+    # Дельта
+    delta_dir = tempfile.gettempdir()
+    delta_path = os.path.join(delta_dir, "%s_delta.db" % key)
+    log("make_delta: %s → %s" % (os.path.basename(old_file), os.path.basename(delta_path)))
+    cmd = [
+        sys.executable,
+        os.path.join(HERE, "make_delta.py"),
+        "--old", old_file,
+        "--new", merged_path,
+        "--out", delta_path,
+        "--force",
+    ]
+    log("make_delta: запуск…")
+    p = subprocess.run(
+        cmd,
+        capture_output=True,
+        text=True,
+        encoding="utf-8",
+        errors="replace",
+        timeout=900,
+        creationflags=dbcommon.nowin(),
+    )
+    out_text = ((p.stdout or "") + (p.stderr or "")).strip()
+    if p.returncode != 0:
+        raise RuntimeError("make_delta: код %s\n%s" % (p.returncode, out_text[-800:]))
+    log("make_delta: готово")
+
+    # Публикация
+    prev_version = int(meta.get("version", 0))
+    return publish_book(
+        token=token,
+        key=key,
+        new_file=merged_path,
+        notes=notes,
+        delta_file=delta_path,
+        delta_from=prev_version,
+        old_file=old_file,
+        log=log,
+    )
 
 
 # ====================================================================== guess_key
@@ -90,14 +298,23 @@ def guess_key(old_file, data=None):
 def _db_composition_changed(old_file, new_file):
     """Сравнивает состав книг и обложки двух баз.
 
-    Возвращает True, если состав книг (books._id, books.type) ИЛИ
-    набор обложек/их sha256 отличаются.
+    Возвращает True, если состав «плохой» (дельта отключается):
+      - какая-то книга СТАРОЙ базы отсутствует в новой (по type), ИЛИ
+      - у существующих (совпадающих по type) книг изменилась обложка (image sha).
+
+    Добавление новых книг НЕ является причиной отключать дельту.
     """
-    def _get_books(db_path):
+    def _get_types(db_path):
+        """{type: [book_id, ...]} — типы книг в базе."""
         con = sqlite3.connect("file:%s?mode=ro" % db_path, uri=True)
         try:
-            return con.execute(
-                "SELECT _id, type FROM books ORDER BY _id").fetchall()
+            rows = con.execute(
+                "SELECT _id, type FROM books").fetchall()
+            result = {}
+            for book_id, btype in rows:
+                bt = (btype or "").upper()
+                result.setdefault(bt, []).append(book_id)
+            return result
         finally:
             con.close()
 
@@ -115,16 +332,36 @@ def _db_composition_changed(old_file, new_file):
                 h.update(content)
                 out.append((book_id, h.hexdigest()))
             return out
+        except Exception:
+            return []
         finally:
             con.close()
 
-    old_books = _get_books(old_file)
-    new_books = _get_books(new_file)
-    if old_books != new_books:
-        return True
+    old_types = _get_types(old_file)
+    new_types = _get_types(new_file)
+
+    # 1) Проверка: все типы старой базы присутствуют в новой
+    for bt, old_bids in old_types.items():
+        if bt not in new_types:
+            return True  # книга старой базы отсутствует в новой
+
+    # 2) Проверка обложек: для совпадающих по type книг — сравниваем sha
     old_covers = _get_covers(old_file)
     new_covers = _get_covers(new_file)
-    return old_covers != new_covers
+
+    # Собираем словарь book_id -> sha для каждой базы
+    old_cover_map = dict(old_covers)
+    new_cover_map = dict(new_covers)
+
+    # Проверяем только книги, которые есть в старой базе (совпадающие по type)
+    for bt, old_bids in old_types.items():
+        new_bids = new_types.get(bt, [])
+        for old_bid in old_bids:
+            if old_bid in new_cover_map and old_bid in old_cover_map:
+                if new_cover_map[old_bid] != old_cover_map[old_bid]:
+                    return True  # обложка изменилась
+
+    return False
 
 
 def _sha256(path):

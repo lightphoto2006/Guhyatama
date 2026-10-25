@@ -1458,6 +1458,173 @@ def test_books_count():
           "не база → 0")
 
 
+    # обычный файл не как база
+    bad = os.path.join(tmpdir, "notadb.txt")
+    with open(bad, "w") as f:
+        f.write("hello")
+    check(publish_engine.books_count(bad) == 0,
+          "не база → 0")
+
+
+# ======================================================================
+# j) merge_dbs
+# ======================================================================
+def test_merge_dbs():
+    print("=== j) merge_dbs ===")
+    tmpdir = tempfile.mkdtemp(prefix="mergedbs_")
+
+    def _make_db(path, books, covers=None):
+        """books: [(book_id, title, type)]."""
+        con = sqlite3.connect(path)
+        try:
+            con.execute("CREATE TABLE books(_id INTEGER PRIMARY KEY, sort INTEGER, "
+                        "author TEXT, title TEXT, desc TEXT, type TEXT, "
+                        "levels INTEGER, hasSanskrit INTEGER, hasPurport INTEGER, "
+                        "hasColorStructure INTEGER, isSongBook INTEGER, "
+                        "text_size INTEGER, purport_size INTEGER, "
+                        "text_begin_raw TEXT, text_end_raw TEXT, "
+                        "web_abbrev TEXT, compare_code TEXT, "
+                        "issue TEXT, isSimple INTEGER)")
+            for bid, title, btype in books:
+                con.execute("INSERT INTO books(_id,sort,title,type) VALUES (?,?,?,?)",
+                            (bid, bid, title, btype))
+            # Полные пустые таблицы для recompose.build (DDL копируется из источника)
+            con.execute("CREATE TABLE chapters(_id INTEGER PRIMARY KEY, book_id INTEGER, "
+                        "song TEXT, number TEXT, title TEXT)")
+            con.execute("CREATE TABLE songs(_id INTEGER PRIMARY KEY, book_id INTEGER, "
+                        "song TEXT, songname TEXT, sort INTEGER)")
+            con.execute("CREATE TABLE textnums(_id INTEGER PRIMARY KEY, book_id INTEGER, "
+                        "song TEXT, ch_no TEXT, txt_no TEXT, preview TEXT)")
+            con.execute("CREATE TABLE texts(_id INTEGER PRIMARY KEY, sanskrit TEXT, "
+                        "translit TEXT, translit_srch TEXT, transl1 TEXT, transl2 TEXT, comment TEXT)")
+            con.execute("CREATE TABLE image_nums(_id INTEGER PRIMARY KEY, bid INTEGER, "
+                        "sid TEXT, cid TEXT, tnum TEXT, text_id INTEGER, image_id TEXT, "
+                        "type TEXT, desc TEXT, kind TEXT)")
+            con.execute("CREATE TABLE images(image_id TEXT PRIMARY KEY, content BLOB)")
+            con.execute("CREATE TABLE textrefs(_id INTEGER PRIMARY KEY, text_id INTEGER, "
+                        "ref_type TEXT, ref_id TEXT)")
+            if covers:
+                con.execute("CREATE TABLE covers(book_id INTEGER, image_id TEXT)")
+                for book_id, sha_bytes in covers:
+                    con.execute("INSERT INTO images(image_id,content) VALUES (?,?)",
+                                ("C%d" % book_id, sha_bytes))
+                    con.execute("INSERT INTO covers(book_id,image_id) VALUES (?,?)",
+                                (book_id, "C%d" % book_id))
+            con.commit()
+        finally:
+            con.close()
+
+    # 1) Старая: 1 книга типа AA. Новая: 1 книга типа BB → merged: 2 книги (AA, BB)
+    old_db = os.path.join(tmpdir, "old.db")
+    new_db = os.path.join(tmpdir, "new.db")
+    merged_db = os.path.join(tmpdir, "merged.db")
+    _make_db(old_db, [(1, "BookAA", "AA")])
+    _make_db(new_db, [(1, "BookBB", "BB")])
+
+    result = publish_engine.merge_dbs(old_db, new_db, merged_db, log=lambda x: None)
+    out_path, old_count, new_count, result_count = result
+    check(out_path == merged_db, "merge_dbs вернул out_path")
+    check(old_count == 1, "old_count=1 (got %d)" % old_count)
+    check(new_count == 1, "new_count=1 (got %d)" % new_count)
+    check(result_count == 2, "result_count=2 (AA+BB) (got %d)" % result_count)
+
+    # Проверка порядка: AA первый, BB второй
+    con = sqlite3.connect("file:%s?mode=ro" % merged_db, uri=True)
+    rows = con.execute("SELECT _id, title, type FROM books ORDER BY _id").fetchall()
+    con.close()
+    check(len(rows) == 2, "merged содержит 2 книги")
+    if len(rows) >= 2:
+        check(rows[0][2] == "AA", "первая книга типа AA (got %r)" % rows[0][2])
+        check(rows[1][2] == "BB", "вторая книга типа BB (got %r)" % rows[1][2])
+
+    # 2) Старая: 1 книга типа AA. Новая: 1 книга типа AA → замена → merged: 1 книга (новая версия)
+    old_db2 = os.path.join(tmpdir, "old2.db")
+    new_db2 = os.path.join(tmpdir, "new2.db")
+    merged_db2 = os.path.join(tmpdir, "merged2.db")
+    _make_db(old_db2, [(1, "OldAA", "AA")])
+    _make_db(new_db2, [(2, "NewAA", "AA")])
+
+    result2 = publish_engine.merge_dbs(old_db2, new_db2, merged_db2, log=lambda x: None)
+    _, oc2, nc2, rc2 = result2
+    check(oc2 == 1, "old_count=1 (got %d)" % oc2)
+    check(nc2 == 1, "new_count=1 (got %d)" % nc2)
+    check(rc2 == 1, "result_count=1 (замена) (got %d)" % rc2)
+
+    con2 = sqlite3.connect("file:%s?mode=ro" % merged_db2, uri=True)
+    rows2 = con2.execute("SELECT _id, title, type FROM books ORDER BY _id").fetchall()
+    con2.close()
+    check(len(rows2) == 1, "merged содержит 1 книгу (замена)")
+    if rows2:
+        check(rows2[0][1] == "NewAA", "заменена на NewAA (got %r)" % rows2[0][1])
+
+
+# ======================================================================
+# k) _db_composition_changed — добавление книги
+# ======================================================================
+def test_db_composition_changed_addition():
+    print("=== k) _db_composition_changed (добавление книги) ===")
+    tmpdir = tempfile.mkdtemp(prefix="compchg_")
+
+    def _make_db(path, books, covers=None):
+        """books: [(book_id, type)]. covers: [(book_id, sha_bytes)]."""
+        con = sqlite3.connect(path)
+        try:
+            con.execute("CREATE TABLE books(_id INTEGER PRIMARY KEY, sort INTEGER, "
+                        "author TEXT, title TEXT, desc TEXT, type TEXT, "
+                        "levels INTEGER, hasSanskrit INTEGER, hasPurport INTEGER, "
+                        "hasColorStructure INTEGER, isSongBook INTEGER, "
+                        "text_size INTEGER, purport_size INTEGER, "
+                        "text_begin_raw TEXT, text_end_raw TEXT, "
+                        "web_abbrev TEXT, compare_code TEXT, "
+                        "issue TEXT, isSimple INTEGER)")
+            for bid, btype in books:
+                con.execute("INSERT INTO books(_id,sort,type) VALUES (?,?,?)",
+                            (bid, bid, btype))
+            if covers:
+                con.execute("CREATE TABLE covers(book_id INTEGER, image_id TEXT)")
+                con.execute("CREATE TABLE images(image_id TEXT PRIMARY KEY, content BLOB)")
+                for book_id, sha_bytes in covers:
+                    con.execute("INSERT INTO images(image_id,content) VALUES (?,?)",
+                                ("C%d" % book_id, sha_bytes))
+                    con.execute("INSERT INTO covers(book_id,image_id) VALUES (?,?)",
+                                (book_id, "C%d" % book_id))
+            con.commit()
+        finally:
+            con.close()
+
+    # 1) Старая [AA], новая [AA, BB] → False (дельта разрешена — добавление)
+    old_db = os.path.join(tmpdir, "old.db")
+    new_db = os.path.join(tmpdir, "new.db")
+    _make_db(old_db, [(1, "AA")])
+    _make_db(new_db, [(1, "AA"), (2, "BB")])
+    changed = publish_engine._db_composition_changed(old_db, new_db)
+    check(changed is False, "добавление книги: False (дельта разрешена)")
+
+    # 2) Старая [AA, BB], новая [AA] → True (удаление книги)
+    old_db2 = os.path.join(tmpdir, "old2.db")
+    new_db2 = os.path.join(tmpdir, "new2.db")
+    _make_db(old_db2, [(1, "AA"), (2, "BB")])
+    _make_db(new_db2, [(1, "AA")])
+    changed2 = publish_engine._db_composition_changed(old_db2, new_db2)
+    check(changed2 is True, "удаление книги: True (дельта запрещена)")
+
+    # 3) Старая [AA], новая [AA] — обложка изменилась → True
+    old_db3 = os.path.join(tmpdir, "old3.db")
+    new_db3 = os.path.join(tmpdir, "new3.db")
+    _make_db(old_db3, [(1, "AA")], covers=[(1, b"old_cover")])
+    _make_db(new_db3, [(1, "AA")], covers=[(1, b"new_cover")])
+    changed3 = publish_engine._db_composition_changed(old_db3, new_db3)
+    check(changed3 is True, "смена обложки: True")
+
+    # 4) Старая [AA], новая [AA] — обложка не изменилась → False
+    old_db4 = os.path.join(tmpdir, "old4.db")
+    new_db4 = os.path.join(tmpdir, "new4.db")
+    _make_db(old_db4, [(1, "AA")], covers=[(1, b"same_cover")])
+    _make_db(new_db4, [(1, "AA")], covers=[(1, b"same_cover")])
+    changed4 = publish_engine._db_composition_changed(old_db4, new_db4)
+    check(changed4 is False, "без изменений: False")
+
+
 # ======================================================================
 # main
 # ======================================================================
@@ -1473,6 +1640,8 @@ def main():
     test_delta_disabled_by_composition_change()
     test_delta_size_based_unchanged()
     test_books_count()
+    test_merge_dbs()
+    test_db_composition_changed_addition()
 
     print("")
     print("Итого проверок: %d, провалов: %d" % (checks, fails))
