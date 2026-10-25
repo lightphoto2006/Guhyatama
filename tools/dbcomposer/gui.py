@@ -96,6 +96,7 @@ class App(tk.Tk):
         self.rows = {}
         self.msg_q = queue.Queue()
         self.building = False
+        self.build_cancel = threading.Event()
         self.sort_col = None
         self.sort_rev = False
         # (file, book_id) -> {'chapters': {(song,num)}, 'verses': {(song,ch,txt)}}
@@ -172,6 +173,8 @@ class App(tk.Tk):
         ttk.Button(out, text="Обзор…", command=self.pick_out).pack(side="left")
         self.b_build = ttk.Button(out, text="СОБРАТЬ", command=self.start_build)
         self.b_build.pack(side="left", padx=6)
+        self.b_stop_build = ttk.Button(out, text="СТОП", command=self.stop_build, state="disabled")
+        self.b_stop_build.pack(side="left", padx=2)
         self.prog = ttk.Progressbar(out, mode="indeterminate", length=120)
         self.prog.pack(side="left")
         ttk.Button(out, text="📋", command=self.copy_log).pack(side="left", padx=4)
@@ -480,6 +483,12 @@ class App(tk.Tk):
         if p:
             self.e_out.set(p)
 
+    def stop_build(self):
+        if self.building:
+            self.build_cancel.set()
+            self.b_stop_build.state(["disabled"])
+            self.say("отмена сборки…")
+
     def start_build(self):
         if self.building:
             return
@@ -541,7 +550,9 @@ class App(tk.Tk):
         for n in merge_notes:
             self.say(n)
         self.building = True
+        self.build_cancel.clear()
         self.b_build.state(["disabled"])
+        self.b_stop_build.state(["!disabled"])
         self.prog.start(12)
         threading.Thread(target=self.run_build, args=(spec_path, out), daemon=True).start()
 
@@ -555,7 +566,7 @@ class App(tk.Tk):
 
     def run_build(self, spec_path, out):
         try:
-            report = recompose.build(spec_path, out, True)
+            report = recompose.build(spec_path, out, True, cancel=self.build_cancel)
             self.msg_q.put(("done", "ГОТОВО: %s\n%s" % (out, report)))
         except Exception as e:
             import traceback
@@ -573,7 +584,11 @@ class App(tk.Tk):
                 if kind == "done":
                     self.building = False
                     self.b_build.state(["!disabled"])
+                    self.b_stop_build.state(["disabled"])
                     self.prog.stop()
+                    if text.startswith("ОТМЕНЕНО"):
+                        self.say(text)
+                        continue
                 self.say(text)
         except queue.Empty:
             pass

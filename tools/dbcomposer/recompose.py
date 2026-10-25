@@ -716,10 +716,15 @@ def pack_audio(dst, spec, report):
             ("…" if len(missing) > 10 else ""))
 
 
-def build(spec_path, out_path, force=False):
+def build(spec_path, out_path, force=False, cancel=None):
     """Сборка в <out>.tmp с атомарной подменой: старый рабочий файл НЕ трогаем,
     пока новая сборка не доделана и не проверена (раньше os.remove шёл до
-    валидации входа — упавшая сборка стоила пользователя последнего выхода)."""
+    валидации входа — упавшая сборка стоила пользователя последнего выхода).
+
+    cancel — threading.Event или объект с is_set(): при set() сборка прерывается,
+    tmp-файл удаляется, возвращается строка 'ОТМЕНЕНО: ...'."""
+    def _cancelled():
+        return cancel is not None and getattr(cancel, "is_set", lambda: False)()
     with open(spec_path, encoding='utf-8') as f:
         spec = json.load(f)
     if os.path.exists(out_path) and not force:
@@ -784,6 +789,10 @@ def build(spec_path, out_path, force=False):
         for t in made:
             dst.execute("DELETE FROM %s" % t)
 
+        if _cancelled():
+            result = None
+            return "ОТМЕНЕНО: остановлено до начала сборки книг"
+
         next_book = 0
         next_ch = 0
         next_tn = 0
@@ -792,6 +801,9 @@ def build(spec_path, out_path, force=False):
         cover_recs = []
         merged_info = []
         for bspec in spec.get('books', []):
+            if _cancelled():
+                result = None
+                return "ОТМЕНЕНО: остановлено на книге %s" % bspec.get('book_id', bspec.get('type', '?'))
             con = src_cons[bspec['file']]
             sel = "SELECT _id,title,author,type FROM books WHERE "
             if 'book_id' in bspec:
@@ -863,6 +875,9 @@ def build(spec_path, out_path, force=False):
                                if (dbcommon.nkey(s), dbcommon.nkey(n)) not in excl_ch]
                 nonnum_ch = 0
                 for song, num, ctitle in ch_rows:
+                    if _cancelled():
+                        result = None
+                        return "ОТМЕНЕНО: остановлено на главе %s.%s" % (song, num)
                     next_ch += 1
                     cnum = ch_number(num)
                     if isinstance(cnum, str):
@@ -915,11 +930,15 @@ def build(spec_path, out_path, force=False):
                 kept_full = set()
                 kept_raw = set()
                 kept = dropped_err = dropped_empty = dropped_dup = dropped_excl = 0
+                _verse_n = 0
                 dropped_gal = 0
                 gal_coords = set()
                 fixed_song = merged = 0
                 remap = {}
                 for old_tid, song, ch, txt, preview in tn_rows:
+                    if _cancelled():
+                        result = None
+                        return "ОТМЕНЕНО: остановлено на стихе %s.%s.%s" % (song, ch, txt)
                     # сравнения — через nkey: '028' обязан матчиться с '28'
                     if (dbcommon.nkey(song), dbcommon.nkey(ch), dbcommon.nkey(txt)) in excl_v or \
                             (dbcommon.nkey(song), dbcommon.nkey(ch)) in excl_ch:
@@ -983,6 +1002,10 @@ def build(spec_path, out_path, force=False):
                             "INSERT INTO texts(_id,sanskrit,translit,translit_srch,transl1,transl2,comment)"
                             " VALUES (?,?,?,?,?,?,?)", (next_tn,) + tuple(t))
                         kept += 1
+                        _verse_n += 1
+                        if _verse_n % 2000 == 0 and _cancelled():
+                            result = None
+                            return "ОТМЕНЕНО: остановлено после стиха %d" % _verse_n
                         if merge_map is not None and \
                                 (dbcommon.nkey(ns), dbcommon.nkey(nc)) != \
                                 (dbcommon.nkey(song), dbcommon.nkey(ch)):
