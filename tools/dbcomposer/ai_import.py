@@ -1179,11 +1179,13 @@ class AIImportTab(ttk.Frame):
         self.cmb_type = ttk.Combobox(book, textvariable=self.v_btype, width=10,
                                      values=self._type_values(), state="normal")
         self.cmb_type.grid(row=1, column=1, sticky="w", pady=2)
-        ttk.Label(book, text="Автор:").grid(row=2, column=0, sticky="w")
+        ttk.Label(book, text="Тип можно вписать вручную: 2–8 символов A–Z/0–9 (напр. CHB)",
+                  foreground="#888888").grid(row=2, column=1, sticky="w")
+        ttk.Label(book, text="Автор:").grid(row=3, column=0, sticky="w")
         self.v_bauthor = tk.StringVar(value=self.cfg.get("t2_author", ""))
-        ttk.Entry(book, textvariable=self.v_bauthor, width=26).grid(row=2, column=1, sticky="ew")
+        ttk.Entry(book, textvariable=self.v_bauthor, width=26).grid(row=3, column=1, sticky="ew")
         self.lbl_cap = ttk.Label(book, text="", foreground="#b58900")
-        self.lbl_cap.grid(row=3, column=0, columnspan=2, sticky="w")
+        self.lbl_cap.grid(row=4, column=0, columnspan=2, sticky="w")
         self.v_btype.trace_add("write", lambda *a: self._cap_hint())
         self._cap_hint()
         book.columnconfigure(1, weight=1)

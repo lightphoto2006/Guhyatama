@@ -67,6 +67,17 @@
       "adopt": false,
       "size": 13209600,
       "sha256": "450e948d1fc5ebf3a0407f2a30b0631f0897c89add3c083566ae1ceee4dc6936"
+    },
+    {
+      "key": "Acharyi_rus",
+      "title": "Книги ачарий (рус)",
+      "version": 6,
+      "url": "https://api.github.com/repos/lightphoto2006/Guhyatama-files/releases/assets/607505825",
+      "notes": "Транслит: ш вместо щ (кршна, шри, лакшми).",
+      "lang": "rus",
+      "auth": "github",
+      "size": 2969600,
+      "sha256": "c4ea0642d4b8c79d98026707e84a0e1d262e5fdcbae367e15f235df80aeb9dad"
     }
   ],
   "audio": [
