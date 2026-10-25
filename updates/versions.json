@@ -1,15 +1,15 @@
 {
   "apk": {
-    "versionCode": 55,
-    "versionName": "1.3.7",
-    "url": "https://github.com/lightphoto2006/Guhyatama/releases/download/v1.3.7/Guhyatama-1.3.7.apk",
-    "notes": "Что нового:\n— Поиск понимает слова через дефис: в книге они пишутся так («праламба-бахум», «шримад-бхагаватам»), и по запросу «пра-ламба» или «праламба» теперь находятся и такие написания.\n— Поиск по-прежнему работает по любому регистру и по началу слова: «праламб» находит «Праламба» (24 стиха в 10-й песни ШБ и 8 в «Гопала Чампу»), а не одно вхождение.\n— Починен фильтр поиска по разделу («Стих»/«Санскрит»/«Коммент.») и словарь без учёта регистра.\n— Звезда закладки и шестерёнка в шапке выровнены по центру.\n— Дельта-обновление от v1.3.6 до v1.3.7 (патч 54→55).",
+    "versionCode": 56,
+    "versionName": "1.3.8",
+    "url": "https://github.com/lightphoto2006/Guhyatama/releases/download/v1.3.8/Guhyatama-1.3.8.apk",
+    "notes": "Что нового:\n- Поддержка старых устройств: приложение теперь ставится на Android 7.0-7.1 (minSdk 24, раньше требовался Android 8+).\n- На Android 8+ ничего не изменилось (adaptive-иконки как были).\n- Дельта-обновление с v1.3.7 (патч 55->56; на этот раз патч почти равен полному APK - пересобраны ресурсы под minSdk 24).",
     "delta": {
-      "from": 54,
-      "file": "F:\\AI\\Development\\Guhyatama\\releases\\Guhyatama-delta-54-to-55.bsdiff",
-      "url": "https://github.com/lightphoto2006/Guhyatama/releases/download/v1.3.7/Guhyatama-delta-54-to-55.bsdiff"
+      "from": 55,
+      "file": "F:\\AI\\Development\\Guhyatama\\releases\\Guhyatama-delta-55-to-56.bsdiff",
+      "url": "https://github.com/lightphoto2006/Guhyatama/releases/download/v1.3.8/Guhyatama-delta-55-to-56.bsdiff"
     },
-    "file": "F:\\AI\\Development\\Guhyatama\\releases\\Guhyatama-1.3.7.apk"
+    "file": "F:\\AI\\Development\\Guhyatama\\releases\\Guhyatama-1.3.8.apk"
   },
   "books": {
     "Prabhupada_rus": {
