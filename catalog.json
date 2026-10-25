@@ -71,31 +71,31 @@
     {
       "key": "Acharyi_rus",
       "title": "Книги ачарий (рус)",
-      "version": 8,
-      "url": "https://api.github.com/repos/lightphoto2006/Guhyatama-files/releases/assets/675283123",
-      "notes": "Сборник: Бхагавад-гита (пер. Шридхары Свами), Брахма-самхита, Гопала-чампу. Исправление: предыдущая публикация v7 содержала ошибочную книгу.",
+      "version": 9,
+      "url": "https://api.github.com/repos/lightphoto2006/Guhyatama-files/releases/assets/675335661",
+      "notes": "Сборник: Бхагавад-гита (пер. Шридхары Свами), Брахма-самхита, Гопала-чампу. Стабильные id книг.",
       "lang": "rus",
       "auth": "github",
-      "size": 6307840,
-      "sha256": "7fda03d78d66890761a6f03b662688a9988f5078b70808026fa56af7e798edf0",
+      "size": 6287360,
+      "sha256": "cba812b5f9b3deed4dd927079a109a53b28edcfcad2a04d7e9cc995972cf4842",
       "fp": [
         {
-          "t": "bg-ss",
+          "t": "gc",
           "g": 1,
+          "v": 743,
+          "vg": 743
+        },
+        {
+          "t": "bg-ss",
+          "g": 2,
           "v": 649,
           "vg": 649
         },
         {
           "t": "bs",
-          "g": 2,
+          "g": 3,
           "v": 68,
           "vg": 68
-        },
-        {
-          "t": "gc",
-          "g": 3,
-          "v": 743,
-          "vg": 743
         }
       ]
     }
