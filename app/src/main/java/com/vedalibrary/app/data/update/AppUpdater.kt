@@ -50,7 +50,7 @@ class AppUpdater @Inject constructor(
     /** Каталог с сервера (null = сеть/разбор не удались, причина в lastCatalogError). */
     suspend fun fetchCatalog(): JSONObject? = withContext(Dispatchers.IO) {
         var conn: HttpURLConnection? = null
-        var firstError: String? = null
+        val errors = mutableListOf<String>()
 
         // --- 1. Raw-запрос ---
         try {
@@ -61,12 +61,12 @@ class AppUpdater @Inject constructor(
             if (conn.responseCode == 200) {
                 lastCatalogError = null
                 return@withContext JSONObject(conn.inputStream.bufferedReader().readText())
+            } else {
+                errors += "raw: HTTP ${conn.responseCode}"
             }
         } catch (e: Exception) {
-            if (firstError == null) {
-                firstError = "${e.javaClass.simpleName}: ${e.message}"
-                Log.e("Updater", "catalog fetch failed (raw)", e)
-            }
+            errors += "raw: ${e.javaClass.simpleName}: ${e.message}"
+            Log.e("Updater", "catalog fetch failed (raw)", e)
         } finally { try { conn?.disconnect() } catch (_: Exception) { } }
 
         // --- 2. API-запрос (contents) ---
@@ -79,22 +79,24 @@ class AppUpdater @Inject constructor(
             if (conn.responseCode == 200) {
                 val json = JSONObject(conn.inputStream.bufferedReader().readText())
                 val b64 = json.optString("content", "").replace("\n", "")
-                val bytes = Base64.decode(b64, Base64.DEFAULT)
-                lastCatalogError = null
-                return@withContext JSONObject(String(bytes, Charsets.UTF_8))
+                if (b64.isBlank()) {
+                    errors += "api: нет content в ответе"
+                } else {
+                    val bytes = Base64.decode(b64, Base64.DEFAULT)
+                    lastCatalogError = null
+                    return@withContext JSONObject(String(bytes, Charsets.UTF_8))
+                }
+            } else {
+                errors += "api: HTTP ${conn.responseCode}"
             }
         } catch (e: Exception) {
-            val apiErr = "${e.javaClass.simpleName}: ${e.message}"
-            if (firstError == null) {
-                firstError = apiErr
-                Log.e("Updater", "catalog fetch failed (api)", e)
-            }
+            errors += "api: ${e.javaClass.simpleName}: ${e.message}"
+            Log.e("Updater", "catalog fetch failed (api)", e)
         } finally { try { conn?.disconnect() } catch (_: Exception) { } }
 
         // --- Оба упали ---
-        val rawMsg = firstError ?: "raw: неизвестная ошибка"
-        val combined = "raw: $rawMsg"
-        lastCatalogError = combined.take(200)
+        lastCatalogError = if (errors.isEmpty()) "причина неизвестна"
+            else errors.joinToString("; ").take(200)
         null
     }
 
