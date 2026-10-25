@@ -719,9 +719,9 @@ def pack_audio(dst, spec, report):
 def build(spec_path, out_path, force=False, cancel=None):
     """Сборка в <out>.tmp с атомарной подменой: старый рабочий файл НЕ трогаем,
     пока новая сборка не доделана и не проверена (раньше os.remove шёл до
-    валидации входа — упавшая сборка стоила пользователя последнего выхода).
+    валидации входа -- упавшая сборка стоила пользователя последнего выхода).
 
-    cancel — threading.Event или объект с is_set(): при set() сборка прерывается,
+    cancel -- threading.Event или объект с is_set(): при set() сборка прерывается,
     tmp-файл удаляется, возвращается строка 'ОТМЕНЕНО: ...'."""
     def _cancelled():
         return cancel is not None and getattr(cancel, "is_set", lambda: False)()
@@ -747,482 +747,18 @@ def build(spec_path, out_path, force=False, cancel=None):
 
     dst = sqlite3.connect(tmp_path)
     report = []
-    # схема: копируем DDL нужных таблиц из первого источника, где они есть
     made = set()
     src_cons = {}
     result = None
     try:
-        # сначала — вся валидация входа: старый выход ещё не тронут
-        for bspec in spec.get('books', []):
-            sf = bspec['file']
-            if sf not in src_cons:
-                if not os.path.exists(sf):
-                    return "Нет файла-источника: %s" % sf
-                src_cons[sf] = connect_ro(sf)
-        for sf, con in src_cons.items():
-            for t in APP_TABLES:
-                if t not in made:
-                    try:
-                        # в помеченных «сделанными» только реально созданные таблицы;
-                        # источники без таблицы пробуем дальше, а не «сжигаем» имя
-                        if copy_table_schema(dst, con, t):
-                            made.add(t)
-                            report.append("схема %s: из %s" % (t, os.path.basename(sf)))
-                    except Exception as e:
-                        report.append("схема %s: НЕ создана (%s)" % (t, e))
-        # столбцы, которые есть хотя бы в одном источнике (ALTER TABLE ADD COLUMN)
-        for t in APP_TABLES:
-            if t not in made:
-                continue
-            base = set(table_cols(dst, t))
-            for sf, con in src_cons.items():
-                try:
-                    scols = table_cols(con, t)
-                except Exception:
-                    continue
-                for c in scols:
-                    if c not in base:
-                        # идентификатор из чужого схемы — экранируем кавычки
-                        dst.execute('ALTER TABLE "%s" ADD COLUMN "%s"'
-                                    % (t, c.replace('"', '""')))
-                        base.add(c)
-        for t in made:
-            dst.execute("DELETE FROM %s" % t)
-
+        src_cons = _build_validate(spec)
+        made = _build_schema(dst, src_cons, made, report)
         if _cancelled():
             result = None
             return "ОТМЕНЕНО: остановлено до начала сборки книг"
-
-        next_book = 0
-        next_ch = 0
-        next_tn = 0
-        included_types = set()
-        seen_src = set()
-        cover_recs = []
-        merged_info = []
-        for bspec in spec.get('books', []):
-            if _cancelled():
-                result = None
-                return "ОТМЕНЕНО: остановлено на книге %s" % bspec.get('book_id', bspec.get('type', '?'))
-            con = src_cons[bspec['file']]
-            sel = "SELECT _id,title,author,type FROM books WHERE "
-            if 'book_id' in bspec:
-                sel += "_id=%d" % int(bspec['book_id'])
-            elif 'type' in bspec:
-                sel += "type='%s'" % bspec['type'].replace("'", "''")
-            else:
-                return "В спеке нужна book_id или type: %s" % bspec
-            rows = con.execute(sel).fetchall()
-            if not rows:
-                return "Книга не найдена: %s" % bspec
-            for old_bid, title, author, btype in rows:
-                if (bspec['file'], old_bid) in seen_src:
-                    continue
-                seen_src.add((bspec['file'], old_bid))
-                next_book += 1
-                nb = next_book
-                brow, full = books_row(con, old_bid)
-                title = bspec.get('title', brow[3])
-                author = bspec.get('author', brow[2])
-                btype = bspec.get('type', brow[5])
-                included_types.add(btype)
-                if full:
-                    (_, sort, _, _, desc, _, levels, hs, hp, hcs, isb, ts, ps,
-                     tbr, ter, wa, cc, iss, issimple) = brow
-                    dst.execute(
-                        "INSERT INTO books(_id,sort,author,title,desc,type,levels,hasSanskrit,"
-                        "hasPurport,hasColorStructure,isSongBook,text_size,purport_size,"
-                        "text_begin_raw,text_end_raw,web_abbrev,compare_code,issue,isSimple)"
-                        " VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)",
-                        (nb, sort, author, title, desc, btype, levels, hs, hp, hcs, isb,
-                         ts, ps, tbr, ter, wa, cc, iss, issimple))
-                else:
-                    dst.execute("INSERT INTO books(_id,author,title,type) VALUES (?,?,?,?)",
-                                (nb, author, title, btype))
-
-                # главы (минус исключённые вручную; их стихи тоже уходят)
-                # MERGE topics_from: главы/песни — из книги тем, стихи раскладываем по топикам.
-                # Без merge: свои главы как есть.
-                merge_map = None
-                other_used = [False]
-                OTHER_SONG, OTHER_NUM = '99', '1'
-                tspec = bspec.get('topics_from')
-                if tspec:
-                    try:
-                        tmap, tch, tsongs = load_topic_map(src_cons, tspec)
-                    except Exception as e:
-                        report.append("  topics %s: %s — обычный режим" % (btype, e))
-                        tmap = None
-                    if not tmap:
-                        report.append("  topics %s: пересечений нет — обычный режим" % btype)
-                    else:
-                        merge_map = tmap
-                        merge_other_title = bspec.get('untagged_title', 'Other')
-                        ch_rows = [(s, n, t) for s, n, t in tch]
-                if merge_map is None:
-                    excl_ch = set(
-                        (dbcommon.nkey(s), dbcommon.nkey(n))
-                        for s, n in bspec.get('exclude_chapters', []))
-                    ch_rows = [(s, n, t) for s, n, t in con.execute(
-                        "SELECT song,number,title FROM chapters WHERE book_id=? ORDER BY song,number",
-                        (old_bid,)).fetchall()
-                        if (dbcommon.nkey(s), dbcommon.nkey(n)) not in excl_ch]
-                else:
-                    excl_ch = set(
-                        (dbcommon.nkey(s), dbcommon.nkey(n))
-                        for s, n in bspec.get('exclude_chapters', []))
-                    ch_rows = [(s, n, t) for s, n, t in ch_rows
-                               if (dbcommon.nkey(s), dbcommon.nkey(n)) not in excl_ch]
-                nonnum_ch = 0
-                for song, num, ctitle in ch_rows:
-                    if _cancelled():
-                        result = None
-                        return "ОТМЕНЕНО: остановлено на главе %s.%s" % (song, num)
-                    next_ch += 1
-                    cnum = ch_number(num)
-                    if isinstance(cnum, str):
-                        nonnum_ch += 1
-                    dst.execute(
-                        "INSERT INTO chapters(_id,book_id,song,number,title) VALUES (?,?,?,?,?)",
-                        (next_ch, nb, str(song), cnum, ctitle))
-
-                # песни (имена разделов-тем!)
-                if merge_map is None:
-                    try:
-                        s_rows = con.execute(
-                            "SELECT song,songname FROM songs WHERE book_id=? ORDER BY sort,song",
-                            (old_bid,)).fetchall()
-                        for s, sname in s_rows:
-                            dst.execute(
-                                "INSERT INTO songs(book_id,song,songname) VALUES (?,?,?)",
-                                (nb, str(s), sname))
-                    except Exception as e:
-                        report.append("songs %s: пропуск (%s)" % (btype, e))
-                else:
-                    for s, sname in tsongs:
-                        dst.execute(
-                            "INSERT INTO songs(book_id,song,songname) VALUES (?,?,?)",
-                            (nb, str(s), sname))
-
-                # стихи: фильтры + дедуп, свежие _id (texts._id = textnums._id!)
-                # Ремонт: пустой song в textnums, когда у глав книги ровно один song (беседы TLKS)
-                try:
-                    ch_songs = [r[0] for r in con.execute(
-                        "SELECT DISTINCT song FROM chapters WHERE book_id=?", (old_bid,)).fetchall()]
-                    if len(ch_songs) == 1 and ch_songs[0] not in (None, ''):
-                        only_song = str(ch_songs[0])
-                    else:
-                        only_song = None
-                except Exception:
-                    only_song = None
-                tn_rows = con.execute(
-                    "SELECT _id,song,ch_no,txt_no,preview FROM textnums WHERE book_id=? ORDER BY song,ch_no,_id",
-                    (old_bid,)).fetchall()
-                excl_v = set(
-                    (dbcommon.nkey(s), dbcommon.nkey(c), dbcommon.nkey(t))
-                    for s, c, t in bspec.get('exclude_verses', []))
-                # стихи исключённых глав тоже уходят (иначе сироты)
-                excl_ch = set(
-                    (dbcommon.nkey(s), dbcommon.nkey(n))
-                    for s, n in bspec.get('exclude_chapters', []))
-                seen_keys = set()
-                kept_new_keys = set()
-                kept_full = set()
-                kept_raw = set()
-                kept = dropped_err = dropped_empty = dropped_dup = dropped_excl = 0
-                _verse_n = 0
-                dropped_gal = 0
-                gal_coords = set()
-                fixed_song = merged = 0
-                remap = {}
-                for old_tid, song, ch, txt, preview in tn_rows:
-                    if _cancelled():
-                        result = None
-                        return "ОТМЕНЕНО: остановлено на стихе %s.%s.%s" % (song, ch, txt)
-                    # сравнения — через nkey: '028' обязан матчиться с '28'
-                    if (dbcommon.nkey(song), dbcommon.nkey(ch), dbcommon.nkey(txt)) in excl_v or \
-                            (dbcommon.nkey(song), dbcommon.nkey(ch)) in excl_ch:
-                        dropped_excl += 1
-                        continue
-                    if drop_err and any('@ERROR' in str(x) for x in (song, ch, txt)):
-                        dropped_err += 1
-                        continue
-                    # Строки-галереи («Иллюстрации…»): не стихи, в приложении давали
-                    # фейковый первый стих главы. Картинки едут через images/image_nums
-                    if is_gallery(preview):
-                        dropped_gal += 1
-                        gal_coords.add((dbcommon.nkey(song), dbcommon.nkey(ch),
-                                        dbcommon.nkey(txt)))
-                        continue
-                    t = con.execute(
-                        "SELECT sanskrit,translit,translit_srch,transl1,transl2,comment FROM texts WHERE _id=?",
-                        (old_tid,)).fetchone()
-                    if t is None:
-                        t = (None,) * 6
-                    if drop_empty and is_blank(preview) and all(is_blank(x) for x in t):
-                        dropped_empty += 1
-                        continue
-                    # координаты назначения: merge — топики письма (дубль под каждой темой),
-                    # иначе свои (с ремонтом пустого song)
-                    if merge_map is not None:
-                        targets = merge_map.get(dbcommon.nkey(txt)) or []
-                        if not targets:
-                            targets = [(OTHER_SONG, '1')]
-                            if not other_used[0]:
-                                other_used[0] = True
-                                next_ch += 1
-                                dst.execute(
-                                    "INSERT INTO chapters(_id,book_id,song,number,title) VALUES (?,?,?,?,?)",
-                                    (next_ch, nb, OTHER_SONG, 1, merge_other_title))
-                                dst.execute(
-                                    "INSERT INTO songs(book_id,song,songname) VALUES (?,?,?)",
-                                    (nb, OTHER_SONG, merge_other_title))
-                    else:
-                        ns, nc = str(song), str(ch)
-                        if (ns == '') and only_song is not None:
-                            ns = only_song
-                            fixed_song += 1
-                        targets = [(ns, nc)]
-                    for ns, nc in targets:
-                        key = (dbcommon.nkey(ns), dbcommon.nkey(nc), dbcommon.nkey(txt))
-                        if dedupe and key in seen_keys:
-                            dropped_dup += 1
-                            continue
-                        seen_keys.add(key)
-                        kept_new_keys.add((dbcommon.nkey(ns), dbcommon.nkey(nc)))
-                        kept_full.add(key)
-                        raw_key = (dbcommon.nkey(song), dbcommon.nkey(ch), dbcommon.nkey(txt))
-                        kept_raw.add(raw_key)
-                        remap.setdefault(raw_key, []).append((ns, nc))
-                        next_tn += 1
-                        dst.execute(
-                            "INSERT INTO textnums(_id,book_id,song,ch_no,txt_no,preview) VALUES (?,?,?,?,?,?)",
-                            (next_tn, nb, ns, nc, str(txt), preview))
-                        dst.execute(
-                            "INSERT INTO texts(_id,sanskrit,translit,translit_srch,transl1,transl2,comment)"
-                            " VALUES (?,?,?,?,?,?,?)", (next_tn,) + tuple(t))
-                        kept += 1
-                        _verse_n += 1
-                        if _verse_n % 2000 == 0 and _cancelled():
-                            result = None
-                            return "ОТМЕНЕНО: остановлено после стиха %d" % _verse_n
-                        if merge_map is not None and \
-                                (dbcommon.nkey(ns), dbcommon.nkey(nc)) != \
-                                (dbcommon.nkey(song), dbcommon.nkey(ch)):
-                            merged += 1
-
-                # пустые главы — по флагу (по НОВЫМ координатам: работает и для merge)
-                if drop_empty_ch:
-                    dst.execute("DELETE FROM chapters WHERE book_id=?", (nb,))
-                    for song, num, ctitle in ch_rows:
-                        if (dbcommon.nkey(song), dbcommon.nkey(num)) in kept_new_keys:
-                            next_ch += 1
-                            dst.execute(
-                                "INSERT INTO chapters(_id,book_id,song,number,title) VALUES (?,?,?,?,?)",
-                                (next_ch, nb, str(song), ch_number(num), ctitle))
-                    if other_used[0]:
-                        next_ch += 1
-                        dst.execute(
-                            "INSERT INTO chapters(_id,book_id,song,number,title) VALUES (?,?,?,?,?)",
-                            (next_ch, nb, OTHER_SONG, 1, merge_other_title))
-
-                # картинки: привязка через remap (merge — к новым координатам),
-                # drop_images — в мусор. Байты тянем только для kept-строк.
-                # Обложка (cover_image) из drop исключается — иначе книга без обложки.
-                cover_keep = bspec.get('cover_image')
-                drop_img = set(bspec.get('drop_images', []))
-                if cover_keep and cover_keep in drop_img:
-                    drop_img.discard(cover_keep)
-                    report.append("  обложка %s: убрана из удаляемых (%s)" % (btype, cover_keep))
-                dropped_img = 0
-                try:
-                    # лимита больше нет: обрезка была молчаливой (терялись книги с
-                    # >5000 строками картинок) — читаем всё, превышение в отчёт
-                    img_rows = con.execute(
-                        "SELECT sid,cid,tnum,text_id,image_id,type,desc,kind FROM image_nums WHERE bid=?",
-                        (old_bid,)).fetchall()
-                    if len(img_rows) > 5000:
-                        report.append("  картинки %s: строк %d (внимание: больше прежнего лимита 5000 — все взяты)"
-                                      % (btype, len(img_rows)))
-                    want_images = set()
-                    for sid, cid, tnum, text_id, image_id, itype, desc, kind in img_rows:
-                        if not image_id or image_id in drop_img:
-                            dropped_img += 1
-                            continue
-                        # строка без привязки (пустые sid/cid — обложечные) всегда остаётся;
-                        # привязанная — только если её стих дожил; картинки галерей
-                        # (их строки-галереи выкинуты выше) едут без привязки к стиху
-                        bound = bool(str(sid) or str(cid))
-                        coords = (dbcommon.nkey(sid), dbcommon.nkey(cid), dbcommon.nkey(tnum))
-                        if bound and coords not in kept_full and \
-                                coords not in kept_raw and coords not in gal_coords:
-                            dropped_img += 1
-                            continue
-                        if merge_map is not None and bound and coords not in gal_coords:
-                            newcoords = remap.get(coords, [])
-                            if not newcoords:
-                                dropped_img += 1
-                                continue
-                            for ns, nc in newcoords:
-                                dst.execute(
-                                    "INSERT INTO image_nums(bid,sid,cid,tnum,text_id,image_id,type,desc,kind)"
-                                    " VALUES (?,?,?,?,?,?,?,?,?)",
-                                    (nb, ns, nc, str(tnum), text_id, image_id, itype, desc, kind))
-                        else:
-                            dst.execute(
-                                "INSERT INTO image_nums(bid,sid,cid,tnum,text_id,image_id,type,desc,kind)"
-                                " VALUES (?,?,?,?,?,?,?,?,?)",
-                                (nb, str(sid), str(cid), str(tnum), text_id, image_id, itype, desc, kind))
-                        want_images.add(image_id)
-                    for iid in want_images:
-                        blob = con.execute("SELECT content FROM images WHERE image_id=?", (iid,)).fetchone()
-                        if blob:
-                            dst.execute("INSERT OR IGNORE INTO images(image_id,content) VALUES (?,?)",
-                                        (iid, blob[0]))
-                except Exception as e:
-                    report.append("  картинки %s: пропуск (%s)" % (btype, e))
-
-                # обложка книги: image_id из своих картинок или внешний JPEG
-                cover_spec = bspec.get('cover_image') or bspec.get('cover_file')
-                if cover_spec:
-                    try:
-                        if bspec.get('cover_file'):
-                            with open(bspec['cover_file'], 'rb') as f:
-                                cbytes = f.read()
-                            # id включает номер книги в ЭТОЙ сборке: две книги одного
-                            # типа больше не схлопываются в одну обложку (раньше
-                            # INSERT OR IGNORE молча оставлял обложку первой)
-                            ciid = 'COVER_%d_%s' % (nb, re.sub(r'[^A-Za-z0-9_-]', '_', btype)[:20])
-                            dst.execute("INSERT OR IGNORE INTO images(image_id,content) VALUES (?,?)",
-                                        (ciid, cbytes))
-                        else:
-                            ciid = cover_spec
-                            ok = dst.execute(
-                                "SELECT 1 FROM images WHERE image_id=?", (ciid,)).fetchone()
-                            if not ok:
-                                raise ValueError("нет такой картинки в сборке: %s" % ciid)
-                        cover_recs.append((nb, ciid))
-                        report.append("  обложка %s: %s" % (btype, ciid))
-                    except Exception as e:
-                        report.append("  обложка %s: ОШИБКА %s" % (btype, e))
-
-                report.append("Книга '%s' [%s]: стихов %d (song-починено: %d; мусор: err=%d empty=%d dup=%d excl=%d gal=%d; картинок выкинуто: %d%s%s)" % (
-                    (title or '')[:45], btype, kept, fixed_song, dropped_err, dropped_empty, dropped_dup, dropped_excl, dropped_gal, dropped_img,
-                    ("; по темам разложено: %d" % merged) if merge_map is not None else "",
-                    ("; нечисловых глав: %d" % nonnum_ch) if nonnum_ch else ""))
-                if merge_map is not None:
-                    merged_info.append((nb, title))
-
-        # textrefs: только исходящие от включённых типов (входящие без книг-целей приложение покажет текстом)
-        nrefs = 0
-        seen_refs = set()
-        for sf, con in src_cons.items():
-            try:
-                # columns can differ between files — map per source, not once
-                ref_cols = table_cols(con, 'textrefs')
-                if not ref_cols:
-                    continue
-                for r in con.execute("SELECT * FROM textrefs").fetchall():
-                    key = tuple(r)
-                    if key in seen_refs:
-                        continue
-                    seen_refs.add(key)
-                    d = dict(zip(ref_cols, r))
-                    if d.get('thisBook') in included_types:
-                        dst.execute(
-                            "INSERT INTO textrefs(thisBook,thisBookWeb,thisSong,thisChapter,thisTextNo,"
-                            "thisFullTextNo,refbyBook,refbyBookWeb,refbySong,refbyChapter,refbyTextNo,"
-                            "refbyText,refbyLevels,refbyScroll,refbyChapterName)"
-                            " VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)",
-                            (d.get('thisBook'), d.get('thisBookWeb'), d.get('thisSong'), d.get('thisChapter'),
-                             d.get('thisTextNo'), d.get('thisFullTextNo'), d.get('refbyBook'), d.get('refbyBookWeb'),
-                             d.get('refbySong'), d.get('refbyChapter'), d.get('refbyTextNo'), d.get('refbyText'),
-                             d.get('refbyLevels'), d.get('refbyScroll'), d.get('refbyChapterName')))
-                        nrefs += 1
-            except Exception as e:
-                # молчаливый except стоил файлу ВСЕХ кросс-ссылок — теперь в отчёте
-                report.append("textrefs %s: пропуск (%s)" % (os.path.basename(sf), e))
-        report.append("textrefs исходящих: %d" % nrefs)
-        # Аудио не должно валить всю сборку: ошибка пака — строкой в отчёт, книги целы
-        try:
-            pack_audio(dst, spec, report)
-        except Exception as e:
-            import traceback as _tb
-            report.append("audio ОШИБКА (книги собраны, пак пропущен): %s" % e)
-            report.append(_tb.format_exc(limit=3))
-        if cover_recs:
-            dst.execute("CREATE TABLE IF NOT EXISTS covers(book_id INTEGER, image_id TEXT)")
-            dst.execute("DELETE FROM covers")
-            for nb_, ciid in cover_recs:
-                dst.execute("INSERT INTO covers(book_id,image_id) VALUES (?,?)", (nb_, ciid))
-            report.append("covers: %d" % len(cover_recs))
-        if any(t in ('LTRS', 'LTR') for t in included_types):
-            # донор — файл с самой широкой схемой; столбцы остальных досаживаем ALTER;
-            # одинаковая таблица есть во многих базах — строки-дубли не размножаем
-            donors = []
-            for sf, con in src_cons.items():
-                try:
-                    cols = table_cols(con, 'lettersbytopic')
-                except Exception:
-                    cols = []
-                if cols:
-                    donors.append((sf, cols))
-            if donors:
-                donors.sort(key=lambda x: -len(x[1]))
-                if not copy_table_schema(dst, src_cons[donors[0][0]], 'lettersbytopic'):
-                    raise ValueError("не удалось создать таблицу lettersbytopic")
-                made.add('lettersbytopic')
-                base = set(table_cols(dst, 'lettersbytopic'))
-                for sf, cols in donors:
-                    for c in cols:
-                        if c not in base:
-                            dst.execute('ALTER TABLE "lettersbytopic" ADD COLUMN "%s"'
-                                        % c.replace('"', '""'))
-                            base.add(c)
-                seen_lbt = set()
-                n0 = 0
-                for sf, cols in donors:
-                    con = src_cons[sf]
-                    try:
-                        rows = con.execute("SELECT * FROM lettersbytopic").fetchall()
-                        for r in rows:
-                            key = tuple(r)
-                            if key in seen_lbt:
-                                continue
-                            seen_lbt.add(key)
-                            dst.execute(
-                                "INSERT INTO lettersbytopic(%s) VALUES (%s)" % (
-                                    ",".join('"%s"' % c for c in cols),
-                                    ",".join("?" * len(cols))), r)
-                            n0 += 1
-                    except Exception as e:
-                        report.append("lettersbytopic %s: пропуск (%s)" % (os.path.basename(sf), e))
-                report.append("lettersbytopic: %d (по %d файлам)" % (n0, len(donors)))
-        dst.commit()
-        # проверка merge чтением результата: темы должны быть с письмами, иначе в приложении пусто
-        for nb_, title_ in merged_info:
-            try:
-                nsg = dst.execute("SELECT COUNT(*) FROM songs WHERE book_id=?", (nb_,)).fetchone()[0]
-                nch = dst.execute("SELECT COUNT(*) FROM chapters WHERE book_id=?", (nb_,)).fetchone()[0]
-                ntn = dst.execute("SELECT COUNT(*) FROM textnums WHERE book_id=?", (nb_,)).fetchone()[0]
-                nempty = dst.execute(
-                    """SELECT COUNT(*) FROM chapters c WHERE c.book_id=? AND NOT EXISTS
-                       (SELECT 1 FROM textnums n WHERE n.book_id=c.book_id
-                        AND CAST(n.song AS TEXT)=CAST(c.song AS TEXT)
-                        AND CAST(n.ch_no AS TEXT)=CAST(c.number AS TEXT))""", (nb_,)).fetchone()[0]
-                report.append("проверка merge '%s': групп %d, глав %d (пустых %d), писем %d" % (
-                    (title_ or '')[:40], nsg, nch, nempty, ntn))
-            except Exception as e:
-                report.append("проверка merge '%s': %s" % ((title_ or '')[:40], e))
-        try:
-            report.append("integrity: %s" % dst.execute("PRAGMA integrity_check").fetchone()[0])
-        except Exception as e:
-            report.append("integrity: %s" % e)
-        dst.close()
-        dst = None
-        # атомарная подмена: старый выход остаётся на месте, пока новый не готов
-        os.replace(tmp_path, out_path)
-        result = "\n".join(report)
+        merged_info = _build_books(dst, spec, src_cons, made, drop_err, drop_empty,
+                                   dedupe, drop_empty_ch, report, cancel)
+        result = _build_finalize(dst, out_path, tmp_path, report, merged_info)
     finally:
         for con in src_cons.values():
             try:
@@ -1235,13 +771,471 @@ def build(spec_path, out_path, force=False, cancel=None):
             except Exception:
                 pass
         if result is None and os.path.exists(tmp_path):
-            # сборка провалилась — убираем только временный файл; СТАРЫЙ выход цел
             try:
                 os.remove(tmp_path)
             except OSError:
                 pass
     return result
 
+
+def _build_validate(spec):
+    """Проверка источников/путей, открытие read-only соединений.
+    Возвращает {source_file: connection}."""
+    src_cons = {}
+    for bspec in spec.get('books', []):
+        sf = bspec['file']
+        if sf not in src_cons:
+            if not os.path.exists(sf):
+                raise ValueError("Нет файла-источника: %s" % sf)
+            src_cons[sf] = connect_ro(sf)
+    return src_cons
+
+
+def _build_schema(dst, src_cons, made, report):
+    """Копирование DDL, ADD COLUMN для новых столбцов, DELETE из таблиц.
+    Возвращает set() созданных таблиц."""
+    for sf, con in src_cons.items():
+        for t in APP_TABLES:
+            if t not in made:
+                try:
+                    if copy_table_schema(dst, con, t):
+                        made.add(t)
+                        report.append("схема %s: из %s" % (t, os.path.basename(sf)))
+                except Exception as e:
+                    report.append("схема %s: НЕ создана (%s)" % (t, e))
+    for t in made:
+        base = set(table_cols(dst, t))
+        for sf, con in src_cons.items():
+            try:
+                scols = table_cols(con, t)
+            except Exception:
+                continue
+            for c in scols:
+                if c not in base:
+                    dst.execute('ALTER TABLE "%s" ADD COLUMN "%s"'
+                                % (t, c.replace('"', '""')))
+                    base.add(c)
+    for t in made:
+        dst.execute("DELETE FROM %s" % t)
+    return made
+
+
+def _build_books(dst, spec, src_cons, made, drop_err, drop_empty, dedupe,
+                 drop_empty_ch, report, cancel):
+    """Основной цикл по книгам: главы, стихи, картинки, обложки.
+    Возвращает merged_info list.
+    cancel проверяется во всех прежних точках."""
+    def _cancelled():
+        return cancel is not None and getattr(cancel, "is_set", lambda: False)()
+
+    next_book = 0
+    next_ch = 0
+    next_tn = 0
+    included_types = set()
+    seen_src = set()
+    cover_recs = []
+    merged_info = []
+
+    for bspec in spec.get('books', []):
+        if _cancelled():
+            result = None
+            return "ОТМЕНЕНО: остановлено на книге %s" % bspec.get('book_id', bspec.get('type', '?'))
+        con = src_cons[bspec['file']]
+        sel = "SELECT _id,title,author,type FROM books WHERE "
+        if 'book_id' in bspec:
+            sel += "_id=%d" % int(bspec['book_id'])
+        elif 'type' in bspec:
+            sel += "type='%s'" % bspec['type'].replace("'", "''")
+        else:
+            return "В спеке нужна book_id или type: %s" % bspec
+        rows = con.execute(sel).fetchall()
+        if not rows:
+            return "Книга не найдена: %s" % bspec
+        for old_bid, title, author, btype in rows:
+            if (bspec['file'], old_bid) in seen_src:
+                continue
+            seen_src.add((bspec['file'], old_bid))
+            next_book += 1
+            nb = next_book
+            brow, full = books_row(con, old_bid)
+            title = bspec.get('title', brow[3])
+            author = bspec.get('author', brow[2])
+            btype = bspec.get('type', brow[5])
+            included_types.add(btype)
+            if full:
+                (_, sort, _, _, desc, _, levels, hs, hp, hcs, isb, ts, ps,
+                 tbr, ter, wa, cc, iss, issimple) = brow
+                dst.execute(
+                    "INSERT INTO books(_id,sort,author,title,desc,type,levels,hasSanskrit,"
+                    "hasPurport,hasColorStructure,isSongBook,text_size,purport_size,"
+                    "text_begin_raw,text_end_raw,web_abbrev,compare_code,issue,isSimple)"
+                    " VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)",
+                    (nb, sort, author, title, desc, btype, levels, hs, hp, hcs, isb,
+                     ts, ps, tbr, ter, wa, cc, iss, issimple))
+            else:
+                dst.execute("INSERT INTO books(_id,author,title,type) VALUES (?,?,?,?)",
+                            (nb, author, title, btype))
+
+            merge_map = None
+            other_used = [False]
+            OTHER_SONG, OTHER_NUM = '99', '1'
+            tspec = bspec.get('topics_from')
+            if tspec:
+                try:
+                    tmap, tch, tsongs = load_topic_map(src_cons, tspec)
+                except Exception as e:
+                    report.append("  topics %s: %s -- обычный режим" % (btype, e))
+                    tmap = None
+                if not tmap:
+                    report.append("  topics %s: пересечений нет -- обычный режим" % btype)
+                else:
+                    merge_map = tmap
+                    merge_other_title = bspec.get('untagged_title', 'Other')
+                    ch_rows = [(s, n, t) for s, n, t in tch]
+            if merge_map is None:
+                excl_ch = set(
+                    (dbcommon.nkey(s), dbcommon.nkey(n))
+                    for s, n in bspec.get('exclude_chapters', []))
+                ch_rows = [(s, n, t) for s, n, t in con.execute(
+                    "SELECT song,number,title FROM chapters WHERE book_id=? ORDER BY song,number",
+                    (old_bid,)).fetchall()
+                    if (dbcommon.nkey(s), dbcommon.nkey(n)) not in excl_ch]
+            else:
+                excl_ch = set(
+                    (dbcommon.nkey(s), dbcommon.nkey(n))
+                    for s, n in bspec.get('exclude_chapters', []))
+                ch_rows = [(s, n, t) for s, n, t in ch_rows
+                           if (dbcommon.nkey(s), dbcommon.nkey(n)) not in excl_ch]
+            nonnum_ch = 0
+            for song, num, ctitle in ch_rows:
+                if _cancelled():
+                    result = None
+                    return "ОТМЕНЕНО: остановлено на главе %s.%s" % (song, num)
+                next_ch += 1
+                cnum = ch_number(num)
+                if isinstance(cnum, str):
+                    nonnum_ch += 1
+                dst.execute(
+                    "INSERT INTO chapters(_id,book_id,song,number,title) VALUES (?,?,?,?,?)",
+                    (next_ch, nb, str(song), cnum, ctitle))
+
+            if merge_map is None:
+                try:
+                    s_rows = con.execute(
+                        "SELECT song,songname FROM songs WHERE book_id=? ORDER BY sort,song",
+                        (old_bid,)).fetchall()
+                    for s, sname in s_rows:
+                        dst.execute(
+                            "INSERT INTO songs(book_id,song,songname) VALUES (?,?,?)",
+                            (nb, str(s), sname))
+                except Exception as e:
+                    report.append("songs %s: пропуск (%s)" % (btype, e))
+            else:
+                for s, sname in tsongs:
+                    dst.execute(
+                        "INSERT INTO songs(book_id,song,songname) VALUES (?,?,?)",
+                        (nb, str(s), sname))
+
+            try:
+                ch_songs = [r[0] for r in con.execute(
+                    "SELECT DISTINCT song FROM chapters WHERE book_id=?", (old_bid,)).fetchall()]
+                if len(ch_songs) == 1 and ch_songs[0] not in (None, ''):
+                    only_song = str(ch_songs[0])
+                else:
+                    only_song = None
+            except Exception:
+                only_song = None
+            tn_rows = con.execute(
+                "SELECT _id,song,ch_no,txt_no,preview FROM textnums WHERE book_id=? ORDER BY song,ch_no,_id",
+                (old_bid,)).fetchall()
+            excl_v = set(
+                (dbcommon.nkey(s), dbcommon.nkey(c), dbcommon.nkey(t))
+                for s, c, t in bspec.get('exclude_verses', []))
+            excl_ch = set(
+                (dbcommon.nkey(s), dbcommon.nkey(n))
+                for s, n in bspec.get('exclude_chapters', []))
+            seen_keys = set()
+            kept_new_keys = set()
+            kept_full = set()
+            kept_raw = set()
+            kept = dropped_err = dropped_empty = dropped_dup = dropped_excl = 0
+            _verse_n = 0
+            dropped_gal = 0
+            gal_coords = set()
+            fixed_song = merged = 0
+            remap = {}
+            for old_tid, song, ch, txt, preview in tn_rows:
+                if _cancelled():
+                    result = None
+                    return "ОТМЕНЕНО: остановлено на стихе %s.%s.%s" % (song, ch, txt)
+                if (dbcommon.nkey(song), dbcommon.nkey(ch), dbcommon.nkey(txt)) in excl_v or \
+                        (dbcommon.nkey(song), dbcommon.nkey(ch)) in excl_ch:
+                    dropped_excl += 1
+                    continue
+                if drop_err and any('@ERROR' in str(x) for x in (song, ch, txt)):
+                    dropped_err += 1
+                    continue
+                if is_gallery(preview):
+                    dropped_gal += 1
+                    gal_coords.add((dbcommon.nkey(song), dbcommon.nkey(ch),
+                                    dbcommon.nkey(txt)))
+                    continue
+                t = con.execute(
+                    "SELECT sanskrit,translit,translit_srch,transl1,transl2,comment FROM texts WHERE _id=?",
+                    (old_tid,)).fetchone()
+                if t is None:
+                    t = (None,) * 6
+                if drop_empty and is_blank(preview) and all(is_blank(x) for x in t):
+                    dropped_empty += 1
+                    continue
+                if merge_map is not None:
+                    targets = merge_map.get(dbcommon.nkey(txt)) or []
+                    if not targets:
+                        targets = [(OTHER_SONG, '1')]
+                        if not other_used[0]:
+                            other_used[0] = True
+                            next_ch += 1
+                            dst.execute(
+                                "INSERT INTO chapters(_id,book_id,song,number,title) VALUES (?,?,?,?,?)",
+                                (next_ch, nb, OTHER_SONG, 1, merge_other_title))
+                            dst.execute(
+                                "INSERT INTO songs(book_id,song,songname) VALUES (?,?,?)",
+                                (nb, OTHER_SONG, merge_other_title))
+                else:
+                    ns, nc = str(song), str(ch)
+                    if (ns == '') and only_song is not None:
+                        ns = only_song
+                        fixed_song += 1
+                    targets = [(ns, nc)]
+                for ns, nc in targets:
+                    key = (dbcommon.nkey(ns), dbcommon.nkey(nc), dbcommon.nkey(txt))
+                    if dedupe and key in seen_keys:
+                        dropped_dup += 1
+                        continue
+                    seen_keys.add(key)
+                    kept_new_keys.add((dbcommon.nkey(ns), dbcommon.nkey(nc)))
+                    kept_full.add(key)
+                    raw_key = (dbcommon.nkey(song), dbcommon.nkey(ch), dbcommon.nkey(txt))
+                    kept_raw.add(raw_key)
+                    remap.setdefault(raw_key, []).append((ns, nc))
+                    next_tn += 1
+                    dst.execute(
+                        "INSERT INTO textnums(_id,book_id,song,ch_no,txt_no,preview) VALUES (?,?,?,?,?,?)",
+                        (next_tn, nb, ns, nc, str(txt), preview))
+                    dst.execute(
+                        "INSERT INTO texts(_id,sanskrit,translit,translit_srch,transl1,transl2,comment)"
+                        " VALUES (?,?,?,?,?,?,?)", (next_tn,) + tuple(t))
+                    kept += 1
+                    _verse_n += 1
+                    if _verse_n % 2000 == 0 and _cancelled():
+                        result = None
+                        return "ОТМЕНЕНО: остановлено после стиха %d" % _verse_n
+                    if merge_map is not None and \
+                            (dbcommon.nkey(ns), dbcommon.nkey(nc)) != \
+                            (dbcommon.nkey(song), dbcommon.nkey(ch)):
+                        merged += 1
+
+            if drop_empty_ch:
+                dst.execute("DELETE FROM chapters WHERE book_id=?", (nb,))
+                for song, num, ctitle in ch_rows:
+                    if (dbcommon.nkey(song), dbcommon.nkey(num)) in kept_new_keys:
+                        next_ch += 1
+                        dst.execute(
+                            "INSERT INTO chapters(_id,book_id,song,number,title) VALUES (?,?,?,?,?)",
+                            (next_ch, nb, str(song), ch_number(num), ctitle))
+                if other_used[0]:
+                    next_ch += 1
+                    dst.execute(
+                        "INSERT INTO chapters(_id,book_id,song,number,title) VALUES (?,?,?,?,?)",
+                        (next_ch, nb, OTHER_SONG, 1, merge_other_title))
+
+            cover_keep = bspec.get('cover_image')
+            drop_img = set(bspec.get('drop_images', []))
+            if cover_keep and cover_keep in drop_img:
+                drop_img.discard(cover_keep)
+                report.append("  обложка %s: убрана из удаляемых (%s)" % (btype, cover_keep))
+            dropped_img = 0
+            try:
+                img_rows = con.execute(
+                    "SELECT sid,cid,tnum,text_id,image_id,type,desc,kind FROM image_nums WHERE bid=?",
+                    (old_bid,)).fetchall()
+                if len(img_rows) > 5000:
+                    report.append("  картинки %s: строк %d (внимание: больше прежнего лимита 5000 -- все взяты)"
+                                  % (btype, len(img_rows)))
+                want_images = set()
+                for sid, cid, tnum, text_id, image_id, itype, desc, kind in img_rows:
+                    if not image_id or image_id in drop_img:
+                        dropped_img += 1
+                        continue
+                    bound = bool(str(sid) or str(cid))
+                    coords = (dbcommon.nkey(sid), dbcommon.nkey(cid), dbcommon.nkey(tnum))
+                    if bound and coords not in kept_full and \
+                            coords not in kept_raw and coords not in gal_coords:
+                        dropped_img += 1
+                        continue
+                    if merge_map is not None and bound and coords not in gal_coords:
+                        newcoords = remap.get(coords, [])
+                        if not newcoords:
+                            dropped_img += 1
+                            continue
+                        for ns, nc in newcoords:
+                            dst.execute(
+                                "INSERT INTO image_nums(bid,sid,cid,tnum,text_id,image_id,type,desc,kind)"
+                                " VALUES (?,?,?,?,?,?,?,?,?)",
+                                (nb, ns, nc, str(tnum), text_id, image_id, itype, desc, kind))
+                    else:
+                        dst.execute(
+                            "INSERT INTO image_nums(bid,sid,cid,tnum,text_id,image_id,type,desc,kind)"
+                            " VALUES (?,?,?,?,?,?,?,?,?)",
+                            (nb, str(sid), str(cid), str(tnum), text_id, image_id, itype, desc, kind))
+                    want_images.add(image_id)
+                for iid in want_images:
+                    blob = con.execute("SELECT content FROM images WHERE image_id=?", (iid,)).fetchone()
+                    if blob:
+                        dst.execute("INSERT OR IGNORE INTO images(image_id,content) VALUES (?,?)",
+                                    (iid, blob[0]))
+            except Exception as e:
+                report.append("  картинки %s: пропуск (%s)" % (btype, e))
+
+            cover_spec = bspec.get('cover_image') or bspec.get('cover_file')
+            if cover_spec:
+                try:
+                    if bspec.get('cover_file'):
+                        with open(bspec['cover_file'], 'rb') as f:
+                            cbytes = f.read()
+                        ciid = 'COVER_%d_%s' % (nb, re.sub(r'[^A-Za-z0-9_-]', '_', btype)[:20])
+                        dst.execute("INSERT OR IGNORE INTO images(image_id,content) VALUES (?,?)",
+                                    (ciid, cbytes))
+                    else:
+                        ciid = cover_spec
+                        ok = dst.execute(
+                            "SELECT 1 FROM images WHERE image_id=?", (ciid,)).fetchone()
+                        if not ok:
+                            raise ValueError("нет такой картинки в сборке: %s" % ciid)
+                    cover_recs.append((nb, ciid))
+                    report.append("  обложка %s: %s" % (btype, ciid))
+                except Exception as e:
+                    report.append("  обложка %s: ОШИБКА %s" % (btype, e))
+
+            report.append("Книга '%s' [%s]: стихов %d (song-починено: %d; мусор: err=%d empty=%d dup=%d excl=%d gal=%d; картинок выкинуто: %d%s%s)" % (
+                (title or '')[:45], btype, kept, fixed_song, dropped_err, dropped_empty, dropped_dup, dropped_excl, dropped_gal, dropped_img,
+                ("; по темам разложено: %d" % merged) if merge_map is not None else "",
+                ("; нечисловых глав: %d" % nonnum_ch) if nonnum_ch else ""))
+            if merge_map is not None:
+                merged_info.append((nb, title))
+
+    # textrefs
+    nrefs = 0
+    seen_refs = set()
+    for sf, con in src_cons.items():
+        try:
+            ref_cols = table_cols(con, 'textrefs')
+            if not ref_cols:
+                continue
+            for r in con.execute("SELECT * FROM textrefs").fetchall():
+                key = tuple(r)
+                if key in seen_refs:
+                    continue
+                seen_refs.add(key)
+                d = dict(zip(ref_cols, r))
+                if d.get('thisBook') in included_types:
+                    dst.execute(
+                        "INSERT INTO textrefs(thisBook,thisBookWeb,thisSong,thisChapter,thisTextNo,"
+                        "thisFullTextNo,refbyBook,refbyBookWeb,refbySong,refbyChapter,refbyTextNo,"
+                        "refbyText,refbyLevels,refbyScroll,refbyChapterName)"
+                        " VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)",
+                        (d.get('thisBook'), d.get('thisBookWeb'), d.get('thisSong'), d.get('thisChapter'),
+                         d.get('thisTextNo'), d.get('thisFullTextNo'), d.get('refbyBook'), d.get('refbyBookWeb'),
+                         d.get('refbySong'), d.get('refbyChapter'), d.get('refbyTextNo'), d.get('refbyText'),
+                         d.get('refbyLevels'), d.get('refbyScroll'), d.get('refbyChapterName')))
+                    nrefs += 1
+        except Exception as e:
+            report.append("textrefs %s: пропуск (%s)" % (os.path.basename(sf), e))
+    report.append("textrefs исходящих: %d" % nrefs)
+
+    try:
+        pack_audio(dst, spec, report)
+    except Exception as e:
+        import traceback as _tb
+        report.append("audio ОШИБКА (книги собраны, пак пропущен): %s" % e)
+        report.append(_tb.format_exc(limit=3))
+
+    if cover_recs:
+        dst.execute("CREATE TABLE IF NOT EXISTS covers(book_id INTEGER, image_id TEXT)")
+        dst.execute("DELETE FROM covers")
+        for nb_, ciid in cover_recs:
+            dst.execute("INSERT INTO covers(book_id,image_id) VALUES (?,?)", (nb_, ciid))
+        report.append("covers: %d" % len(cover_recs))
+
+    if any(t in ('LTRS', 'LTR') for t in included_types):
+        donors = []
+        for sf, con in src_cons.items():
+            try:
+                cols = table_cols(con, 'lettersbytopic')
+            except Exception:
+                cols = []
+            if cols:
+                donors.append((sf, cols))
+        if donors:
+            donors.sort(key=lambda x: -len(x[1]))
+            if not copy_table_schema(dst, src_cons[donors[0][0]], 'lettersbytopic'):
+                raise ValueError("не удалось создать таблицу lettersbytopic")
+            made.add('lettersbytopic')
+            base = set(table_cols(dst, 'lettersbytopic'))
+            for sf, cols in donors:
+                for c in cols:
+                    if c not in base:
+                        dst.execute('ALTER TABLE "lettersbytopic" ADD COLUMN "%s"'
+                                    % c.replace('"', '""'))
+                        base.add(c)
+            seen_lbt = set()
+            n0 = 0
+            for sf, cols in donors:
+                con = src_cons[sf]
+                try:
+                    rows = con.execute("SELECT * FROM lettersbytopic").fetchall()
+                    for r in rows:
+                        key = tuple(r)
+                        if key in seen_lbt:
+                            continue
+                        seen_lbt.add(key)
+                        dst.execute(
+                            "INSERT INTO lettersbytopic(%s) VALUES (%s)" % (
+                                ",".join('"%s"' % c for c in cols),
+                                ",".join("?" * len(cols))), r)
+                        n0 += 1
+                except Exception as e:
+                    report.append("lettersbytopic %s: пропуск (%s)" % (os.path.basename(sf), e))
+            report.append("lettersbytopic: %d (по %d файлам)" % (n0, len(donors)))
+
+    return merged_info
+
+
+def _build_finalize(dst, out_path, tmp_path, report, merged_info):
+    """integrity_check, commit, os.replace, возврат строки отчёта."""
+    dst.commit()
+    for nb_, title_ in merged_info:
+        try:
+            nsg = dst.execute("SELECT COUNT(*) FROM songs WHERE book_id=?", (nb_,)).fetchone()[0]
+            nch = dst.execute("SELECT COUNT(*) FROM chapters WHERE book_id=?", (nb_,)).fetchone()[0]
+            ntn = dst.execute("SELECT COUNT(*) FROM textnums WHERE book_id=?", (nb_,)).fetchone()[0]
+            nempty = dst.execute(
+                """SELECT COUNT(*) FROM chapters c WHERE c.book_id=? AND NOT EXISTS
+                   (SELECT 1 FROM textnums n WHERE n.book_id=c.book_id
+                    AND CAST(n.song AS TEXT)=CAST(c.song AS TEXT)
+                    AND CAST(n.ch_no AS TEXT)=CAST(c.number AS TEXT))""", (nb_,)).fetchone()[0]
+            report.append("проверка merge '%s': групп %d, глав %d (пустых %d), писем %d" % (
+                (title_ or '')[:40], nsg, nch, nempty, ntn))
+        except Exception as e:
+            report.append("проверка merge '%s': %s" % ((title_ or '')[:40], e))
+    try:
+        report.append("integrity: %s" % dst.execute("PRAGMA integrity_check").fetchone()[0])
+    except Exception as e:
+        report.append("integrity: %s" % e)
+    dst.close()
+    dst = None
+    os.replace(tmp_path, out_path)
+    return "\n".join(report)
 
 SPEC_EXAMPLE = """{
   "_comment": "py recompose.py build spec.json clean.db",
