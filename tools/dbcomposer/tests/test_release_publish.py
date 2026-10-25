@@ -258,6 +258,61 @@ def test_tk():
 
 
 # ======================================================================
+# f) step3_differs и delta_file_problem
+# ======================================================================
+def test_step3_differs_and_delta():
+    print("=== f) step3_differs и delta_file_problem ===")
+
+    # step3_differs: books, одинаковые → False
+    check(release_gui.step3_differs("books",
+                                    {"version": 5, "file": "a.db", "url": "u"},
+                                    {"version": 5, "file": "a.db", "url": "u"}) is False,
+          "books одинаковые → False")
+
+    # step3_differs: books, изменённый url → True
+    check(release_gui.step3_differs("books",
+                                    {"version": 5, "file": "a.db", "url": "u2"},
+                                    {"version": 5, "file": "a.db", "url": "u"}) is True,
+          "books url изменён → True")
+
+    # step3_differs: books, saved=None → True
+    check(release_gui.step3_differs("books",
+                                    {"version": 5, "file": "a.db", "url": "u"},
+                                    None) is True,
+          "books saved=None → True")
+
+    # step3_differs: apk, одинаковые → False
+    check(release_gui.step3_differs("apk",
+                                    {"versionCode": 57, "versionName": "1.3.9", "file": "x.apk"},
+                                    {"versionCode": 57, "versionName": "1.3.9", "file": "x.apk"}) is False,
+          "apk одинаковые → False")
+
+    # step3_differs: apk, versionCode изменён → True
+    check(release_gui.step3_differs("apk",
+                                    {"versionCode": 56, "versionName": "1.3.9", "file": "x.apk"},
+                                    {"versionCode": 57, "versionName": "1.3.9", "file": "x.apk"}) is True,
+          "apk versionCode изменён → True")
+
+    # delta_file_problem: пустая строка → ""
+    check(release_gui.delta_file_problem("") == "",
+          "delta_file_problem(\"\") → \"\"")
+
+    # delta_file_problem: существующий временный файл → ""
+    tmpf = tempfile.NamedTemporaryFile(delete=False, prefix="delta_ok_")
+    tmpf.close()
+    try:
+        check(release_gui.delta_file_problem(tmpf.name) == "",
+              "delta_file_problem(существующий файл) → \"\"")
+    finally:
+        os.unlink(tmpf.name)
+
+    # delta_file_problem: несуществующий → содержит «не найден»
+    res = release_gui.delta_file_problem("/nonexistent/path/delta.db")
+    check("не найден" in res,
+          "delta_file_problem(несуществующий) содержит «не найден» (got %s)" % res)
+
+
+# ======================================================================
 # main
 # ======================================================================
 def main():
@@ -266,6 +321,7 @@ def main():
     test_patch_catalog_worker()
     test_delta_is_useless()
     test_tk()
+    test_step3_differs_and_delta()
 
     print("")
     print("Итого проверок: %d, провалов: %d" % (checks, fails))

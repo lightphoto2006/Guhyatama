@@ -27,6 +27,28 @@ def delta_is_useless(delta_path, full_path, max_ratio=DELTA_MAX_RATIO):
     return f > 0 and d >= f * max_ratio
 
 
+def step3_differs(sec, fields, saved):
+    """True, если ключевые поля шага 3 отличаются от сохранённых в versions.json.
+    saved=None (записи нет) -> True."""
+    if not saved:
+        return True
+    if sec == "apk":
+        return (int(saved.get("versionCode", 0) or 0) != int(fields.get("versionCode", 0) or 0)
+                or str(saved.get("versionName", "")) != str(fields.get("versionName", ""))
+                or str(saved.get("file", "")) != str(fields.get("file", "")))
+    return (int(saved.get("version", 0) or 0) != int(fields.get("version", 0) or 0)
+            or str(saved.get("file", "")) != str(fields.get("file", ""))
+            or str(saved.get("url", "")) != str(fields.get("url", "")))
+
+
+def delta_file_problem(delta_file):
+    """Пустая строка = ок; иначе текст проблемы (нет файла/не указан)."""
+    p = (delta_file or "").strip()
+    if not p:
+        return ""
+    return "" if os.path.isfile(p) else "Файл дельты не найден: %s" % p
+
+
 HERE = os.path.dirname(os.path.abspath(__file__))
 ROOT = os.path.dirname(os.path.dirname(HERE))
 UPDATES_DIR = os.path.join(ROOT, "updates")
@@ -529,13 +551,55 @@ class ReleaseTab(ttk.Frame):
                         break
         self.nb.select(1)
 
+    def _step3_fields(self):
+        """Dict с ключевыми полями шага 3 из текущих Tk-переменных."""
+        sec = self.v_release_type.get()
+        if sec == "apk":
+            return {
+                "versionCode": int(self.v_apk_vcode.get()),
+                "versionName": self.v_apk_vname.get(),
+                "file": self.v_apk_file.get(),
+            }
+        return {
+            "version": int(self.v_ver_version.get()),
+            "file": self.v_ver_file.get(),
+            "url": self.v_ver_url.get(),
+        }
+
+    def _check_step3(self, saved_must_exist=False):
+        """bool «можно идти дальше»: проверяет несохранённые изменения."""
+        sec = self.v_release_type.get()
+        fields = self._step3_fields()
+        if not os.path.exists(VERSIONS_JSON) and saved_must_exist:
+            messagebox.showwarning("Нет versions.json",
+                                   "Сначала сохрани данные в шаге 3")
+            return False
+        saved = load_versions().get(sec, {})
+        if sec == "apk":
+            saved = saved if saved else {}
+        else:
+            key = self.v_ver_key.get().strip()
+            saved = saved.get(key, {}) if saved else {}
+        if step3_differs(sec, fields, saved):
+            return messagebox.askyesno("Не сохранено",
+                                       "Изменения шага 3 не сохранены в versions.json.\nПерейти дальше?")
+        return True
+
     def _go_step3(self):
         self.nb.select(2)
 
     def _go_step4(self):
+        if not self._check_step3():
+            return
         self.nb.select(3)
 
     def _go_step5(self):
+        if not self._check_step3(saved_must_exist=True):
+            return
+        prob = delta_file_problem(self.v_ver_delta_file.get())
+        if prob:
+            messagebox.showwarning("Дельта", prob)
+            return
         self._refresh_upload_list()
         self.nb.select(4)
 
