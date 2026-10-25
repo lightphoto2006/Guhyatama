@@ -741,6 +741,288 @@ def test_publish_book_new():
 
 
 # ======================================================================
+# e2) Новая книга с delta_file и prev_version == 0 → дельта НЕ публикуется
+# ======================================================================
+def test_publish_book_new_with_delta():
+    print("=== e2) publish_book (новая книга + delta_file, prev_version=0) ===")
+    tmpdir = tempfile.mkdtemp(prefix="pubnewdelta_")
+
+    ver_path = os.path.join(tmpdir, "versions.json")
+    vdata = {"books": {}, "audio": {}}
+    with open(ver_path, "w", encoding="utf-8") as f:
+        json.dump(vdata, f)
+
+    new_db = os.path.join(tmpdir, "NewDeltaBook.db")
+    with open(new_db, "wb") as f:
+        f.write(b"n" * 3000)
+
+    # Дельта-файл (маленький, но для первой версии он не нужен)
+    delta_db = os.path.join(tmpdir, "delta.db")
+    with open(delta_db, "wb") as f:
+        f.write(b"d" * 200)
+
+    updates_dir = os.path.join(tmpdir, "updates")
+    os.makedirs(updates_dir, exist_ok=True)
+    cat_path = os.path.join(updates_dir, "catalog.json")
+    with open(cat_path, "w", encoding="utf-8") as f:
+        json.dump({"books": [], "audio": [], "apk": {}}, f)
+
+    root_cat = os.path.join(tmpdir, "catalog.json")
+    with open(root_cat, "w", encoding="utf-8") as f:
+        json.dump({"books": [], "audio": [], "apk": {}}, f)
+
+    old_versions = publish_engine.VERSIONS
+    old_catalog = publish_engine.CATALOG
+    old_root_catalog = publish_engine.ROOT_CATALOG
+    old_root = publish_engine.ROOT
+    publish_engine.VERSIONS = ver_path
+    publish_engine.CATALOG = cat_path
+    publish_engine.ROOT_CATALOG = root_cat
+    publish_engine.ROOT = tmpdir
+
+    orig_next_tag = publish_engine.gh_release.next_db_tag
+    orig_create = publish_engine.gh_release.create_release
+    orig_upload = publish_engine.gh_release.upload_asset
+    orig_publish = publish_engine.gh_release.publish_release
+    orig_publish_catalog = publish_engine.gh_release.publish_catalog
+
+    def mock_next_tag(token, repo):
+        return "db-v10"
+
+    def mock_create_release(token, repo, tag, name, body):
+        return {"id": 10, "tag_name": tag}
+
+    def mock_upload_asset(token, repo, rid, path, name="", ctype="application/octet-stream"):
+        return {"id": 300, "name": os.path.basename(path),
+                "browser_download_url": "https://gh.com/asset-%s" % os.path.basename(path)}
+
+    def mock_publish_release(token, repo, rid):
+        pass
+
+    def mock_publish_catalog(token, path):
+        return "https://gh.com/catalog.json"
+
+    publish_engine.gh_release.next_db_tag = mock_next_tag
+    publish_engine.gh_release.create_release = mock_create_release
+    publish_engine.gh_release.upload_asset = mock_upload_asset
+    publish_engine.gh_release.publish_release = mock_publish_release
+    publish_engine.gh_release.publish_catalog = mock_publish_catalog
+
+    git_push_calls = []
+    orig_git_push = publish_engine._git_push
+
+    def mock_git_push(files, msg):
+        git_push_calls.append({"files": files, "msg": msg})
+
+    publish_engine._git_push = mock_git_push
+
+    orig_run_make = publish_engine._run_make_catalog
+
+    def mock_run_make_catalog(log):
+        import hashlib
+        h = hashlib.sha256()
+        with open(new_db, "rb") as f:
+            h.update(f.read())
+        cdata = {"books": [{"key": "NewDeltaBook", "size": os.path.getsize(new_db),
+                            "sha256": h.hexdigest(), "version": 1}],
+                 "audio": [], "apk": {}}
+        err = dbcommon.atomic_write_bytes(cat_path,
+                                          json.dumps(cdata, ensure_ascii=False, indent=2).encode("utf-8"))
+        if err:
+            raise RuntimeError(err)
+        log("make_catalog: ok")
+
+    publish_engine._run_make_catalog = mock_run_make_catalog
+    publish_engine._copy_catalog_root = lambda: None
+
+    try:
+        log_lines = []
+        result = publish_engine.publish_book(
+            token="fake",
+            key="NewDeltaBook",
+            new_file=new_db,
+            notes="новая книга с дельтой",
+            delta_file=delta_db,
+            delta_from=0,
+            log=log_lines.append,
+            title="Новая книга с дельтой",
+            lang="rus",
+        )
+
+        # delta_url должен быть пустым (первая публикация)
+        check(result["delta_url"] == "", "delta_url пустой при prev_version=0 (got %r)" % result.get("delta_url"))
+
+        # В versions.json нет ключа delta
+        with open(ver_path, encoding="utf-8") as f:
+            updated = json.load(f)
+        entry = updated["books"]["NewDeltaBook"]
+        check("delta" not in entry, "versions: нет ключа delta (первая публикация)")
+
+        # В логе есть «первая публикация — дельта не нужна»
+        log_text = " ".join(log_lines)
+        check("первая публикация — дельта не нужна" in log_text,
+              "в логе «первая публикация — дельта не нужна» (got: %s)" % log_text[:120])
+
+        # Только один ассет (полный файл)
+        check(result["size"] == 3000, "size=3000")
+
+    finally:
+        publish_engine.VERSIONS = old_versions
+        publish_engine.CATALOG = old_catalog
+        publish_engine.ROOT_CATALOG = old_root_catalog
+        publish_engine.ROOT = old_root
+        publish_engine.gh_release.next_db_tag = orig_next_tag
+        publish_engine.gh_release.create_release = orig_create
+        publish_engine.gh_release.upload_asset = orig_upload
+        publish_engine.gh_release.publish_release = orig_publish
+        publish_engine.gh_release.publish_catalog = orig_publish_catalog
+        publish_engine._git_push = orig_git_push
+        publish_engine._run_make_catalog = orig_run_make
+        publish_engine._copy_catalog_root = lambda: None
+
+
+# ======================================================================
+# e3) Новая книга в секции audio
+# ======================================================================
+def test_publish_book_new_audio():
+    print("=== e3) publish_book (новая книга, sec=audio) ===")
+    tmpdir = tempfile.mkdtemp(prefix="pubnewaudio_")
+
+    ver_path = os.path.join(tmpdir, "versions.json")
+    vdata = {"books": {}, "audio": {}}
+    with open(ver_path, "w", encoding="utf-8") as f:
+        json.dump(vdata, f)
+
+    new_audio = os.path.join(tmpdir, "NewAudioBook.mp3")
+    with open(new_audio, "wb") as f:
+        f.write(b"a" * 2000)
+
+    updates_dir = os.path.join(tmpdir, "updates")
+    os.makedirs(updates_dir, exist_ok=True)
+    cat_path = os.path.join(updates_dir, "catalog.json")
+    with open(cat_path, "w", encoding="utf-8") as f:
+        json.dump({"books": [], "audio": [], "apk": {}}, f)
+
+    root_cat = os.path.join(tmpdir, "catalog.json")
+    with open(root_cat, "w", encoding="utf-8") as f:
+        json.dump({"books": [], "audio": [], "apk": {}}, f)
+
+    old_versions = publish_engine.VERSIONS
+    old_catalog = publish_engine.CATALOG
+    old_root_catalog = publish_engine.ROOT_CATALOG
+    old_root = publish_engine.ROOT
+    publish_engine.VERSIONS = ver_path
+    publish_engine.CATALOG = cat_path
+    publish_engine.ROOT_CATALOG = root_cat
+    publish_engine.ROOT = tmpdir
+
+    orig_next_tag = publish_engine.gh_release.next_db_tag
+    orig_create = publish_engine.gh_release.create_release
+    orig_upload = publish_engine.gh_release.upload_asset
+    orig_publish = publish_engine.gh_release.publish_release
+    orig_publish_catalog = publish_engine.gh_release.publish_catalog
+
+    def mock_next_tag(token, repo):
+        return "db-v20"
+
+    def mock_create_release(token, repo, tag, name, body):
+        return {"id": 20, "tag_name": tag}
+
+    def mock_upload_asset(token, repo, rid, path, name="", ctype="application/octet-stream"):
+        return {"id": 400, "name": os.path.basename(path),
+                "browser_download_url": "https://gh.com/asset-%s" % os.path.basename(path)}
+
+    def mock_publish_release(token, repo, rid):
+        pass
+
+    def mock_publish_catalog(token, path):
+        return "https://gh.com/catalog.json"
+
+    publish_engine.gh_release.next_db_tag = mock_next_tag
+    publish_engine.gh_release.create_release = mock_create_release
+    publish_engine.gh_release.upload_asset = mock_upload_asset
+    publish_engine.gh_release.publish_release = mock_publish_release
+    publish_engine.gh_release.publish_catalog = mock_publish_catalog
+
+    git_push_calls = []
+    orig_git_push = publish_engine._git_push
+
+    def mock_git_push(files, msg):
+        git_push_calls.append({"files": files, "msg": msg})
+
+    publish_engine._git_push = mock_git_push
+
+    orig_run_make = publish_engine._run_make_catalog
+
+    def mock_run_make_catalog(log):
+        import hashlib
+        h = hashlib.sha256()
+        with open(new_audio, "rb") as f:
+            h.update(f.read())
+        cdata = {"books": [], "audio": [{"key": "NewAudioBook", "size": os.path.getsize(new_audio),
+                                         "sha256": h.hexdigest(), "version": 1}],
+                 "apk": {}}
+        err = dbcommon.atomic_write_bytes(cat_path,
+                                          json.dumps(cdata, ensure_ascii=False, indent=2).encode("utf-8"))
+        if err:
+            raise RuntimeError(err)
+        log("make_catalog: ok")
+
+    publish_engine._run_make_catalog = mock_run_make_catalog
+    publish_engine._copy_catalog_root = lambda: None
+
+    try:
+        log_lines = []
+        result = publish_engine.publish_book(
+            token="fake",
+            key="NewAudioBook",
+            new_file=new_audio,
+            notes="новая аудиокнига",
+            delta_file="",
+            delta_from=0,
+            log=log_lines.append,
+            title="Новая аудиокнига",
+            lang="rus",
+            sec="audio",
+        )
+
+        # Проверки
+        check(result["version"] == 1, "version=1 для новой книги (got %d)" % result.get("version"))
+        check(result["url"] != "", "url непустой")
+
+        # Запись в versions.json в секции audio
+        with open(ver_path, encoding="utf-8") as f:
+            updated_vdata = json.load(f)
+        check("NewAudioBook" in updated_vdata["audio"], "NewAudioBook в audio")
+        check("NewAudioBook" not in updated_vdata["books"], "NewAudioBook НЕ в books")
+        entry = updated_vdata["audio"]["NewAudioBook"]
+        check(entry["version"] == 1, "versions: version=1 в audio")
+        check(entry["title"] == "Новая аудиокнига", "versions: title ok (got %r)" % entry.get("title"))
+
+        # Каталог обновлён
+        with open(cat_path, encoding="utf-8") as f:
+            cat = json.load(f)
+        cat_entry = [e for e in cat["audio"] if e.get("key") == "NewAudioBook"]
+        check(len(cat_entry) == 1, "catalog: запись NewAudioBook в audio")
+        if cat_entry:
+            check(cat_entry[0]["size"] == 2000, "catalog: size=2000")
+
+    finally:
+        publish_engine.VERSIONS = old_versions
+        publish_engine.CATALOG = old_catalog
+        publish_engine.ROOT_CATALOG = old_root_catalog
+        publish_engine.ROOT = old_root
+        publish_engine.gh_release.next_db_tag = orig_next_tag
+        publish_engine.gh_release.create_release = orig_create
+        publish_engine.gh_release.upload_asset = orig_upload
+        publish_engine.gh_release.publish_release = orig_publish
+        publish_engine.gh_release.publish_catalog = orig_publish_catalog
+        publish_engine._git_push = orig_git_push
+        publish_engine._run_make_catalog = orig_run_make
+        publish_engine._copy_catalog_root = lambda: None
+
+
+# ======================================================================
 # f) Новая книга без title → PublishError
 # ======================================================================
 def test_publish_book_new_no_title():
@@ -786,6 +1068,8 @@ def main():
     test_delta_useless()
     test_delta_useful()
     test_publish_book_new()
+    test_publish_book_new_with_delta()
+    test_publish_book_new_audio()
     test_publish_book_new_no_title()
 
     print("")

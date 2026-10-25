@@ -194,7 +194,6 @@ def publish_book(token, key, new_file, notes, delta_file="", delta_from=0,
                 "url": "", "notes": "", "auth": "github"}
         versions_data.setdefault(sec, {})[key] = meta
         old_key = False
-        sec = "books"
     meta = dict(versions_data[sec][key])
 
     # 2) Version и хэш
@@ -234,10 +233,12 @@ def publish_book(token, key, new_file, notes, delta_file="", delta_from=0,
     delta_sha = ""
     delta_ok = False
     if delta_file and os.path.isfile(delta_file):
-        delta_abs = os.path.abspath(delta_file)
-        if dbcommon.delta_is_useless(delta_abs, new_file_abs):
+        if prev_version == 0:
+            log("первая публикация — дельта не нужна")
+        elif dbcommon.delta_is_useless(os.path.abspath(delta_file), new_file_abs):
             log("дельта бесполезна — публикую без неё")
         else:
+            delta_abs = os.path.abspath(delta_file)
             up2 = gh_release.upload_asset(token, gh_release.FILES_REPO, rid, delta_abs)
             delta_url = gh_release.asset_api_url(gh_release.FILES_REPO, up2["id"])
             delta_size = up2.get("size") or os.path.getsize(delta_abs)
