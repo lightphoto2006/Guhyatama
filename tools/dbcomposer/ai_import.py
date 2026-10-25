@@ -83,8 +83,15 @@ def extract_pdf_text(path):
 AI_VERSION = 2
 
 #: тело книги в приложении режется по bodyCap (LibraryDbImporter):
-#: SCC/SSB/SBG/SBRS -> 120000, GC -> 60000, всё прочее -> 8000
+#: SCC/SSB/SBG/SBRS -> 120000, GC -> 60000, всё прочее -> 120000
 BIG_TYPES = ("SCC", "SSB", "SBG", "SBRS")
+
+
+def normalize_type(s):
+    """Тип книги: 2-8 символов A-Z/0-9, верхний регистр. None — невалидный."""
+    t = (s or "").strip().upper()
+    t = "".join(ch for ch in t if ch.isalnum())
+    return t if 2 <= len(t) <= 8 else None
 META_FIELDS = ("title", "author", "type")
 META_PRESETS = {
     "title": "Нормализуй названия книг: единообразие регистра, кавычек и пробелов, "
@@ -344,8 +351,28 @@ def split_chapters(paras, opts):
                 if first_song is None:
                     first_song = s
             ch_i += 1
-            new_chapter(s if s is not None else (song_i or cur_song()), n,
-                        ((g.get("title") or "").strip() or "Глава %d" % n))
+            # title из группы или из строки заголовка
+            title = (g.get("title") or "").strip()
+            if not title:
+                # убрать из line подстроку, совпавшую с группой chapter
+                raw = line
+                if "chapter" in m.re.groupindex:
+                    cs, ce = m.start("chapter"), m.end("chapter")
+                    if cs >= 0 and ce > cs:
+                        raw = raw[:cs] + raw[ce:]
+                # обрезать ведущие/замыкающие пробелы и символы пунктуации
+                title = raw.strip(" .:()-—–_\u2013\u2014")
+                # убрать общие префиксы-метки типа "Глава ", "Chapter "
+                for _prefix in ("Глава ", "ГЛАВА ", "Глава:", "Chapter ",
+                                "CHAPTER ", "Раздел ", "РАЗДЕЛ ", "Section ",
+                                "SECTION "):
+                    if title.startswith(_prefix):
+                        title = title[len(_prefix):]
+                        break
+                title = title.strip(" .:()-—–_\u2013\u2014")
+            if not title:
+                title = "Глава %d" % n
+            new_chapter(s if s is not None else (song_i or cur_song()), n, title)
             if rest:
                 cur["paras"].append(rest)
             continue
@@ -468,6 +495,9 @@ def build_structure(text, opts, llm_result=None):
         c["verses"] = split_verses(c["paras"], opts)
         nverses += len(c["verses"])
         nchars += sum(len(t) for _, t in c["verses"])
+    if opts.get("_hint_no_verses"):
+        notes.append("Похоже, в тексте нет номеров стихов — "
+                     "выбери «Не делить (глава целиком)».")
     return {"chapters": chapters, "song_names": song_names, "notes": notes,
             "stats": {"chapters": len(chapters), "verses": nverses, "chars": nchars}}
 
@@ -1147,7 +1177,7 @@ class AIImportTab(ttk.Frame):
         ttk.Label(book, text="Тип:").grid(row=1, column=0, sticky="w")
         self.v_btype = tk.StringVar(value=self.cfg.get("t2_type", "SCC"))
         self.cmb_type = ttk.Combobox(book, textvariable=self.v_btype, width=10,
-                                     values=self._type_values())
+                                     values=self._type_values(), state="normal")
         self.cmb_type.grid(row=1, column=1, sticky="w", pady=2)
         ttk.Label(book, text="Автор:").grid(row=2, column=0, sticky="w")
         self.v_bauthor = tk.StringVar(value=self.cfg.get("t2_author", ""))
@@ -1189,6 +1219,9 @@ class AIImportTab(ttk.Frame):
         for val, label in (("para", "Абзац = стих"), ("number", "Номер в строке"),
                            ("none", "Не делить (глава целиком)")):
             ttk.Radiobutton(vf, text=label, value=val, variable=self.v_vmode).pack(anchor="w")
+        ttk.Label(vf, text="Книга без нумерации стихов (главы сплошным текстом)? "
+                            "Выбери «Не делить (глава целиком)».",
+                  foreground="gray").pack(anchor="w")
         ttk.Label(vf, text="Regex номера (группа verse):", foreground="gray").pack(anchor="w")
         self.v_vre = tk.StringVar(value=self.cfg.get("t2_vre", DEFAULT_VERSE_RE))
         ttk.Entry(vf, textvariable=self.v_vre).pack(fill="x", pady=2)
@@ -1253,7 +1286,7 @@ class AIImportTab(ttk.Frame):
             self.lbl_cap.configure(text="лимит тела в приложении: 60 000 симв.", foreground="gray")
         else:
             self.lbl_cap.configure(
-                text="для типа %s в приложении лимит 8 000 симв. (в dbcomposer без лимитов)" % (t or "?"),
+                text="для типа %s в приложении лимит 120 000 симв." % (t or "?"),
                 foreground="gray")
 
     def _chmode_ui(self):
@@ -1324,7 +1357,15 @@ class AIImportTab(ttk.Frame):
             self.say("пусто — вставь или загрузи текст")
             return
         self._save_t2()
-        struct = build_structure(text, self._split_opts())
+        opts = self._split_opts()
+        # Авто-детект: пара-режим + мало стихов с нумерацией -> подсказка
+        if opts.get("v_mode") == "para":
+            paras = text_to_paragraphs(text)[:200]
+            if len(paras) >= 3:
+                digit_start = sum(1 for p in paras if p and re.match(r"\d", p.split("\n")[0]))
+                if digit_start / len(paras) < 0.05:
+                    opts["_hint_no_verses"] = True
+        struct = build_structure(text, opts)
         self._show_struct(struct, "правила")
 
     def t2_llm_structure(self):
@@ -1397,6 +1438,11 @@ class AIImportTab(ttk.Frame):
         if not (self.v_btitle.get().strip() and self.v_btype.get().strip()):
             messagebox.showwarning("Нужны поля", "Укажи название и тип книги.")
             return
+        nt = normalize_type(self.v_btype.get())
+        if nt is None:
+            messagebox.showwarning("Тип книги",
+                                   "Тип: 2-8 символов A-Z/0-9 (например CHB)")
+            return
         out = filedialog.asksaveasfilename(
             title="Сохранить source-.db", defaultextension=".db",
             filetypes=[("SQLite", "*.db")], parent=self,
@@ -1408,7 +1454,7 @@ class AIImportTab(ttk.Frame):
             return
         meta = {"title": self.v_btitle.get().strip(),
                 "author": self.v_bauthor.get().strip(),
-                "type": self.v_btype.get().strip().upper()}
+                "type": nt}
         try:
             stat = write_source_db(self._struct, meta, out)
         except Exception as e:

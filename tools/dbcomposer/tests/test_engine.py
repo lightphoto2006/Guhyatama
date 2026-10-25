@@ -415,6 +415,41 @@ try:
 except ValueError:
     check("extract_json: мусор -> ValueError", True)
 
+# ------------------------------------------------------ normalize_type ---
+check("normalize_type: chb -> CHB", ai.normalize_type(" chb ") == "CHB")
+check("normalize_type: A -> None", ai.normalize_type("A") is None)
+check("normalize_type: ABCDEFGHI -> None", ai.normalize_type("ABCDEFGHI") is None)
+check("normalize_type: c-h b -> CHB", ai.normalize_type("c-h b") == "CHB")
+
+# ------------------------------------------------------ regex без title ---
+s_regex = ai.build_structure(
+    "Глава 3. Оскорбление вайшнавов\n\ntекст\n",
+    dict(ch_mode="regex", v_mode="para", prelude_intro=False, book_title="Т",
+         chapter_re=r"^Глава (?P<chapter>\d+)\.\s*"))
+check("regex: title из строки заголовка (без группы title)",
+      s_regex["chapters"][0]["title"] == "Оскорбление вайшнавов",
+      s_regex["chapters"][0]["title"])
+
+# ------------------------------------------------------ none + book_title ---
+s_none = ai.build_structure(
+    "Один абзац.",
+    dict(ch_mode="none", v_mode="none", book_title="Моя книга"))
+check("none: 1 глава, title = book_title",
+      s_none["chapters"][0]["title"] == "Моя книга",
+      s_none["chapters"][0]["title"])
+check("none: одна глава, один стих",
+      s_none["stats"]["chapters"] == 1 and s_none["stats"]["verses"] == 1,
+      s_none["stats"])
+
+# ------------------------------------------------------ hint_no_verses ---
+s_hint = ai.build_structure(
+    "Абзац один.\n\nАбзац два.\n\nАбзац три.\n\nАбзац четыре.\n\nАбзац пять.",
+    dict(ch_mode="none", v_mode="para", prelude_intro=False, book_title="Т",
+         _hint_no_verses=True))
+check("hint: подсказка про «глава целиком» в notes",
+      any("нет номеров стихов" in n for n in s_hint["notes"]),
+      s_hint["notes"])
+
 print()
 if FAILED:
     print("FAILED %d: %s" % (len(FAILED), ", ".join(FAILED)))
