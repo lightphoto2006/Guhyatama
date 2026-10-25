@@ -76,29 +76,6 @@
       "adopt": false,
       "size": 13209600,
       "sha256": "450e948d1fc5ebf3a0407f2a30b0631f0897c89add3c083566ae1ceee4dc6936"
-    },
-    {
-      "key": "Acharyi_rus",
-      "title": "Книги ачарий (рус)",
-      "version": 7,
-      "url": "https://api.github.com/repos/lightphoto2006/Guhyatama-files/releases/assets/674905730",
-      "notes": "Добавлена книга Чайтанья-Бхагавата Ади-лилла",
-      "lang": "rus",
-      "auth": "github",
-      "deltaFrom": 6,
-      "deltaUrl": "https://api.github.com/repos/lightphoto2006/Guhyatama-files/releases/assets/674905762",
-      "deltaSize": 716800,
-      "deltaSha": "5d36d7e16eb33682927029a7c0dca237d4a351001883be6830443b81195606e6",
-      "size": 733184,
-      "sha256": "cc00702c31ae30d49e26ac7ab75d17ef74ae43b0230d4ad861934004e0376b1a",
-      "fp": [
-        {
-          "t": "ltrs",
-          "g": 1,
-          "v": 15,
-          "vg": 15
-        }
-      ]
     }
   ],
   "audio": [
