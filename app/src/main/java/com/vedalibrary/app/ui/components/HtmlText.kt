@@ -408,10 +408,12 @@ fun HtmlText(
             tv.textAlignment = if (center) android.view.View.TEXT_ALIGNMENT_CENTER
             else android.view.View.TEXT_ALIGNMENT_INHERIT
             // Выравнивание по ширине (перевод, комментарий). Константы — graphics.text.LineBreaker
-            // (Layout.* те же значения, lint WrongConstant). minSdk 26 — гейт по SDK не нужен.
+            // (Layout.* те же значения, lint WrongConstant).
+            // API<26: justificationMode недоступен — работает ручная доводка JustifyTextView.
+            // API≥26: системная justificationMode, ручной гейт — ColorOS или API<26.
             // breakStrategy выставляем явно: на части прошивок дефолт SIMPLE, с ним
             // justification местами не применяется. Остальным секциям стратегию не трогаем.
-            val manual = justify && !center
+            val manual = justify && !center && (colorOs || Build.VERSION.SDK_INT < 26)
             (tv as? JustifyTextView)?.let { it.justifyManual = manual; it.eraseArgb = bgArgb }
             if (justify && !center && Build.VERSION.SDK_INT >= 26) {
                 if (colorOs) {
