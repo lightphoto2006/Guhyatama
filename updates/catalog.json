@@ -71,17 +71,35 @@
     {
       "key": "Acharyi_rus",
       "title": "Книги ачарий (рус)",
-      "version": 11,
-      "url": "https://api.github.com/repos/lightphoto2006/Guhyatama-files/releases/assets/675854679",
-      "notes": "Полный файл: добавлена «Шри Чайтанья-Бхагавата» и обложки (предыдущая v10 ушла дельтой без обложек).",
+      "version": 12,
+      "url": "https://api.github.com/repos/lightphoto2006/Guhyatama-files/releases/assets/675858592",
+      "notes": "Сборник: Гопала-чампу, БГ (Шридхар), Брахма-самхита, Шри Чайтанья-Бхагавата (ади-кханда) + обложка. Полный файл.",
       "lang": "rus",
       "auth": "github",
-      "size": 1327104,
-      "sha256": "9089c6af0c347be7a7979b9df82343b5f833d9a4d55cd652885f213dcd803830",
+      "size": 7847936,
+      "sha256": "42dbe32b09099beea4a907a470d1a67e3065be083df4a992568439477ed0fefe",
       "fp": [
         {
-          "t": "chb",
+          "t": "gc",
           "g": 1,
+          "v": 743,
+          "vg": 743
+        },
+        {
+          "t": "bg-ss",
+          "g": 2,
+          "v": 649,
+          "vg": 649
+        },
+        {
+          "t": "bs",
+          "g": 3,
+          "v": 68,
+          "vg": 68
+        },
+        {
+          "t": "chb",
+          "g": 4,
           "v": 17,
           "vg": 17
         }
