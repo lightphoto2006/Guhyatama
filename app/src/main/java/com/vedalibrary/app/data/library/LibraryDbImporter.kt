@@ -299,7 +299,8 @@ class LibraryDbImporter @Inject constructor(
                 val fix = { s: String -> com.vedalibrary.app.ui.components.GbHtml.fixPua(s, cyr) }
                 val sanskrit = c.getString(4)?.ifBlank { null }?.let(fix)?.take(2000)
                 val translit = c.getString(5); val tr1 = c.getString(6); val tr2 = c.getString(7); val comment = c.getString(8)
-                val text = translit?.ifBlank { null }?.let(fix)?.take(8000) ?: preview
+                val text = translit?.ifBlank { null }?.let(fix)?.take(8000)
+                    ?: if (tr2.isNullOrBlank()) preview else ""
                 val synonyms = tr1?.ifBlank { null }?.let(fix)?.take(12000)
                 val translation = (tr2?.ifBlank { null }?.let(fix) ?: preview.ifBlank { null })?.take(bodyCap)
                 val purport = comment?.ifBlank { null }?.let(fix)?.take(30000)
