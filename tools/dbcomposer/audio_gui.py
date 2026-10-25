@@ -31,6 +31,16 @@ def _noop():
     return subprocess.CREATE_NO_WINDOW if hasattr(subprocess, "CREATE_NO_WINDOW") else 0
 
 
+def detect_pythonw():
+    """pythonw рядом с текущим интерпретатором (без консоли), иначе sys.executable."""
+    base, ext = os.path.splitext(sys.executable)
+    if base.lower().endswith("n"):          # python.exe -> pythonw.exe
+        cand = base[:-1] + "w" + ext
+        if os.path.isfile(cand):
+            return cand
+    return sys.executable
+
+
 class AudioTab(ttk.Frame):
     def __init__(self, parent, app=None):
         super().__init__(parent)
@@ -125,18 +135,24 @@ class AudioTab(ttk.Frame):
         # --- 3. нарезка: отдельное приложение ---
         sp = ttk.LabelFrame(self, text="3. Нарезка (отдельное приложение Audo Cut)", padding=6)
         sp.pack(fill="x", padx=6, pady=4)
-        self.e_acut = tk.StringVar(value=self.cfg.get(
-            "acut", r"F:\AI\Development\Audo Cut\audo_cut.py"))
+        self.e_acut = tk.StringVar(value=self.cfg.get("acut", ""))
         ttk.Entry(sp, textvariable=self.e_acut, width=52).grid(
             row=0, column=0, columnspan=3, sticky="ew", padx=4)
         ttk.Button(sp, text="…", width=3,
                    command=lambda: self._pick_file(self.e_acut, "audo_cut.py")).grid(
-                       row=0, column=3)
+                        row=0, column=3)
+        self.e_pyw = tk.StringVar(value=self.cfg.get("pyw") or detect_pythonw())
+        ttk.Label(sp, text="Интерпретатор:").grid(row=1, column=0, sticky="w")
+        ttk.Entry(sp, textvariable=self.e_pyw, width=52).grid(
+            row=1, column=1, columnspan=3, sticky="ew", padx=4)
+        ttk.Button(sp, text="…", width=3,
+                   command=lambda: self._pick_file(self.e_pyw, "pythonw.exe")).grid(
+                        row=1, column=3)
         self.b_opencut = ttk.Button(sp, text="✂ Открыть Audo Cut", command=self.do_opencut)
-        self.b_opencut.grid(row=0, column=4, padx=4)
+        self.b_opencut.grid(row=1, column=4, padx=4)
         ttk.Label(sp, text="Режет длинную запись на куски вручную. "
                            "Готовые куски — в раздел 1 (пак).",
-                  foreground="gray").grid(row=1, column=0, columnspan=5, sticky="w")
+                  foreground="gray").grid(row=2, column=0, columnspan=5, sticky="w")
         sp.columnconfigure(0, weight=1)
 
         self.log = tk.Text(self, height=10, wrap="word")
@@ -162,7 +178,7 @@ class AudioTab(ttk.Frame):
             "pack": self.e_pack.get(), "vsrc": self.e_vsrc.get(),
             "rsrc": self.e_rsrc.get(), "rdst": self.e_rdst.get(),
             "rmode": self.e_rmode.get(), "rjobs": self.e_rjobs.get(),
-            "acut": self.e_acut.get(),
+            "acut": self.e_acut.get(), "pyw": self.e_pyw.get(),
         })
 
     def _pick_file(self, var, title):
@@ -360,16 +376,15 @@ class AudioTab(ttk.Frame):
         """Запуск Audo Cut отдельным процессом (своё окно, свой питон с зависимостями)."""
         path = self.e_acut.get().strip()
         if not path or not os.path.isfile(path):
-            messagebox.showwarning("Нет файла", "Укажи audo_cut.py")
-            return
-        # Тот же портативный питон, что в ярлыке Audo Cut.vbs (там зависимости);
-        # иначе pythonw рядом с текущим python, иначе как есть
-        pyw = os.path.normpath(os.path.join(r"F:\AI", "portable-files",
-                                             "python", "pythonw.exe"))
-        if not os.path.isfile(pyw):
-            base, ext = os.path.splitext(sys.executable)
-            cand = base[:-1] + "w" + ext if base.lower().endswith("n") else None
-            pyw = cand if cand and os.path.isfile(cand) else sys.executable
+            picked = filedialog.askopenfilename(title="Укажи audo_cut.py", parent=self)
+            if not picked:
+                self.say("audo_cut.py не указан — отмена")
+                return
+            self.e_acut.set(picked)
+            path = picked
+        pyw = self.e_pyw.get().strip()
+        if not pyw or not os.path.isfile(pyw):
+            pyw = detect_pythonw()
         try:
             subprocess.Popen([pyw, path], cwd=os.path.dirname(os.path.abspath(path)),
                              creationflags=_noop())
