@@ -406,6 +406,8 @@ class UpdateViewModel @Inject constructor(
             val dir = File(updater.updatesDir(), "books").apply { mkdirs() }
             val safeKey = key.replace(Regex("[^A-Za-z0-9._-]"), "_")
             val out = File(dir, "$safeKey-v${info.version}" + (if (useDelta) "-delta" else "") + ".db")
+            // До импорта: запоминаем id книг, приехавших с этим ключом ранее
+            val prevIds = prefs.bookIds(key)
             // Прошлые версии той же книги больше не нужны — чтобы не копились
             try {
                 val staleRe = Regex("^${Regex.escape(safeKey)}-v\\d+(-delta)?\\.db$")
@@ -463,12 +465,22 @@ class UpdateViewModel @Inject constructor(
             }
             if (res.failed.isNotEmpty() && res.bookIds.isEmpty())
                 throw IllegalStateException(res.failed.first())
+            // Полный файл: удаляем книги, которые ставились этим же ключом,
+            // но отсутствуют в новом файле (и не принадлежат другим ключам)
+            var removed = 0
+            if (!useDelta) {
+                val stale = prevIds - res.bookIds.toSet() - prefs.allBookIdsExcept(key)
+                for (id in stale) {
+                    try { db.library().deleteBookCascade(id); removed++ } catch (_: Exception) { }
+                }
+            }
             prefs.setBookVersion(key, info.version)
             prefs.setBookIds(key, res.bookIds)
             val note = if (isAudio) "Готово: ${res.verses} записей"
             else if (useDelta) "Готово: обновлено ${res.verses} стихов" +
                     (if (res.failed.isNotEmpty()) " · пропущено: ${res.failed.size}" else "")
             else "Готово: ${res.bookIds.size} кн., ${res.verses} стихов" +
+                    (if (removed > 0) " · убрано старых книг: $removed" else "") +
                     (if (res.failed.isNotEmpty()) " · пропущено: ${res.failed.size}" else "")
             finish(info.version, false, note)
             // Импорт прошёл целиком — скачанный файл больше не нужен, убираем молча.

@@ -23,4 +23,13 @@ class UpdatePrefs @Inject constructor(@ApplicationContext ctx: Context) {
         prefs.getStringSet("book_ids_$key", emptySet()) ?: emptySet()
     fun setBookIds(key: String, ids: Collection<String>) =
         prefs.edit().putStringSet("book_ids_$key", ids.toSet()).apply()
+
+    /** Все id книг, приехавших с ДРУГИМИ ключами каталога (чтобы не удалить общую книгу). */
+    fun allBookIdsExcept(key: String): Set<String> = try {
+        val prefix = "book_ids_"
+        prefs.all.entries
+            .filter { it.key.startsWith(prefix) && it.key != prefix + key }
+            .flatMap { (it.value as? Set<*>)?.filterIsInstance<String>() ?: emptyList() }
+            .toSet()
+    } catch (_: Exception) { emptySet() }
 }
