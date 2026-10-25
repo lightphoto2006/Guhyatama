@@ -12,6 +12,7 @@ from tkinter import filedialog, messagebox, ttk
 
 import gh_release
 import dbcommon
+import uicommon
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 ROOT = os.path.dirname(os.path.dirname(HERE))
@@ -98,7 +99,7 @@ class ReleaseTab(ttk.Frame):
         self.prog.pack(side="left", padx=(0, 6))
         self.log = tk.Text(logf, height=6, wrap="word")
         self.log.pack(side="left", fill="both", expand=True)
-        self.log.bind("<Key>", self._log_key)
+        self.log.bind("<Key>", uicommon.log_key)
 
     def _build_step1(self, nb):
         t = ttk.Frame(nb, padding=6)
@@ -742,39 +743,10 @@ class ReleaseTab(ttk.Frame):
                 subprocess.run(["xdg-open", path])
 
     def set_busy(self, v):
-        self.busy = v
-        state = "disabled" if v else "normal"
-        for b in (self.b_make_delta, self.b_make_catalog, self.b_step1_next, self.b_step2_next, self.b_step3_next, self.b_step4_next, self.b_publish):
-            b.configure(state=state)
-        if v:
-            self.prog.start(12)
-        else:
-            self.prog.stop()
+        uicommon.set_busy(self, v, (self.b_make_delta, self.b_make_catalog, self.b_step1_next, self.b_step2_next, self.b_step3_next, self.b_step4_next, self.b_publish), self.prog)
 
     def say(self, text):
-        self.log.insert("end", str(text).rstrip() + "\n")
-        self.log.see("end")
-
-    def _log_key(self, ev):
-        if ev.state & 0x4:
-            w = ev.widget
-            if ev.keycode == 65:
-                w.tag_add("sel", "1.0", "end-1c")
-                return "break"
-            if ev.keycode in (67, 45):
-                try:
-                    sel = w.get("sel.first", "sel.last")
-                    w.clipboard_clear()
-                    w.clipboard_append(sel)
-                except Exception:
-                    pass
-                return "break"
-            return "break"
-        if ev.keysym in ("Up", "Down", "Left", "Right", "Home", "End",
-                         "Prior", "Next", "Shift_L", "Shift_R",
-                         "Control_L", "Control_R", "Caps_Lock"):
-            return None
-        return "break"
+        uicommon.say(self.log, text)
 
     def poll(self):
         try:

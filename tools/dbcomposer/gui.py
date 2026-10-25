@@ -17,6 +17,7 @@ from tkinter import filedialog, messagebox, ttk
 
 import dbcommon
 import recompose
+import uicommon
 import lectures_gui
 import audio_gui
 import ai_import
@@ -82,7 +83,7 @@ class App(tk.Tk):
     def __init__(self):
         super().__init__()
         self.title(APP_TITLE)
-        # восстановление геометрии из конфига (иначе — дефолт)
+        # восстановление геометрии из конфига (если валидна — применим; иначе — дефолт в конце __init__)
         cfg = load_cfg()
         try:
             geo = cfg.get("window_geometry", "")
@@ -177,7 +178,7 @@ class App(tk.Tk):
 
         self.log = tk.Text(build, height=9, wrap="word")
         self.log.pack(fill="both", expand=False, padx=6, pady=(0, 6))
-        self.log.bind("<Key>", self._log_key)
+        self.log.bind("<Key>", uicommon.log_key)
 
         # вкладки-инструменты (бывшие отдельные окна). Создаются сразу, но
         # тяжёлая инициализация — при первом показе (см. on_tab/on_activate)
@@ -204,6 +205,16 @@ class App(tk.Tk):
 
         self.after(150, self.poll)
         self.after(400, self.startup_scan)
+
+        # дефолтная геометрия — после создания всех виджетов
+        try:
+            cfg2 = load_cfg()
+            geo = cfg2.get("window_geometry", "")
+            if not re.fullmatch(r"\d+x\d+\+-?\d+\+-?\d+", str(geo)):
+                self.geometry("1040x720")
+                self.update_idletasks()
+        except Exception:
+            pass
 
     def on_tab(self, _ev):
         """Первый показ вкладки — её разовый тяжёлый activate (папка лекций)."""
@@ -569,31 +580,7 @@ class App(tk.Tk):
         self.after(150, self.poll)
 
     def say(self, text):
-        self.log.insert("end", text + "\n")
-        self.log.see("end")
-
-    def _log_key(self, ev):
-        """Лог только для чтения. Копирование — вручную по коду физ. клавиши
-        (65=A/Ф выделить всё, 67=C/С скопировать), раскладка не важна."""
-        if ev.state & 0x4:  # Ctrl
-            w = ev.widget
-            if ev.keycode == 65:
-                w.tag_add("sel", "1.0", "end-1c")
-                return "break"
-            if ev.keycode in (67, 45):
-                try:
-                    sel = w.get("sel.first", "sel.last")
-                    w.clipboard_clear()
-                    w.clipboard_append(sel)
-                except Exception:
-                    pass
-                return "break"
-            return "break"
-        if ev.keysym in ("Up", "Down", "Left", "Right", "Home", "End",
-                         "Prior", "Next", "Shift_L", "Shift_R",
-                         "Control_L", "Control_R", "Caps_Lock"):
-            return None
-        return "break"
+        uicommon.say(self.log, text)
 
     def copy_log(self):
         try:

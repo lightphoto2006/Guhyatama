@@ -27,6 +27,7 @@ from tkinter import filedialog, messagebox, ttk
 
 import llama_client
 import recompose
+import uicommon
 
 try:
     import pdfplumber
@@ -719,7 +720,7 @@ class AIImportTab(ttk.Frame):
         self.prog.pack(side="left", padx=(0, 6))
         self.log = tk.Text(logf, height=6, wrap="word")
         self.log.pack(side="left", fill="both", expand=True)
-        self.log.bind("<Key>", self._log_key)
+        self.log.bind("<Key>", uicommon.log_key)
         self.after(150, self.poll)
 
     # ------------------------------------------------------- сервер --------
@@ -861,47 +862,16 @@ class AIImportTab(ttk.Frame):
 
     # ------------------------------------------------------- общее ---------
     def set_busy(self, v):
-        self.busy = v
-        st = "disabled" if v else "normal"
-        for b in self._btns:
-            try:
-                b.configure(state=st)
-            except Exception:
-                pass
-        if v:
-            self.prog.start(12)
-        else:
-            self.prog.stop()
+        uicommon.set_busy(self, v, tuple(self._btns), self.prog)
+        if not v:
             running = self.server.alive()
             self.b_start.configure(state="disabled" if running else "normal")
             self.b_stop.configure(state="normal" if running else "disabled")
 
     def say(self, text):
-        self.log.insert("end", str(text).rstrip() + "\n")
-        self.log.see("end")
+        uicommon.say(self.log, text)
         if len(self.log.get("1.0", "end")) > 60000:
             self.log.delete("1.0", "20.0")
-
-    def _log_key(self, ev):
-        if ev.state & 0x4:
-            w = ev.widget
-            if ev.keycode == 65:
-                w.tag_add("sel", "1.0", "end-1c")
-                return "break"
-            if ev.keycode in (67, 45):
-                try:
-                    sel = w.get("sel.first", "sel.last")
-                    w.clipboard_clear()
-                    w.clipboard_append(sel)
-                except Exception:
-                    pass
-                return "break"
-            return "break"
-        if ev.keysym in ("Up", "Down", "Left", "Right", "Home", "End",
-                         "Prior", "Next", "Shift_L", "Shift_R",
-                         "Control_L", "Control_R", "Caps_Lock"):
-            return None
-        return "break"
 
     def poll(self):
         try:

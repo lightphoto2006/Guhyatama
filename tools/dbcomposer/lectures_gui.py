@@ -24,6 +24,8 @@ import threading
 import tkinter as tk
 from tkinter import filedialog, messagebox, ttk
 
+import uicommon
+
 HERE = os.path.dirname(os.path.abspath(__file__))
 LECTURES_DIR = os.path.join(os.path.dirname(HERE), "lectures")
 if LECTURES_DIR not in sys.path:
@@ -480,5 +482,4 @@ class LecturesTab(ttk.Frame):
         self.after(150, self.poll)
 
     def say(self, text):
-        self.log.insert("end", text + "\n")
-        self.log.see("end")
+        uicommon.say(self.log, text)

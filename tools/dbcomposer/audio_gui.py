@@ -19,6 +19,7 @@ import tkinter as tk
 from tkinter import filedialog, messagebox, ttk
 
 import dbcommon
+import uicommon
 import recompose
 
 HERE = os.path.dirname(os.path.abspath(__file__))
@@ -140,7 +141,7 @@ class AudioTab(ttk.Frame):
 
         self.log = tk.Text(self, height=10, wrap="word")
         self.log.pack(fill="both", expand=True, padx=6, pady=(0, 6))
-        self.log.bind("<Key>", self._log_key)
+        self.log.bind("<Key>", uicommon.log_key)
         self.after(150, self.poll)
 
     # ------------------------------- helpers ---
@@ -188,29 +189,7 @@ class AudioTab(ttk.Frame):
         pass
 
     def say(self, text):
-        self.log.insert("end", text + "\n")
-        self.log.see("end")
-
-    def _log_key(self, ev):
-        if ev.state & 0x4:  # Ctrl
-            w = ev.widget
-            if ev.keycode == 65:
-                w.tag_add("sel", "1.0", "end-1c")
-                return "break"
-            if ev.keycode in (67, 45):
-                try:
-                    sel = w.get("sel.first", "sel.last")
-                    w.clipboard_clear()
-                    w.clipboard_append(sel)
-                except Exception:
-                    pass
-                return "break"
-            return "break"
-        if ev.keysym in ("Up", "Down", "Left", "Right", "Home", "End",
-                         "Prior", "Next", "Shift_L", "Shift_R",
-                         "Control_L", "Control_R", "Caps_Lock"):
-            return None
-        return "break"
+        uicommon.say(self.log, text)
 
     def poll(self):
         try:
@@ -232,10 +211,7 @@ class AudioTab(ttk.Frame):
             pass
 
     def set_busy(self, v):
-        self.busy = v
-        st = "disabled" if v else "normal"
-        for w in (self.b_check, self.b_pack, self.b_recode):
-            w.configure(state=st)
+        uicommon.set_busy(self, v, (self.b_check, self.b_pack, self.b_recode), self.prog)
         self.b_stop.configure(state="normal" if v else "disabled")
 
     def run_bg(self, fn, *args):

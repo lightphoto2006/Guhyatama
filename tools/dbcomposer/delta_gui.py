@@ -12,6 +12,7 @@ import tkinter as tk
 from tkinter import filedialog, messagebox, ttk
 
 import dbcommon
+import uicommon
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 PY = sys.executable
@@ -49,7 +50,7 @@ class DeltaTab(ttk.Frame):
         self.prog.pack(side="left", padx=(0, 6))
         self.log = tk.Text(logf, height=6, wrap="word")
         self.log.pack(side="left", fill="both", expand=True)
-        self.log.bind("<Key>", self._log_key)
+        self.log.bind("<Key>", uicommon.log_key)
 
     def _build_delta_db_tab(self, nb):
         t = ttk.Frame(nb, padding=6)
@@ -180,39 +181,10 @@ class DeltaTab(ttk.Frame):
             var.set(d)
 
     def set_busy(self, v):
-        self.busy = v
-        state = "disabled" if v else "normal"
-        for b in (self.b_delta, self.b_catalog, self.b_apk_delta):
-            b.configure(state=state)
-        if v:
-            self.prog.start(12)
-        else:
-            self.prog.stop()
+        uicommon.set_busy(self, v, (self.b_delta, self.b_catalog, self.b_apk_delta), self.prog)
 
     def say(self, text):
-        self.log.insert("end", str(text).rstrip() + "\n")
-        self.log.see("end")
-
-    def _log_key(self, ev):
-        if ev.state & 0x4:
-            w = ev.widget
-            if ev.keycode == 65:
-                w.tag_add("sel", "1.0", "end-1c")
-                return "break"
-            if ev.keycode in (67, 45):
-                try:
-                    sel = w.get("sel.first", "sel.last")
-                    w.clipboard_clear()
-                    w.clipboard_append(sel)
-                except Exception:
-                    pass
-                return "break"
-            return "break"
-        if ev.keysym in ("Up", "Down", "Left", "Right", "Home", "End",
-                         "Prior", "Next", "Shift_L", "Shift_R",
-                         "Control_L", "Control_R", "Caps_Lock"):
-            return None
-        return "break"
+        uicommon.say(self.log, text)
 
     def poll(self):
         try:
