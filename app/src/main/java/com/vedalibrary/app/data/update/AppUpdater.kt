@@ -8,6 +8,8 @@ import android.os.Build
 import android.os.Environment
 import android.provider.Settings
 import androidx.core.content.FileProvider
+import android.util.Base64
+import android.util.Log
 import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
@@ -26,6 +28,10 @@ class AppUpdater @Inject constructor(
     private val downloader: Downloader,
     private val prefs: UpdatePrefs
 ) {
+    companion object {
+        @Volatile var lastCatalogError: String? = null
+    }
+
     /** Текущие (имя, код) установленного APK */
     fun currentVersion(): Pair<String, Long> {
         return try {
@@ -41,18 +47,55 @@ class AppUpdater @Inject constructor(
         } catch (_: Exception) { "?" to 0L }
     }
 
-    /** Каталог с сервера (null = сеть/разбор не удались, молча). */
+    /** Каталог с сервера (null = сеть/разбор не удались, причина в lastCatalogError). */
     suspend fun fetchCatalog(): JSONObject? = withContext(Dispatchers.IO) {
         var conn: HttpURLConnection? = null
+        var firstError: String? = null
+
+        // --- 1. Raw-запрос ---
         try {
             conn = (URL(CATALOG_URL).openConnection() as HttpURLConnection).apply {
                 connectTimeout = 15000
                 readTimeout = 15000
             }
-            if (conn.responseCode != 200) return@withContext null
-            JSONObject(conn.inputStream.bufferedReader().readText())
-        } catch (_: Exception) { null }
-        finally { try { conn?.disconnect() } catch (_: Exception) { } }
+            if (conn.responseCode == 200) {
+                lastCatalogError = null
+                return@withContext JSONObject(conn.inputStream.bufferedReader().readText())
+            }
+        } catch (e: Exception) {
+            if (firstError == null) {
+                firstError = "${e.javaClass.simpleName}: ${e.message}"
+                Log.e("Updater", "catalog fetch failed (raw)", e)
+            }
+        } finally { try { conn?.disconnect() } catch (_: Exception) { } }
+
+        // --- 2. API-запрос (contents) ---
+        try {
+            conn = (URL(CATALOG_URL_API).openConnection() as HttpURLConnection).apply {
+                connectTimeout = 15000
+                readTimeout = 15000
+                setRequestProperty("Accept", "application/vnd.github+json")
+            }
+            if (conn.responseCode == 200) {
+                val json = JSONObject(conn.inputStream.bufferedReader().readText())
+                val b64 = json.optString("content", "").replace("\n", "")
+                val bytes = Base64.decode(b64, Base64.DEFAULT)
+                lastCatalogError = null
+                return@withContext JSONObject(String(bytes, Charsets.UTF_8))
+            }
+        } catch (e: Exception) {
+            val apiErr = "${e.javaClass.simpleName}: ${e.message}"
+            if (firstError == null) {
+                firstError = apiErr
+                Log.e("Updater", "catalog fetch failed (api)", e)
+            }
+        } finally { try { conn?.disconnect() } catch (_: Exception) { } }
+
+        // --- Оба упали ---
+        val rawMsg = firstError ?: "raw: неизвестная ошибка"
+        val combined = "raw: $rawMsg"
+        lastCatalogError = combined.take(200)
+        null
     }
 
     /** Папка скачанных APK (та же, куда качает download) */

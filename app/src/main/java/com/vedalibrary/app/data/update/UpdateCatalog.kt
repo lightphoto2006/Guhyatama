@@ -7,6 +7,10 @@ import org.json.JSONObject
 const val CATALOG_URL =
     "https://raw.githubusercontent.com/lightphoto2006/Guhyatama/main/catalog.json"
 
+/** Запасной источник того же файла через API GitHub (если raw-хост недоступен). */
+const val CATALOG_URL_API =
+    "https://api.github.com/repos/lightphoto2006/Guhyatama/contents/catalog.json?ref=main"
+
 /** Описание APK из каталога. books/audio допишутся позже тем же стилем.
  *  Токен приватных файлов — local.properties → BuildConfig.GITHUB_FILES_TOKEN (не в исходниках). */
 data class ApkInfo(

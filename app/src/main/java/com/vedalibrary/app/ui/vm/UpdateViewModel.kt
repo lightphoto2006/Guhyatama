@@ -104,11 +104,11 @@ class UpdateViewModel @Inject constructor(
         updater.cleanupInstalledApks()
         _state.value = State.Checking
         val cat = try { updater.fetchCatalog() } catch (e: Exception) {
-            _state.value = State.Error(e.message ?: "Нет связи с сервером")
+            _state.value = State.Error("Нет связи: ${e.javaClass.simpleName}: ${e.message ?: "причина неизвестна"}")
             return@launch
         }
         if (cat == null) {
-            _state.value = State.Error("Нет связи с сервером")
+            _state.value = State.Error("Нет связи: " + (AppUpdater.lastCatalogError ?: "причина неизвестна"))
             return@launch
         }
         updater.markChecked()
@@ -129,7 +129,7 @@ class UpdateViewModel @Inject constructor(
         try {
             val cat = updater.fetchCatalog()
             if (cat == null) {
-                _booksMsg.value = "Нет связи с сервером"
+                _booksMsg.value = "Нет связи: " + (AppUpdater.lastCatalogError ?: "причина неизвестна")
                 return@launch
             }
             updater.markChecked()
@@ -138,7 +138,7 @@ class UpdateViewModel @Inject constructor(
             val n = booksPending
             _booksMsg.value = if (n == 0) "Всё последнее" else "К обновлению: $n"
         } catch (e: Exception) {
-            _booksMsg.value = "Ошибка: ${e.message}"
+            _booksMsg.value = "Ошибка: ${e.javaClass.simpleName}: ${e.message}"
         } finally {
             _booksBusy.value = false
         }
