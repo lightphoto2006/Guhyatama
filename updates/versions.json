@@ -59,9 +59,9 @@
       "title": "Книги ачарий (рус)",
       "lang": "rus",
       "file": "F:\\AI\\Development\\Book DB\\Acharyi_rus_collection.db",
-      "version": 7,
-      "url": "https://api.github.com/repos/lightphoto2006/Guhyatama-files/releases/assets/675276757",
-      "notes": "Collection: BG-SS (Shridhara Swami trans.), BS, GC (updated).",
+      "version": 8,
+      "url": "https://api.github.com/repos/lightphoto2006/Guhyatama-files/releases/assets/675283123",
+      "notes": "Сборник: Бхагавад-гита (пер. Шридхары Свами), Брахма-самхита, Гопала-чампу. Исправление: предыдущая публикация v7 содержала ошибочную книгу.",
       "auth": "github"
     }
   },
