@@ -63,11 +63,16 @@
     "Acharyi_rus": {
       "title": "Книги ачарий (рус)",
       "lang": "rus",
-      "file": "Acharyi_rus.db",
-      "version": 6,
-      "url": "https://api.github.com/repos/lightphoto2006/Guhyatama-files/releases/assets/607505825",
-      "notes": "Транслит: ш вместо щ (кршна, шри, лакшми).",
-      "auth": "github"
+      "file": "F:\\AI\\Development\\Book DB\\Шри Чайтанья-Бхагавата.db",
+      "version": 7,
+      "url": "https://api.github.com/repos/lightphoto2006/Guhyatama-files/releases/assets/674905730",
+      "notes": "Добавлена книга Чайтанья-Бхагавата Ади-лилла",
+      "auth": "github",
+      "delta": {
+        "from": 6,
+        "file": "F:\\AI\\Development\\Book DB\\CHB delta.db",
+        "url": "https://api.github.com/repos/lightphoto2006/Guhyatama-files/releases/assets/674905762"
+      }
     }
   },
   "audio": {

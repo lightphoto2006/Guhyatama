@@ -5,9 +5,18 @@
     "versionName": "1.3.10",
     "url": "https://github.com/lightphoto2006/Guhyatama/releases/download/v1.3.10/Guhyatama-1.3.10.apk",
     "notes": "Что нового:`n- Исправлено: на старых Android (7.0/7.1) не скачивались книги и обновления — в системе нет корневого сертификата ISRG Root X1. Теперь он встроен в приложение, плюс разрешено доверие пользовательским сертификатам.`n- Скачивание идёт собственным загрузчиком: видны мегабайты и проценты, при сбое показывается конкретная причина.`n- Системный менеджер загрузок оставлен только как резервный путь.",
+    "delta": {
+      "from": 57,
+      "url": "https://github.com/lightphoto2006/Guhyatama/releases/download/v1.3.10/Guhyatama-delta-57-to-58.bsdiff",
+      "file": "F:\\\\AI\\\\Development\\\\Guhyatama\\\\releases\\\\Guhyatama-delta-57-to-58.bsdiff"
+    },
     "file": "F:\\\\AI\\\\Development\\\\Guhyatama\\\\releases\\\\Guhyatama-1.3.10.apk",
     "size": 6056878,
-    "sha256": "a590c4cdd2f4a8c4e6ef29e7df75ea08bdeb144420085b35b246dac653c57bae"
+    "sha256": "a590c4cdd2f4a8c4e6ef29e7df75ea08bdeb144420085b35b246dac653c57bae",
+    "deltaFrom": 57,
+    "deltaUrl": "https://github.com/lightphoto2006/Guhyatama/releases/download/v1.3.10/Guhyatama-delta-57-to-58.bsdiff",
+    "deltaSize": 6080166,
+    "deltaSha": "f79536b0acd3f516a50a4ddf4fcdc8ba8b223960741f8279b015f744542d2c56"
   },
   "books": [
     {
@@ -71,13 +80,25 @@
     {
       "key": "Acharyi_rus",
       "title": "Книги ачарий (рус)",
-      "version": 6,
-      "url": "https://api.github.com/repos/lightphoto2006/Guhyatama-files/releases/assets/607505825",
-      "notes": "Транслит: ш вместо щ (кршна, шри, лакшми).",
+      "version": 7,
+      "url": "https://api.github.com/repos/lightphoto2006/Guhyatama-files/releases/assets/674905730",
+      "notes": "Добавлена книга Чайтанья-Бхагавата Ади-лилла",
       "lang": "rus",
       "auth": "github",
-      "size": 2969600,
-      "sha256": "c4ea0642d4b8c79d98026707e84a0e1d262e5fdcbae367e15f235df80aeb9dad"
+      "deltaFrom": 6,
+      "deltaUrl": "https://api.github.com/repos/lightphoto2006/Guhyatama-files/releases/assets/674905762",
+      "deltaSize": 716800,
+      "deltaSha": "5d36d7e16eb33682927029a7c0dca237d4a351001883be6830443b81195606e6",
+      "size": 733184,
+      "sha256": "cc00702c31ae30d49e26ac7ab75d17ef74ae43b0230d4ad861934004e0376b1a",
+      "fp": [
+        {
+          "t": "ltrs",
+          "g": 1,
+          "v": 15,
+          "vg": 15
+        }
+      ]
     }
   ],
   "audio": [
