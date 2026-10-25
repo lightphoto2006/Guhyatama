@@ -7,7 +7,7 @@
   ВНИМАНИЕ: Gradle 8.7 может не поддерживать JDK 25 — предыдущие сборки падали на конфигурации за 2-3 сек с сообщением «25.0.2». Решения: JDK 17/21 через org.gradle.java.home в gradle.properties, или обновить Gradle/AGP.
 - Android SDK: `C:\Users\light\AppData\Local\Android\Sdk` (прописан в local.properties: sdk.dir).
 - local.properties содержит githubFilesToken — НЕ коммитить (файл в .gitignore).
-- Версии: Gradle 8.7 (wrapper), AGP 8.6.0, Kotlin 2.0.21, KSP 2.0.21-1.0.25.
+- Версии: Gradle 8.7, AGP 8.6.0, Kotlin 2.0.21, KSP 2.0.21-1.0.25, приложение 1.3.15 (vc63), каталог vc63, сборник Acharyi_rus v9.
 - gradle.properties: org.gradle.jvmargs=-Xmx4g -Dfile.encoding=UTF-8.
 - Пример сборки (PowerShell):
   cd F:\AI\Development\Guhyatama
@@ -37,6 +37,9 @@
 - Первый релиз с этой дельта-системой: все качают полный APK. Дельты начнут работать со второго релиза — для тех, кто установил первый.
 - Хранить старые подписные APK байт-в-байт — от них строятся патчи.
 - каталог `catalog.json` публикуется ассетом техрелиза с тегом `catalog` (prerelease), приложение читает `https://github.com/lightphoto2006/Guhyatama/releases/download/catalog/catalog.json`; raw/API — только fallback; CDN-кэш на обновления больше не влияет; ветка `master` удалена, единственная — `main`.
+
+## Решения
+- Журнал сессии 2026-10-25: [docs/SESSION_2026-10-25.md](docs/SESSION_2026-10-25.md)
 
 ## TODO
 1. Проверить компиляцию :app:compileDebugKotlin из нового ASCII-пути; решить проблему JBR/Gradle (см. Окружение).
