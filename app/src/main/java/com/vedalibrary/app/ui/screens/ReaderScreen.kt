@@ -169,11 +169,12 @@ fun ReaderScreen(
                     )
                 }
             } else {
+                val prose = com.vedalibrary.app.ui.components.VerseShare.isProseBook(book?.id)
                 // Главы открытого раздела (назад — тап по названию книги в шапке)
                 items(shownChapters, key = { it.id }) { ch ->
                     SectionCard(
                         title = ch.title,
-                        subtitle = if (eng) "Verses: ${counts[ch.id] ?: 0}" else "Стихов: ${counts[ch.id] ?: 0}",
+                        subtitle = if (prose) null else if (eng) "Verses: ${counts[ch.id] ?: 0}" else "Стихов: ${counts[ch.id] ?: 0}",
                         // Глава из одной лекции (Введение) — сразу в неё, без списка
                         onClick = { vm.openChapterOrVerse(ch.id, onVerse, onChapter) },
                         modifier = tileMod()

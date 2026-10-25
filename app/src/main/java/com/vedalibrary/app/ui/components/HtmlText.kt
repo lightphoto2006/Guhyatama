@@ -1,5 +1,6 @@
 package com.vedalibrary.app.ui.components
 
+import android.os.Build
 import android.view.ActionMode
 import android.view.Gravity
 import android.view.Menu
@@ -412,7 +413,7 @@ fun HtmlText(
             // justification местами не применяется. Остальным секциям стратегию не трогаем.
             val manual = justify && !center && colorOs
             (tv as? JustifyTextView)?.let { it.justifyManual = manual; it.eraseArgb = bgArgb }
-            if (justify && !center) {
+            if (justify && !center && Build.VERSION.SDK_INT >= 26) {
                 if (colorOs) {
                     // Стоковая INTER_WORD на ColorOS переполняла строки — правый край
                     // обрезался (патч прошивки, react-native#58652). Своё растяжение
@@ -427,7 +428,7 @@ fun HtmlText(
                     tv.breakStrategy = android.graphics.text.LineBreaker.BREAK_STRATEGY_HIGH_QUALITY
                     tv.justificationMode = android.graphics.text.LineBreaker.JUSTIFICATION_MODE_INTER_WORD
                 }
-            } else {
+            } else if (Build.VERSION.SDK_INT >= 26) {
                 tv.justificationMode = android.graphics.text.LineBreaker.JUSTIFICATION_MODE_NONE
             }
             if (hasRefs) tv.setLinkTextColor(linkColor.toArgb())
@@ -489,12 +490,12 @@ fun JustifiedPreviewText(
             val manual = justify && !center
             tv.justifyManual = manual
             tv.eraseArgb = bgArgb
-            if (justify && !center) {
+            if (justify && !center && Build.VERSION.SDK_INT >= 26) {
                 // Стоковую оправку на ColorOS держим выключенной: место ей —
                 // ручной проход; SIMPLE — жадно, без BALANCED-расползания
                 tv.breakStrategy = android.graphics.text.LineBreaker.BREAK_STRATEGY_SIMPLE
                 tv.justificationMode = android.graphics.text.LineBreaker.JUSTIFICATION_MODE_NONE
-            } else {
+            } else if (Build.VERSION.SDK_INT >= 26) {
                 tv.justificationMode = android.graphics.text.LineBreaker.JUSTIFICATION_MODE_NONE
             }
         }
