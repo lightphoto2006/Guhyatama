@@ -364,6 +364,50 @@ def _db_composition_changed(old_file, new_file):
     return False
 
 
+def _get_textnums_coords(db_path):
+    """{(book_type): set of (song, ch_no, txt_no)} из таблицы textnums."""
+    con = sqlite3.connect("file:%s?mode=ro" % db_path, uri=True)
+    try:
+        rows = con.execute(
+            "SELECT t.song, t.ch_no, t.txt_no, b.type "
+            "FROM textnums t JOIN books b ON b._id = t.book_id").fetchall()
+        result = {}
+        for song, ch_no, txt_no, btype in rows:
+            bt = (btype or "").upper()
+            result.setdefault(bt, set()).add((song, ch_no, txt_no))
+        return result
+    except sqlite3.OperationalError:
+        return {}
+    finally:
+        con.close()
+
+
+def delta_unsafe(old_db, new_db):
+    """True, если дельту публиковать нельзя: изменились координаты стихов
+    (song, ch_no, txt_no) у книг, присутствующих в обеих базах.
+
+    Возвращает (True, reason) или (False, None).
+    """
+    old_coords = _get_textnums_coords(old_db)
+    new_coords = _get_textnums_coords(new_db)
+
+    common_types = set(old_coords.keys()) & set(new_coords.keys())
+    for bt in common_types:
+        old_set = old_coords[bt]
+        new_set = new_coords[bt]
+        if old_set != new_set:
+            # old ⊄ new — координаты удалены/перемещены (например txt_no 1→0)
+            removed = old_set - new_set
+            if removed:
+                return True, "координаты (song,ch_no,txt_no) удалены для типа %s: %s" % (bt, list(removed)[:5])
+            # new ⊄ old — добавлены новые координаты
+            added = new_set - old_set
+            if added:
+                return True, "добавлены новые координаты для типа %s: %s" % (bt, list(added)[:5])
+
+    return False, None
+
+
 def _sha256(path):
     h = hashlib.sha256()
     with open(path, "rb") as f:
@@ -530,8 +574,11 @@ def publish_book(token, key, new_file, notes, delta_file="", delta_from=0,
         if prev_version == 0:
             log("первая публикация — дельта не нужна")
         elif old_file and os.path.isfile(old_file):
-            # Сравниваем состав книг и обложки old vs new
-            if _db_composition_changed(old_file, new_file_abs):
+            # Сравниваем координаты стихов
+            unsafe, reason = delta_unsafe(old_file, new_file_abs)
+            if unsafe:
+                log("координаты стихов изменились — %s — публикую полный файл" % reason)
+            elif _db_composition_changed(old_file, new_file_abs):
                 log("состав книг/обложки изменились — публикую полный файл")
             elif dbcommon.delta_is_useless(os.path.abspath(delta_file), new_file_abs):
                 log("дельта бесполезна — публикую без неё")

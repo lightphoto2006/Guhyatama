@@ -1626,6 +1626,64 @@ def test_db_composition_changed_addition():
 
 
 # ======================================================================
+# l) delta_unsafe — координаты стихов
+# ======================================================================
+def test_delta_unsafe():
+    print("=== l) delta_unsafe ===")
+    tmpdir = tempfile.mkdtemp(prefix="deltaunsafe_")
+
+    def _make_db(path, books, textnums_rows=None):
+        """books: [(book_id, type)]. textnums_rows: [(song, ch_no, txt_no)]."""
+        con = sqlite3.connect(path)
+        try:
+            con.execute("CREATE TABLE books(_id INTEGER PRIMARY KEY, sort INTEGER, "
+                        "author TEXT, title TEXT, desc TEXT, type TEXT, "
+                        "levels INTEGER, hasSanskrit INTEGER, hasPurport INTEGER, "
+                        "hasColorStructure INTEGER, isSongBook INTEGER, "
+                        "text_size INTEGER, purport_size INTEGER, "
+                        "text_begin_raw TEXT, text_end_raw TEXT, "
+                        "web_abbrev TEXT, compare_code TEXT, "
+                        "issue TEXT, isSimple INTEGER)")
+            for bid, btype in books:
+                con.execute("INSERT INTO books(_id,sort,type) VALUES (?,?,?)",
+                            (bid, bid, btype))
+            con.execute("CREATE TABLE textnums(_id INTEGER PRIMARY KEY, book_id INTEGER, "
+                        "song TEXT, ch_no TEXT, txt_no TEXT, preview TEXT)")
+            if textnums_rows:
+                for i, (song, ch_no, txt_no) in enumerate(textnums_rows, 1):
+                    con.execute("INSERT INTO textnums(_id,book_id,song,ch_no,txt_no,preview) "
+                                "VALUES (?,?,?,?,?,?)",
+                                (i, 1, song, ch_no, txt_no, "preview_%s" % i))
+            con.commit()
+        finally:
+            con.close()
+
+    # (а) одинаковые координаты → False
+    old_a = os.path.join(tmpdir, "old_a.db")
+    new_a = os.path.join(tmpdir, "new_a.db")
+    _make_db(old_a, [(1, "SCC")], textnums_rows=[("1", "3", "1"), ("1", "4", "1")])
+    _make_db(new_a, [(1, "SCC")], textnums_rows=[("1", "3", "1"), ("1", "4", "1")])
+    safe_a, reason_a = publish_engine.delta_unsafe(old_a, new_a)
+    check(safe_a is False, "(а) одинаковые координаты → False (reason=%r)" % reason_a)
+
+    # (б) new содержит "0" вместо "1" (txt_no changed) → True
+    old_b = os.path.join(tmpdir, "old_b.db")
+    new_b = os.path.join(tmpdir, "new_b.db")
+    _make_db(old_b, [(1, "SCC")], textnums_rows=[("1", "3", "1"), ("1", "4", "1")])
+    _make_db(new_b, [(1, "SCC")], textnums_rows=[("1", "3", "0"), ("1", "4", "1")])
+    safe_b, reason_b = publish_engine.delta_unsafe(old_b, new_b)
+    check(safe_b is True, "(б) txt_no 1→0 → True (reason=%r)" % reason_b)
+
+    # (в) new добавляет координату → True
+    old_c = os.path.join(tmpdir, "old_c.db")
+    new_c = os.path.join(tmpdir, "new_c.db")
+    _make_db(old_c, [(1, "SCC")], textnums_rows=[("1", "3", "1")])
+    _make_db(new_c, [(1, "SCC")], textnums_rows=[("1", "3", "1"), ("1", "5", "1")])
+    safe_c, reason_c = publish_engine.delta_unsafe(old_c, new_c)
+    check(safe_c is True, "(в) добавление координаты → True (reason=%r)" % reason_c)
+
+
+# ======================================================================
 # main
 # ======================================================================
 def main():
@@ -1642,6 +1700,7 @@ def main():
     test_books_count()
     test_merge_dbs()
     test_db_composition_changed_addition()
+    test_delta_unsafe()
 
     print("")
     print("Итого проверок: %d, провалов: %d" % (checks, fails))
