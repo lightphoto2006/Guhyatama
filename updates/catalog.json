@@ -71,31 +71,23 @@
     {
       "key": "Acharyi_rus",
       "title": "Книги ачарий (рус)",
-      "version": 9,
-      "url": "https://api.github.com/repos/lightphoto2006/Guhyatama-files/releases/assets/675335661",
-      "notes": "Сборник: Бхагавад-гита (пер. Шридхары Свами), Брахма-самхита, Гопала-чампу. Стабильные id книг.",
+      "version": 10,
+      "url": "https://api.github.com/repos/lightphoto2006/Guhyatama-files/releases/assets/675797754",
+      "notes": "Шри Чайтанья-Бхагавата(ади-канда)",
       "lang": "rus",
       "auth": "github",
-      "size": 6287360,
-      "sha256": "cba812b5f9b3deed4dd927079a109a53b28edcfcad2a04d7e9cc995972cf4842",
+      "deltaFrom": 9,
+      "deltaUrl": "https://api.github.com/repos/lightphoto2006/Guhyatama-files/releases/assets/675798797",
+      "deltaSize": 720896,
+      "deltaSha": "e962111d941dfa4c73536aabf7940f71929c670d110d3e09fe015cda3dfaf214",
+      "size": 1327104,
+      "sha256": "9089c6af0c347be7a7979b9df82343b5f833d9a4d55cd652885f213dcd803830",
       "fp": [
         {
-          "t": "gc",
+          "t": "chb",
           "g": 1,
-          "v": 743,
-          "vg": 743
-        },
-        {
-          "t": "bg-ss",
-          "g": 2,
-          "v": 649,
-          "vg": 649
-        },
-        {
-          "t": "bs",
-          "g": 3,
-          "v": 68,
-          "vg": 68
+          "v": 17,
+          "vg": 17
         }
       ]
     }

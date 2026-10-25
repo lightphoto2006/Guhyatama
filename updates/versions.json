@@ -58,11 +58,16 @@
     "Acharyi_rus": {
       "title": "Книги ачарий (рус)",
       "lang": "rus",
-      "file": "F:\\AI\\Development\\Book DB\\Acharyi_rus_collection_v9.db",
-      "version": 9,
-      "url": "https://api.github.com/repos/lightphoto2006/Guhyatama-files/releases/assets/675335661",
-      "notes": "Сборник: Бхагавад-гита (пер. Шридхары Свами), Брахма-самхита, Гопала-чампу. Стабильные id книг.",
-      "auth": "github"
+      "file": "F:\\AI\\Development\\Book DB\\Шри Чайтанья-Бхагавата.db",
+      "version": 10,
+      "url": "https://api.github.com/repos/lightphoto2006/Guhyatama-files/releases/assets/675797754",
+      "notes": "Шри Чайтанья-Бхагавата(ади-канда)",
+      "auth": "github",
+      "delta": {
+        "from": 9,
+        "file": "F:\\AI\\Development\\Book DB\\CHB delta.db",
+        "url": "https://api.github.com/repos/lightphoto2006/Guhyatama-files/releases/assets/675798797"
+      }
     }
   },
   "audio": {
