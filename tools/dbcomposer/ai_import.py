@@ -621,6 +621,17 @@ def write_source_db(struct, meta, out_path):
             "VALUES (?,?,?,?,?,?)",
             (1, meta.get("author", ""), meta.get("title", ""), meta.get("type", ""),
              0, 1 if meta.get("with_purport") else 0))
+        # обложка
+        cbytes = None
+        cf = meta.get("cover_file", "")
+        if cf and os.path.isfile(cf):
+            with open(cf, "rb") as f:
+                cbytes = f.read()
+            ciid = "COVER_SRC"
+            con.execute("INSERT OR REPLACE INTO images(image_id,content) VALUES (?,?)",
+                        (ciid, cbytes))
+            con.execute("INSERT INTO covers(book_id,image_id) VALUES (?,?)", (1, ciid))
+            print("обложка: %s, %d байт" % (ciid, len(cbytes)))
         songs_done = set()
         for song, name in sorted(struct.get("song_names", {}).items(), key=lambda kv: int(kv[0])):
             if song not in songs_done:
@@ -1289,8 +1300,13 @@ class AIImportTab(ttk.Frame):
         ttk.Label(book, text="Автор:").grid(row=3, column=0, sticky="w")
         self.v_bauthor = tk.StringVar(value=self.cfg.get("t2_author", ""))
         ttk.Entry(book, textvariable=self.v_bauthor, width=26).grid(row=3, column=1, sticky="ew")
+        ttk.Label(book, text="Обложка:").grid(row=4, column=0, sticky="w")
+        self.v_bcover = tk.StringVar(value=self.cfg.get("t2_cover", ""))
+        ttk.Entry(book, textvariable=self.v_bcover, width=26).grid(row=4, column=1, sticky="ew")
+        ttk.Button(book, text="…", width=2,
+                   command=lambda: self._pick_cover()).grid(row=4, column=2, padx=2)
         self.lbl_cap = ttk.Label(book, text="", foreground="#b58900")
-        self.lbl_cap.grid(row=4, column=0, columnspan=2, sticky="w")
+        self.lbl_cap.grid(row=5, column=0, columnspan=2, sticky="w")
         self.v_btype.trace_add("write", lambda *a: self._cap_hint())
         self._cap_hint()
         book.columnconfigure(1, weight=1)
@@ -1393,6 +1409,13 @@ class AIImportTab(ttk.Frame):
         return ("SCC SSB SBG SBRS GC LTRS LBG LSB TLKS BG SB CC TLC NOD NOI BS ISO KB "
                 "TQK GT").split()
 
+    def _pick_cover(self):
+        p = filedialog.askopenfilename(
+            title="Выбрать файл обложки", parent=self,
+            filetypes=[("Картинки", "*.jpg *.jpeg *.png"), ("Все", "*.*")])
+        if p:
+            self.v_bcover.set(p)
+
     def _cap_hint(self):
         t = (self.v_btype.get() or "").strip().upper().split("-")[0]
         if t in BIG_TYPES:
@@ -1426,7 +1449,7 @@ class AIImportTab(ttk.Frame):
         o = self._split_opts()
         llama_client.save_cfg({
             "t2_title": self.v_btitle.get(), "t2_type": self.v_btype.get(),
-            "t2_author": self.v_bauthor.get(),
+            "t2_author": self.v_bauthor.get(), "t2_cover": self.v_bcover.get(),
             "t2_chmode": o["ch_mode"], "t2_mdsec": o["md_section"],
             "t2_mdch": o["md_chapter"], "t2_chre": o["chapter_re"],
             "t2_intro": o["prelude_intro"], "t2_vmode": o["v_mode"],
@@ -1629,7 +1652,8 @@ class AIImportTab(ttk.Frame):
             return
         meta = {"title": self.v_btitle.get().strip(),
                 "author": self.v_bauthor.get().strip(),
-                "type": nt}
+                "type": nt,
+                "cover_file": self.v_bcover.get().strip()}
         try:
             stat = write_source_db(self._struct, meta, out)
         except Exception as e:

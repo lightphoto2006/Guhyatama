@@ -1119,6 +1119,25 @@ def _build_books(dst, spec, src_cons, made, drop_err, drop_empty, dedupe,
                     report.append("  обложка %s: %s" % (btype, ciid))
                 except Exception as e:
                     report.append("  обложка %s: ОШИБКА %s" % (btype, e))
+            else:
+                # fallback: берём обложку из исходной базы
+                try:
+                    row = con.execute(
+                        "SELECT image_id FROM covers WHERE book_id=?",
+                        (old_bid,)).fetchone()
+                    if row and row[0]:
+                        src_iid = row[0]
+                        blob = con.execute(
+                            "SELECT content FROM images WHERE image_id=?",
+                            (src_iid,)).fetchone()
+                        if blob and blob[0]:
+                            ciid = 'COVER_SRC_%s' % src_iid
+                            dst.execute("INSERT OR IGNORE INTO images(image_id,content) VALUES (?,?)",
+                                        (ciid, blob[0]))
+                            cover_recs.append((nb, ciid))
+                            report.append("  обложка %s: из источника (%s)" % (btype, ciid))
+                except Exception:
+                    pass
 
             report.append("Книга '%s' [%s]: стихов %d (song-починено: %d; мусор: err=%d empty=%d dup=%d excl=%d gal=%d; картинок выкинуто: %d%s%s)" % (
                 (title or '')[:45], btype, kept, fixed_song, dropped_err, dropped_empty, dropped_dup, dropped_excl, dropped_gal, dropped_img,
