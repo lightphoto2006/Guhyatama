@@ -82,7 +82,14 @@ class App(tk.Tk):
     def __init__(self):
         super().__init__()
         self.title(APP_TITLE)
-        self.geometry("1040x720")
+        # восстановление геометрии из конфига (иначе — дефолт)
+        cfg = load_cfg()
+        try:
+            geo = cfg.get("window_geometry", "")
+            if re.fullmatch(r"\d+x\d+\+-?\d+\+-?\d+", str(geo)):
+                self.geometry(geo)
+        except Exception:
+            pass
         # iid -> dict(file, book_id, title, author, type, chapters, verses, images, junk, checked,
         #            new_title, new_author, new_type)
         self.rows = {}
@@ -184,6 +191,14 @@ class App(tk.Tk):
         self.nb.add(self.tab_delta, text="📦 Дельта/Каталог")
         self.tab_release = release_gui.ReleaseTab(self.nb, self)
         self.nb.add(self.tab_release, text="🚀 Релиз")
+        # восстановление активной вкладки
+        try:
+            idx = cfg.get("active_tab")
+            if isinstance(idx, int) and 0 <= idx < len(self.nb.tabs()):
+                self.nb.select(idx)
+                self.on_tab(None)
+        except Exception:
+            pass
         self.nb.bind("<<NotebookTabChanged>>", self.on_tab)
         self.protocol("WM_DELETE_WINDOW", self.on_close)
 
@@ -202,6 +217,20 @@ class App(tk.Tk):
 
     def on_close(self):
         """Крестик окна: не даём оборвать идущую работу, конфиги сохраняем."""
+        # сохраняем геометрию и активную вкладку (ошибки не мешают закрытию)
+        try:
+            cfg = load_cfg()
+            try:
+                cfg["window_geometry"] = self.geometry()
+            except tk.TclError:
+                pass
+            cfg["active_tab"] = self.nb.index(self.nb.select())
+            save_cfg(cfg)
+        except Exception:
+            try:
+                messagebox.showwarning("Конфиг", "Не удалось сохранить настройки окна")
+            except Exception:
+                pass
         busy = []
         if self.building:
             busy.append("сборка библиотеки")
