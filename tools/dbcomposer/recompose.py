@@ -751,7 +751,9 @@ def build(spec_path, out_path, force=False, cancel=None):
     src_cons = {}
     result = None
     try:
-        src_cons = _build_validate(spec)
+        src_cons, err = _build_validate(spec)
+        if err:
+            return err
         made = _build_schema(dst, src_cons, made, report)
         if _cancelled():
             result = None
@@ -780,15 +782,16 @@ def build(spec_path, out_path, force=False, cancel=None):
 
 def _build_validate(spec):
     """Проверка источников/путей, открытие read-only соединений.
-    Возвращает {source_file: connection}."""
+    Возвращает (src_cons: dict, error: str|None); при отсутствии файла
+    возвращает ({}, "Нет файла-источника: %s"), без исключения."""
     src_cons = {}
     for bspec in spec.get('books', []):
         sf = bspec['file']
         if sf not in src_cons:
             if not os.path.exists(sf):
-                raise ValueError("Нет файла-источника: %s" % sf)
+                return ({}, "Нет файла-источника: %s" % sf)
             src_cons[sf] = connect_ro(sf)
-    return src_cons
+    return (src_cons, None)
 
 
 def _build_schema(dst, src_cons, made, report):
