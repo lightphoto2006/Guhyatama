@@ -1352,11 +1352,16 @@ class AIImportTab(ttk.Frame):
 
     def _t2_llm_bg(self, cfg, title, text, opts):
         try:
-            res = llama_client.chat_json(
-                cfg, structure_messages(title, text),
-                max_tokens=2048, temperature=0.1, timeout=900)
-            heads = (res or {}).get("chapters") or []
-            self.q.put(("log", "LLM: заголовков %d" % len(heads)))
+            # Обёртка: те же параметры, что были в старом одноразовом вызове
+            def _chat_fn(msgs):
+                return llama_client.chat_json(cfg, msgs,
+                                              max_tokens=2048, temperature=0.1, timeout=900)
+
+            # Чанковая детекция глав по всему тексту
+            self.q.put(("log", "LLM: детекция глав чанками…"))
+            res = llm_find_headings_all(_chat_fn, title, text)
+            n = len((res or {}).get("chapters") or [])
+            self.q.put(("log", "LLM: найдено глав %d" % n))
             struct = build_structure(text, opts, llm_result=res)
             self.q.put(("t2_struct", struct, "LLM + правила стихов"))
         except Exception as e:
