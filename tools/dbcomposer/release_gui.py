@@ -716,7 +716,7 @@ class ReleaseTab(ttk.Frame):
         r = run(["commit", "-m", msg, "--"] + files, allow_fail=True)
         if r.returncode != 0:
             say("git commit: %s" % ((r.stderr or r.stdout or "").strip()[:200]))
-        run(["push"])
+        run(["push", "origin", "HEAD:main"])  # клиент читает каталог из main
         say("git: запушено (%s)" % msg)
 
     def _pick(self, var, title, filetypes):
