@@ -9,8 +9,14 @@ import base64
 import json
 import os
 import sqlite3
+import subprocess
 import tempfile
 from urllib.parse import quote
+
+
+def nowin():
+    """Флаг «без окна консоли» для subprocess на Windows."""
+    return getattr(subprocess, "CREATE_NO_WINDOW", 0)
 
 # ------------------------------------------------------------ конфиги / JSON ---
 

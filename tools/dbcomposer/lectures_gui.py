@@ -432,7 +432,8 @@ class LecturesTab(ttk.Frame):
         try:
             dest = "/sdcard/Download/%s" % os.path.basename(out)
             r = subprocess.run([adb, "push", out, dest],
-                               capture_output=True, text=True, timeout=600)
+                               capture_output=True, text=True, timeout=600,
+                               creationflags=dbcommon.nowin())
             log = (r.stdout + "\n" + r.stderr).strip()
             if r.returncode == 0:
                 self.msg_q.put(("info",

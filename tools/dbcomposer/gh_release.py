@@ -18,28 +18,39 @@ import time
 import urllib.error
 import urllib.request
 
+import dbcommon
+
 HERE = os.path.dirname(os.path.abspath(__file__))
 ROOT = os.path.dirname(os.path.dirname(HERE))
 FILES_REPO = "lightphoto2006/Guhyatama-files"
 APP_REPO = "lightphoto2006/Guhyatama"
 
 
+_token_cache = None
+
+
 def get_token():
     """Токен для записи (создание релизов/ассетов).
 
+    Кэшируется в памяти процесса: повторные вызовы не запускают git.
     1) git credential fill (Credential Manager, GCM OAuth gho_…) — токен с repo-scope,
        им же работают git push и релизы приложения;
     2) фолбэк: githubFilesToken из ROOT/local.properties (может быть read-only
        для файлов-репо — тогда создание релиза вернёт 403 с понятным текстом).
     """
+    global _token_cache
+    if _token_cache:
+        return _token_cache
     try:
         inp = "protocol=https\nhost=github.com\n\n".encode()
         out = subprocess.run(["git", "credential", "fill"], input=inp,
-                             capture_output=True).stdout.decode("utf-8", "replace")
+                             capture_output=True,
+                             creationflags=dbcommon.nowin()).stdout.decode("utf-8", "replace")
         for line in out.splitlines():
             if line.startswith("password="):
                 v = line[len("password="):].strip()
                 if v:
+                    _token_cache = v
                     return v
     except Exception:
         pass
@@ -51,8 +62,15 @@ def get_token():
             s = line.strip()
             if s.startswith("githubFilesToken"):
                 v = s.split("=", 1)[1].strip().strip('"')
-                return v or None
+                _token_cache = v or None
+                return _token_cache
     return None
+
+
+def reset_token_cache():
+    """Сброс кэша токена (для тестов / принудительного перечитывания)."""
+    global _token_cache
+    _token_cache = None
 
 
 class GHError(Exception):

@@ -761,7 +761,8 @@ class ReleaseTab(ttk.Frame):
                "--out", CATALOG_JSON]
         say("make_catalog: запуск…")
         p = subprocess.run(cmd, capture_output=True, text=True,
-                           encoding="utf-8", errors="replace", timeout=900)
+                           encoding="utf-8", errors="replace", timeout=900,
+                           creationflags=dbcommon.nowin())
         out = ((p.stdout or "") + (p.stderr or "")).strip()
         if p.returncode != 0:
             raise RuntimeError("make_catalog: код %s\n%s" % (p.returncode, out[-800:]))
@@ -819,7 +820,8 @@ class ReleaseTab(ttk.Frame):
 
         def run(args, allow_fail=False):
             r = subprocess.run(["git"] + args, cwd=ROOT, capture_output=True,
-                               text=True, encoding="utf-8", errors="replace")
+                               text=True, encoding="utf-8", errors="replace",
+                               creationflags=dbcommon.nowin())
             if r.returncode != 0 and not allow_fail:
                 raise RuntimeError("git %s: %s" % (args[0], (r.stderr or r.stdout)[-400:]))
             return r
@@ -878,7 +880,7 @@ class ReleaseTab(ttk.Frame):
             if sys.platform == "win32":
                 os.startfile(path)
             else:
-                subprocess.run(["xdg-open", path])
+                subprocess.run(["xdg-open", path], creationflags=dbcommon.nowin())
 
     def set_busy(self, v):
         uicommon.set_busy(self, v, (self.b_make_delta, self.b_make_catalog, self.b_step1_next, self.b_step2_next, self.b_step3_next, self.b_step4_next, self.b_publish), self.prog)
@@ -914,7 +916,8 @@ class ReleaseTab(ttk.Frame):
             import locale
             enc = locale.getpreferredencoding(False) or "utf-8"
             proc = subprocess.Popen(cmd, stdout=subprocess.PIPE, stderr=subprocess.STDOUT,
-                                    text=True, encoding=enc, errors="replace", bufsize=1)
+                                    text=True, encoding=enc, errors="replace", bufsize=1,
+                                    creationflags=dbcommon.nowin())
             out_lines = []
             for line in proc.stdout:
                 line = line.rstrip("\n\r")

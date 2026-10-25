@@ -229,7 +229,8 @@ class DeltaTab(ttk.Frame):
         try:
             enc = locale.getpreferredencoding(False) or "utf-8"
             proc = subprocess.Popen(cmd, stdout=subprocess.PIPE, stderr=subprocess.STDOUT,
-                                    text=True, encoding=enc, errors="replace", bufsize=1)
+                                    text=True, encoding=enc, errors="replace", bufsize=1,
+                                    creationflags=dbcommon.nowin())
             out_lines = []
             for line in proc.stdout:
                 line = line.rstrip("\n\r")
