@@ -1,13 +1,13 @@
 {
   "catalogVersion": 1,
   "apk": {
-    "versionCode": 62,
-    "versionName": "1.3.14",
-    "url": "https://github.com/lightphoto2006/Guhyatama/releases/download/v1.3.14/Guhyatama-1.3.14.apk",
-    "file": "F:\\\\AI\\\\Development\\\\Guhyatama\\\\releases\\\\Guhyatama-1.3.14.apk",
-    "notes": "Что нового:\n- При обновлении книги полным файлом приложение убирает старые копии той же книги (лечит дубли после смены id).\n- Сборник «Книги ачарий (рус)» v9: Гопала-чампу, БГ (Шридхар), Брахма-самхита — стабильные id книг.\n- Остальное как в 1.3.13.",
+    "versionCode": 63,
+    "versionName": "1.3.15",
+    "url": "https://github.com/lightphoto2006/Guhyatama/releases/download/v1.3.15/Guhyatama-1.3.15.apk",
+    "file": "F:\\\\AI\\\\Development\\\\Guhyatama\\\\releases\\\\Guhyatama-1.3.15.apk",
+    "notes": "Что нового:\n- Установка обновлений больше не может уронить приложение: любые ошибки показываются сообщением (Android 7 включительно).\n- Остальное как в 1.3.14.",
     "size": 6056878,
-    "sha256": "59922571e000f3534037d71970c5fa532ddc51742d431577ead60c5b8f01f6a8"
+    "sha256": "fb26f5c8c75ab014ba98f6298cda6791515c5b19de0a90b684a073c19fdd293d"
   },
   "books": [
     {

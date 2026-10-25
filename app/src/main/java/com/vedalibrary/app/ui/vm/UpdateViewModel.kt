@@ -240,8 +240,8 @@ class UpdateViewModel @Inject constructor(
             } ?: return@launch
         try {
             if (!updater.install(file)) _state.value = State.AwaitingPermission
-        } catch (e: Exception) {
-            _state.value = State.Error(e.message ?: "Не ставится")
+        } catch (t: Throwable) {
+            _state.value = State.Error("Установка: ${t.javaClass.simpleName}: ${t.message}")
         }
     }
 

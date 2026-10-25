@@ -212,27 +212,34 @@ class AppUpdater @Inject constructor(
 
     /** Запуск установки. false = нет права «установка из этого источника»:
      *  открыты системные настройки, после возврата нажать «Установить» ещё раз. */
-    fun install(apk: File): Boolean {
-        // canRequestPackageInstalls() появился только в API 26; на Android 7.0/7.1
-        // вызов несуществующего метода роняет приложение NoSuchMethodError.
-        if (Build.VERSION.SDK_INT >= 26 && !ctx.packageManager.canRequestPackageInstalls()) {
-            ctx.startActivity(
-                Intent(Settings.ACTION_MANAGE_UNKNOWN_APP_SOURCES, Uri.parse("package:${ctx.packageName}"))
-                    .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
-            )
-            return false
+    fun install(apk: File): Boolean = try {
+        installOrThrow(apk)
+    } catch (t: Throwable) {
+        throw IllegalStateException("Установка не запустилась: ${t.javaClass.simpleName}: ${t.message}")
+    }
+
+    private fun installOrThrow(apk: File): Boolean {
+        if (Build.VERSION.SDK_INT >= 26) {
+            val noPermission = try {
+                !ctx.packageManager.canRequestPackageInstalls()
+            } catch (t: Throwable) {
+                false // на старых прошивках метод может вести себя непредсказуемо
+            }
+            if (noPermission) {
+                ctx.startActivity(
+                    Intent(Settings.ACTION_MANAGE_UNKNOWN_APP_SOURCES, Uri.parse("package:${ctx.packageName}"))
+                        .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+                )
+                return false
+            }
         }
-        return try {
-            val uri = FileProvider.getUriForFile(ctx, "${ctx.packageName}.provider", apk)
-            ctx.startActivity(
-                Intent(Intent.ACTION_VIEW).apply {
-                    setDataAndType(uri, "application/vnd.android.package-archive")
-                    addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION or Intent.FLAG_ACTIVITY_NEW_TASK)
-                }
-            )
-            true
-        } catch (e: Exception) {
-            throw IllegalStateException("Не удалось открыть установщик: ${e.javaClass.simpleName}: ${e.message}")
-        }
+        val uri = FileProvider.getUriForFile(ctx, "${ctx.packageName}.provider", apk)
+        ctx.startActivity(
+            Intent(Intent.ACTION_VIEW).apply {
+                setDataAndType(uri, "application/vnd.android.package-archive")
+                addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION or Intent.FLAG_ACTIVITY_NEW_TASK)
+            }
+        )
+        return true
     }
 }
