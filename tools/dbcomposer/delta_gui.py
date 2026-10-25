@@ -16,9 +16,20 @@ import uicommon
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 PY = sys.executable
+CFG = os.path.join(HERE, "dbcomposer.json")
 MAKE_DELTA = os.path.join(HERE, "make_delta.py")
 MAKE_CATALOG = os.path.join(HERE, "make_catalog.py")
 MAKE_APK_DELTA = os.path.join(HERE, "make_apk_delta.py")
+
+
+def _cfg_load():
+    return dbcommon.load_cfg(CFG)
+
+
+def _cfg_save(patch):
+    cur = _cfg_load()
+    cur.update(patch)
+    dbcommon.save_cfg(CFG, cur)
 
 
 class DeltaTab(ttk.Frame):
@@ -61,7 +72,9 @@ class DeltaTab(ttk.Frame):
         row = ttk.Frame(t)
         row.pack(fill="x", pady=2)
         ttk.Label(row, text="OLD .db:", width=10).pack(side="left")
-        self.v_delta_old = tk.StringVar()
+        _d = _cfg_load()
+        _old_def = _d.get("delta_old", "")
+        self.v_delta_old = tk.StringVar(value=_old_def)
         ttk.Entry(row, textvariable=self.v_delta_old).pack(side="left", fill="x", expand=True, padx=4)
         ttk.Button(row, text="Обзор…", command=lambda: self._pick(self.v_delta_old, "Старая база (.db)", [("SQLite", "*.db")])).pack(side="left")
 
@@ -69,7 +82,8 @@ class DeltaTab(ttk.Frame):
         row = ttk.Frame(t)
         row.pack(fill="x", pady=2)
         ttk.Label(row, text="NEW .db:", width=10).pack(side="left")
-        self.v_delta_new = tk.StringVar()
+        _new_def = _d.get("delta_new", "")
+        self.v_delta_new = tk.StringVar(value=_new_def)
         ttk.Entry(row, textvariable=self.v_delta_new).pack(side="left", fill="x", expand=True, padx=4)
         ttk.Button(row, text="Обзор…", command=lambda: self._pick(self.v_delta_new, "Новая база (.db)", [("SQLite", "*.db")])).pack(side="left")
 
@@ -77,7 +91,9 @@ class DeltaTab(ttk.Frame):
         row = ttk.Frame(t)
         row.pack(fill="x", pady=2)
         ttk.Label(row, text="OUT:", width=10).pack(side="left")
-        self.v_delta_out = tk.StringVar(value=os.path.join(os.path.expanduser("~"), "delta.db"))
+        _d = _cfg_load()
+        _out_def = _d.get("delta_out") or os.path.join(os.path.expanduser("~"), "delta.db")
+        self.v_delta_out = tk.StringVar(value=_out_def)
         ttk.Entry(row, textvariable=self.v_delta_out).pack(side="left", fill="x", expand=True, padx=4)
         ttk.Button(row, text="Обзор…", command=lambda: self._pick_save(self.v_delta_out, "Сохранить дельту как", [("SQLite", "*.db")])).pack(side="left")
 
@@ -229,15 +245,36 @@ class DeltaTab(ttk.Frame):
             self.q.put(("error", f"{label}: {e}"))
 
     def run_make_delta(self):
-        old = self.v_delta_old.get().strip()
-        new = self.v_delta_new.get().strip()
-        out = self.v_delta_out.get().strip()
+        old = self.v_delta_old.get().strip().strip('"').strip("'")
+        new = self.v_delta_new.get().strip().strip('"').strip("'")
+        out = self.v_delta_out.get().strip().strip('"').strip("'")
         if not old or not new or not out:
-            messagebox.showwarning("Пустые поля", "Укажите OLD, NEW и OUT")
+            missing = []
+            if not old:
+                missing.append("OLD")
+            if not new:
+                missing.append("NEW")
+            if not out:
+                missing.append("OUT")
+            messagebox.showwarning("Пустые поля",
+                "Вкладка «Δ Дельта БД».\n"
+                "Пусто: " + ", ".join(missing) + "\n\n"
+                "OLD: " + repr(self.v_delta_old.get().strip()) + "\n"
+                "NEW: " + repr(self.v_delta_new.get().strip()) + "\n"
+                "OUT: " + repr(self.v_delta_out.get().strip()) + "\n\n"
+                "(Поля на вкладке «Релиз» — отдельные, они не подставляются сюда.)")
             return
-        if os.path.exists(out) and not self.v_delta_force.get():
-            if not messagebox.askyesno("Файл существует", f"{out}\nПерезаписать?"):
-                return
+        if not os.path.exists(old):
+            messagebox.showerror("Нет файла", "OLD: " + old + "\nне найден")
+            return
+        if not os.path.exists(new):
+            messagebox.showerror("Нет файла", "NEW: " + new + "\nне найден")
+            return
+        out_dir = os.path.dirname(out) or "."
+        if not os.path.isdir(out_dir):
+            messagebox.showerror("Нет папки", "Папка для OUT не существует:\n" + out_dir)
+            return
+        _cfg_save({"delta_old": old, "delta_new": new, "delta_out": out})
         cmd = [PY, MAKE_DELTA, "--old", old, "--new", new, "--out", out]
         if self.v_delta_force.get():
             cmd.append("--force")

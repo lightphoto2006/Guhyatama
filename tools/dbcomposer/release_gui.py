@@ -511,7 +511,20 @@ class ReleaseTab(ttk.Frame):
         new = self.v_new_db.get().strip()
         out = self.v_delta_out.get().strip()
         if not old or not new or not out:
-            messagebox.showwarning("Пусто", "Укажите OLD, NEW, OUT")
+            missing = []
+            if not old:
+                missing.append("OLD")
+            if not new:
+                missing.append("NEW")
+            if not out:
+                missing.append("OUT")
+            messagebox.showwarning("Пустые поля",
+                "Вкладка «Релиз», шаг 2.\n"
+                "Пусто: " + ", ".join(missing) + "\n\n"
+                "OLD: " + repr(self.v_old_db.get().strip()) + "\n"
+                "NEW: " + repr(self.v_new_db.get().strip()) + "\n"
+                "OUT: " + repr(self.v_delta_out.get().strip()) + "\n\n"
+                "(Поля вкладки «Δ Дельта БД» — отдельные.)")
             return
         cmd = [PY, os.path.join(HERE, "make_delta.py"), "--old", old, "--new", new, "--out", out]
         self._run_bg(cmd, "make_delta")
