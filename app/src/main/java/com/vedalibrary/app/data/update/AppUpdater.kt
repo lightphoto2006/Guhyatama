@@ -132,7 +132,18 @@ class AppUpdater @Inject constructor(
             if (out.exists() && out.length() > 1024 && sha256hex(out) == info.sha256)
                 return@withContext out
             try { out.delete() } catch (_: Exception) { }
-            downloader.fetch(info.url, out, "Гухьятама ${info.versionName}", onProgress)
+            var firstErr: Exception? = null
+            try {
+                downloader.fetchStream(info.url, out, "Гухьятама ${info.versionName}", onProgress)
+            } catch (e: Exception) {
+                firstErr = e
+                Log.e("Updater", "stream failed, fallback DownloadManager", e)
+                try { downloader.fetch(info.url, out, "Гухьятама ${info.versionName}", onProgress) }
+                catch (e2: Exception) {
+                    val msg = "Не скачалось: ${firstErr.javaClass.simpleName}: ${firstErr.message}; fallback: ${e2.javaClass.simpleName}: ${e2.message}"
+                    throw IllegalStateException(msg.take(200))
+                }
+            }
             if (sha256hex(out) != info.sha256) {
                 try { out.delete() } catch (_: Exception) { }
                 throw IllegalStateException("Контрольная сумма не сошлась — файл битый")

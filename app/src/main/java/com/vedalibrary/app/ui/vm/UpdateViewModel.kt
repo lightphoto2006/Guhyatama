@@ -2,12 +2,14 @@ package com.vedalibrary.app.ui.vm
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import android.util.Log
 import com.vedalibrary.app.data.library.LibraryDbImporter
 import com.vedalibrary.app.data.local.AppDatabase
 import com.vedalibrary.app.data.update.ApkInfo
 import com.vedalibrary.app.data.update.AppUpdater
 import com.vedalibrary.app.data.update.BookInfo
 import com.vedalibrary.app.data.update.Downloader
+import com.vedalibrary.app.data.update.fetchStream
 import com.vedalibrary.app.data.update.UpdatePrefs
 import com.vedalibrary.app.data.update.parseApkInfo
 import com.vedalibrary.app.data.update.parseBookInfos
@@ -167,11 +169,30 @@ class UpdateViewModel @Inject constructor(
                                 "Accept" to "application/octet-stream"
                             )
                         else emptyMap()
-                        downloader.fetch(
-                            info.deltaUrl, pf, "Патч ${info.versionName}",
-                            onProgress = { d, t -> _state.value = State.Downloading(d, t) },
-                            headers = hdrs
-                        )
+                        var deltaErr1: Exception? = null
+                        try {
+                            downloader.fetchStream(
+                                info.deltaUrl, pf, "Патч ${info.versionName}",
+                                onProgress = { d, t -> _state.value = State.Downloading(d, t) },
+                                headers = hdrs
+                            )
+                        } catch (e: Exception) {
+                            deltaErr1 = e
+                            try { pf.delete() } catch (_: Exception) { }
+                        }
+                        if (deltaErr1 != null) {
+                            Log.e("Updater", "delta stream failed, fallback DownloadManager", deltaErr1)
+                            try {
+                                downloader.fetch(
+                                    info.deltaUrl, pf, "Патч ${info.versionName}",
+                                    onProgress = { d, t -> _state.value = State.Downloading(d, t) },
+                                    headers = hdrs
+                                )
+                                deltaErr1 = null
+                            } catch (e2: Exception) {
+                                try { pf.delete() } catch (_: Exception) { }
+                            }
+                        }
                         // sha патча из каталога (если задан) — не сошёлся, значит патч
                         // битый/подменённый: удаляем и уходим на полный APK
                         val patchOk = info.deltaSha.isBlank() || sha256hex(pf) == info.deltaSha
@@ -409,10 +430,26 @@ class UpdateViewModel @Inject constructor(
                             "Bearer ${com.vedalibrary.app.BuildConfig.GITHUB_FILES_TOKEN}",
                         "Accept" to "application/octet-stream")
                 } else emptyMap()
-                downloader.fetch(url, out,
-                    info.title + (if (useDelta) " (обновление)" else ""), { d, t ->
-                    set(BookItem.Busy.Downloading(d, t))
-                }, headers)
+                var bookErr1: Exception? = null
+                try {
+                    downloader.fetchStream(url, out,
+                        info.title + (if (useDelta) " (обновление)" else ""), { d, t ->
+                        set(BookItem.Busy.Downloading(d, t))
+                    }, headers)
+                } catch (e: Exception) {
+                    bookErr1 = e
+                    set(BookItem.Busy.Idle, "fetchStream упал, DownloadManager…")
+                    try {
+                        downloader.fetch(url, out,
+                            info.title + (if (useDelta) " (обновление)" else ""), { d, t ->
+                            set(BookItem.Busy.Downloading(d, t))
+                        }, headers)
+                    } catch (e2: Exception) {
+                        val msg = "Не скачалось: ${bookErr1!!.javaClass.simpleName}: ${bookErr1.message}; fallback: ${e2.javaClass.simpleName}: ${e2.message}"
+                        set(BookItem.Busy.Idle, "Ошибка: ${msg.take(200)}")
+                        throw IllegalStateException(msg.take(200))
+                    }
+                }
                 if (sha256hex(out) != sha) {
                     try { out.delete() } catch (_: Exception) { }
                     throw IllegalStateException("Контрольная сумма не сошлась — файл битый")

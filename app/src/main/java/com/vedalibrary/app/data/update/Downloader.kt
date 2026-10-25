@@ -3,11 +3,15 @@ package com.vedalibrary.app.data.update
 import android.app.DownloadManager
 import android.content.Context
 import android.net.Uri
+import android.util.Log
 import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.withContext
 import java.io.File
+import java.io.FileOutputStream
+import java.net.HttpURLConnection
+import java.net.URL
 import java.security.MessageDigest
 import java.util.Collections
 import javax.inject.Inject
@@ -45,6 +49,89 @@ fun isSqliteFile(f: File): Boolean = try {
         n == h.size && h.contentEquals(magic)
     }
 } catch (_: Exception) { false }
+
+/** Потоковый HTTP-загрузчик (собственный HttpURLConnection).
+ *  Работает на старых/урезанных прошивках, где DownloadManager заморожен.
+ *  Ручное следование редиректам: при смене хоста — убираем Authorization. */
+suspend fun Downloader.fetchStream(
+    url: String, out: File, title: String,
+    onProgress: (done: Long, total: Long) -> Unit = { _, _ -> },
+    headers: Map<String, String> = emptyMap()
+): File = withContext(Dispatchers.IO) {
+    var conn: HttpURLConnection? = null
+    var redirectCount = 0
+    var currentUrl = url
+    var headersMap = headers.toMutableMap()
+    var part: File? = null
+    var result: File? = null
+    try {
+        out.parentFile?.mkdirs()
+        part = File(out.path + ".part")
+        try { part.delete() } catch (_: Exception) { }
+
+        while (true) {
+            conn = URL(currentUrl).openConnection() as HttpURLConnection
+            conn.connectTimeout = 20_000
+            conn.readTimeout = 45_000
+            conn.instanceFollowRedirects = false
+            headersMap.forEach { (k, v) -> conn.setRequestProperty(k, v) }
+            conn.doInput = true
+            val code = conn.responseCode
+
+            if (code in 300..399) {
+                val location = conn.getHeaderField("Location")
+                conn.disconnect()
+                conn = null
+                if (location == null || redirectCount >= 5)
+                    throw IllegalStateException("Редирект без Location или >5 (HTTP $code)")
+                redirectCount++
+                val newHost = try { java.net.URL(location).host } catch (_: Exception) { null }
+                val oldHost = try { java.net.URL(currentUrl).host } catch (_: Exception) { null }
+                if (newHost != null && oldHost != null && newHost != oldHost) {
+                    headersMap = (headersMap - "Authorization").toMutableMap()
+                }
+                currentUrl = location
+                continue
+            }
+
+            if (code != 200 && code != 206)
+                throw IllegalStateException("HTTP $code")
+
+            val total = conn.getHeaderFieldLong("Content-Length", -1)
+            var done = 0L
+
+            FileOutputStream(part!!).use { fos ->
+                conn.inputStream.use { ins ->
+                    val buf = ByteArray(65536)
+                    while (true) {
+                        val n = ins.read(buf)
+                        if (n < 0) break
+                        fos.write(buf, 0, n)
+                        done += n
+                        onProgress(done, total)
+                    }
+                }
+            }
+
+            if (part!!.length() < 1024)
+                throw IllegalStateException("Файл не докачался")
+            if (!part!!.renameTo(out))
+                throw IllegalStateException("Не удалось сохранить файл")
+
+            result = out
+            break
+        }
+    } catch (e: Exception) {
+        try { part?.delete() } catch (_: Exception) { }
+        throw e
+    } finally {
+        try { conn?.disconnect() } catch (_: Exception) { }
+    }
+    result!!
+}
+
+private fun HttpURLConnection.getHeaderFieldLong(name: String, default: Long): Long =
+    try { getHeaderField(name)?.toLongOrNull() ?: default } catch (_: Exception) { default }
 
 /** Общая качалка (APK, книги, аудиопаки): системный DownloadManager с докачкой.
  *  Кидает исключение с текстом для UI. */
