@@ -13,6 +13,8 @@ import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.lazy.grid.items
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -105,7 +107,9 @@ fun LibraryScreen(
                     modifier = Modifier.weight(1f),
                     textAlign = androidx.compose.ui.text.style.TextAlign.Center
                 )
-                IconButton(onClick = onSettings) { Text("⚙️", style = MaterialTheme.typography.titleLarge) }
+                IconButton(onClick = onSettings) {
+                    Icon(Icons.Filled.Settings, contentDescription = "Настройки", modifier = Modifier.size(26.dp))
+                }
             }
         }
     ) { pad ->
@@ -548,7 +552,8 @@ fun NotesScreen(onVerse: (String) -> Unit = {}, vm: NotesViewModel = hiltViewMod
                             maxLines = 4, overflow = TextOverflow.Ellipsis
                         )
                         Box(
-                            Modifier.clickable { vm.delete(it.note.id) }.padding(6.dp, 4.dp)
+                            Modifier.minimumInteractiveComponentSize().clickable { vm.delete(it.note.id) }.padding(12.dp, 8.dp),
+                            contentAlignment = Alignment.Center
                         ) { Text("×", fontSize = 20.sp) }
                     }
                     HorizontalDivider()

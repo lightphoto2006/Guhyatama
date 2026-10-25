@@ -109,7 +109,7 @@ fun ReaderScreen(
                 Text(
                     "⚙️",
                     style = MaterialTheme.typography.titleMedium,
-                    modifier = Modifier.clickable { onSettings() }.padding(8.dp)
+                    modifier = Modifier.minimumInteractiveComponentSize().clickable { onSettings() }.padding(12.dp)
                 )
             }
         }

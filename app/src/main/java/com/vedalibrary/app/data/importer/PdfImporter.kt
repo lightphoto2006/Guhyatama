@@ -23,7 +23,8 @@ class PdfImporter @Inject constructor(
             // Копируем в кэш (нужен seekable файл)
             val tmp = File.createTempFile("import", ".pdf", ctx.cacheDir)
             try {
-                ctx.contentResolver.openInputStream(uri)!!.use { inp -> tmp.outputStream().use { inp.copyTo(it) } }
+                val inp = ctx.contentResolver.openInputStream(uri) ?: throw IllegalStateException("Нет доступа к файлу")
+                inp.use { tmp.outputStream().use { inp.copyTo(it) } }
                 val text = try {
                     extractWithPdfBox(tmp)
                 } catch (_: Throwable) {

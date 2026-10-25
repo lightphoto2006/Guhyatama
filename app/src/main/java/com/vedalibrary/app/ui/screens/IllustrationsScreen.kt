@@ -81,7 +81,7 @@ fun IllustrationsScreen(onVerse: (String) -> Unit, vm: IllustrationsViewModel = 
             ) {
                 AsyncImage(
                     model = java.io.File(fp),
-                    contentDescription = null,
+                    contentDescription = "Закрыть",
                     contentScale = androidx.compose.ui.layout.ContentScale.Fit,
                     modifier = Modifier.fillMaxSize()
                 )

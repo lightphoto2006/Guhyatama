@@ -79,7 +79,7 @@ fun BookmarkStar(
     ) {
         Icon(
             imageVector = if (active) StarIcons.Filled else StarIcons.Outlined,
-            contentDescription = null,
+            contentDescription = "Закладка",
             tint = tint,
             modifier = Modifier.size(iconSize)
         )

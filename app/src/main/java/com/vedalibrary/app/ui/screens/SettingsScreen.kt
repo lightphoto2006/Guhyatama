@@ -230,12 +230,18 @@ class SettingsViewModel @Inject constructor(
         val tmp = File.createTempFile("library", ".db", ctx.cacheDir)
         try {
             var copied = 0L
-            ctx.contentResolver.openInputStream(u)!!.use { inp ->
-                tmp.outputStream().use { out ->
-                    val buf = ByteArray(1 shl 20)
-                    var n = inp.read(buf)
-                    while (n > 0) { out.write(buf, 0, n); copied += n; n = inp.read(buf) }
+            runCatching {
+                val inp = ctx.contentResolver.openInputStream(u) ?: throw IllegalStateException("Нет доступа к файлу")
+                inp.use {
+                    tmp.outputStream().use { out ->
+                        val buf = ByteArray(1 shl 20)
+                        var n = inp.read(buf)
+                        while (n > 0) { out.write(buf, 0, n); copied += n; n = inp.read(buf) }
+                    }
                 }
+            }.onFailure {
+                _status.value = "Нет доступа к файлу"
+                android.widget.Toast.makeText(ctx, "Нет доступа к файлу", android.widget.Toast.LENGTH_LONG).show()
             }
             if (expected > 0 && copied != expected) {
                 error("Файл скопировался не полностью ($copied из $expected байт). Перекиньте файл заново (не -journal).")
@@ -277,15 +283,27 @@ class SettingsViewModel @Inject constructor(
     fun exportBackup(uri: Uri) = viewModelScope.launch {
         try {
             _status.value = "Экспорт заметок…"
-            ctx.contentResolver.openOutputStream(uri)!!.use { backup.exportTo(it) }
+            runCatching {
+                val out = ctx.contentResolver.openOutputStream(uri) ?: throw IllegalStateException("Нет доступа к файлу")
+                out.use { backup.exportTo(it) }
+            }.onFailure {
+                _status.value = "Нет доступа к файлу"
+                android.widget.Toast.makeText(ctx, "Нет доступа к файлу", android.widget.Toast.LENGTH_LONG).show()
+            }
             _status.value = "Бэкап сохранён"
         } catch (e: Exception) { _status.value = "Ошибка: ${e.message}" }
     }
     fun importBackup(uri: Uri) = viewModelScope.launch {
         try {
             _status.value = "Восстановление…"
-            ctx.contentResolver.openInputStream(uri)!!.use {
-                _status.value = backup.importFrom(it)
+            runCatching {
+                val inp = ctx.contentResolver.openInputStream(uri) ?: throw IllegalStateException("Нет доступа к файлу")
+                inp.use {
+                    _status.value = backup.importFrom(it)
+                }
+            }.onFailure {
+                _status.value = "Нет доступа к файлу"
+                android.widget.Toast.makeText(ctx, "Нет доступа к файлу", android.widget.Toast.LENGTH_LONG).show()
             }
         } catch (e: Exception) { _status.value = "Ошибка: ${e.message}" }
     }
@@ -449,10 +467,12 @@ fun SettingsScreen(vm: SettingsViewModel = hiltViewModel(), updateVm: com.vedali
                             )
                         }
                         Box(
-                            Modifier.clickable { confirmDelete = true }.padding(6.dp)
+                            Modifier.minimumInteractiveComponentSize().clickable { confirmDelete = true }.padding(12.dp),
+                            contentAlignment = Alignment.Center
                         ) { Text("🗑", fontSize = 20.sp) }
                         Box(
-                            Modifier.clickable { expanded = true }.padding(6.dp)
+                            Modifier.minimumInteractiveComponentSize().clickable { expanded = true }.padding(12.dp),
+                            contentAlignment = Alignment.Center
                         ) { Text("▾", fontSize = 22.sp) }
                     }
                     DropdownMenu(expanded = expanded, onDismissRequest = { expanded = false }) {

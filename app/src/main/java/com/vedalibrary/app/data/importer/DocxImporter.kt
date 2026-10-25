@@ -22,7 +22,8 @@ class DocxImporter @Inject constructor(
 ) {
     suspend fun import(uri: Uri, titleHint: String? = null): String = withContext(Dispatchers.IO) {
         val name = titleHint ?: "Импорт DOCX"
-        ctx.contentResolver.openInputStream(uri)!!.use { inp ->
+        val inp = ctx.contentResolver.openInputStream(uri) ?: throw IllegalStateException("Нет доступа к файлу")
+        inp.use {
             val xml = extractDocumentXml(inp.readBytes())
                 ?: error("В файле нет word/document.xml — это не .docx (старый .doc сохраните как .docx)")
             importXml(xml, name)

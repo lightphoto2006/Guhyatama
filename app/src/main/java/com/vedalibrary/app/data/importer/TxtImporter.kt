@@ -26,8 +26,9 @@ class TxtImporter @Inject constructor(
         private val WS_RE = Regex("""\s+""")
     }
     suspend fun import(uri: Uri, titleHint: String? = null): String = withContext(Dispatchers.IO) {
-        val raw = ctx.contentResolver.openInputStream(uri)!!.bufferedReader().readText()
-        importText(raw, titleHint ?: "Импорт TXT")
+        val raw = ctx.contentResolver.openInputStream(uri) ?: throw IllegalStateException("Нет доступа к файлу")
+        val text = raw.bufferedReader().readText()
+        importText(text, titleHint ?: "Импорт TXT")
     }
 
     suspend fun importText(raw: String, title: String): String {

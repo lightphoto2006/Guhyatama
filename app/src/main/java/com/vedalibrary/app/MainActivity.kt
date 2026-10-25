@@ -37,7 +37,7 @@ class MainActivity : ComponentActivity() {
                     val short = remember(crash) { CrashLog.digest(crash!!) }
                     val clip = LocalClipboardManager.current
                     AlertDialog(
-                        onDismissRequest = {},
+                        onDismissRequest = { crash = null },
                         title = { Text("Приложение падало") },
                         text = {
                             Text(

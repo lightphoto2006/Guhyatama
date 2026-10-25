@@ -138,7 +138,7 @@ fun ChapterScreen(
                 IconButton(onClick = { onSettings() }) {
                     Icon(
                         Icons.Filled.Settings,
-                        contentDescription = null,
+                        contentDescription = "Настройки",
                         modifier = Modifier.size(26.dp)
                     )
                 }
