@@ -11,7 +11,8 @@ object VerseShare {
         "NOD" to "Нектар преданности", "NOI" to "Нектар наставлений",
         "TLC" to "Учение Шри Чайтаньи", "KB" to "Кришна", "BS" to "Брахма-самхита",
         "TQK" to "Учение царицы Кунти",
-        "SCC" to "ЧЧ", "SSB" to "ШБ", "SBG" to "БГ", "SBRS" to "БРС"
+        "SCC" to "ЧЧ", "SSB" to "ШБ", "SBG" to "БГ", "SBRS" to "БРС",
+        "BG-SS" to "БГ (Шридхар)", "AVC" to "Ананда Вриндавана-чампу"
     )
 
     /** Ключ (song, chapter, txt) из id ".../song/ch/txt" — только для стихов из .db (chapterId содержит /ch-).
@@ -68,20 +69,13 @@ object VerseShare {
     fun isLectureBook(bookId: String?): Boolean =
         bookId?.split("-")?.getOrNull(1)?.uppercase() in setOf("SCC", "SSB", "SBG", "SBRS")
 
-    /** Известные «стихотворные» типы — для них рисуется номер стиха, жирный перевод и т.д. */
-    private val VERSE_TYPES = setOf("SB","BG","CC","ISO","NOI","BS","KB","NOD","TQK","GT","CG","BG72")
-    private val PROSE_TYPES = setOf("GC")
+    private val PROSE_TYPES = setOf("GC", "CHB")
 
     /** Прозаические книги (целая глава — один кусок): перевод обычным начертанием,
-     *  как тела лекций, а не жирным (жирный — только для коротких переводов стихов).
-     *  Любой новый/неизвестный тип (CHB, LTRX и т.п.) автоматически считается прозой. */
+     *  как тела лекций, а не жирным (жирный — только для коротких переводов стихов). */
     fun isProseBook(bookId: String?): Boolean {
         val t = bookId?.split("-")?.getOrNull(1)?.uppercase() ?: return false
-        if (t in PROSE_TYPES) return true
-        if (t.isEmpty()) return false
-        if (t in VERSE_TYPES) return false
-        if (isLectureBook(bookId)) return false
-        return true
+        return t in PROSE_TYPES
     }
 
     /** Книги, где number — номер лекции/письма, а не стиха: диапазоны («34-35»)
