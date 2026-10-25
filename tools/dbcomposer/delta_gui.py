@@ -254,7 +254,8 @@ class DeltaTab(ttk.Frame):
             var.set(d)
 
     def set_busy(self, v):
-        uicommon.set_busy(self, v, (self.b_delta, self.b_catalog, self.b_apk_delta), self.prog)
+        uicommon.set_busy(self, v, (self.b_delta, self.b_catalog, self.b_apk_delta,
+                                      self.b_publish_book), self.prog)
 
     def say(self, text):
         uicommon.say(self.log, text)
@@ -268,6 +269,12 @@ class DeltaTab(ttk.Frame):
                 elif kind == "done":
                     self.set_busy(False)
                     self.say(text)
+                elif kind == "pub_done":
+                    self.set_busy(False)
+                    self.say(text)
+                elif kind == "pub_refresh":
+                    self._refresh_pub_keys()
+                    self._update_pub_ver()
                 elif kind == "error":
                     self.set_busy(False)
                     messagebox.showerror("Ошибка", text)
@@ -380,9 +387,13 @@ class DeltaTab(ttk.Frame):
         keys = []
         for sec in ("books", "audio"):
             keys.extend(data.get(sec, {}).keys())
+        cur = self.v_pub_key.get()
         self.cmb_pub_key["values"] = keys
         if keys:
-            self.cmb_pub_key.current(0)
+            if cur and cur in keys:
+                self.v_pub_key.set(cur)
+            else:
+                self.cmb_pub_key.current(0)
         self._update_pub_ver()
 
     def _update_pub_ver(self):
@@ -456,10 +467,25 @@ class DeltaTab(ttk.Frame):
 
         self.set_busy(True)
         self.say("публикация: запуск…")
-        threading.Thread(target=self._publish_worker, args=(new, key, delta_checked, old, out),
-                         daemon=True).start()
+        # Считаем prev_version из versions.json для выбранного ключа
+        try:
+            import json
+            with open(os.path.join(ROOT, "updates", "versions.json"), encoding="utf-8") as f:
+                vdata = json.load(f)
+            prev_version = None
+            for sec in ("books", "audio"):
+                meta = vdata.get(sec, {}).get(key, {})
+                if meta:
+                    prev_version = int(meta.get("version", 0))
+                    break
+        except Exception:
+            prev_version = None
+        notes = self.v_pub_notes.get().strip()
+        ver_text = self.v_pub_ver.cget("text")
+        threading.Thread(target=self._publish_worker, args=(new, key, delta_checked, old, out, notes, prev_version),
+                          daemon=True).start()
 
-    def _publish_worker(self, new_file, key, delta_checked, old, out):
+    def _publish_worker(self, new_file, key, delta_checked, old, out, notes, prev_version):
         def say(t):
             self.q.put(("log", str(t)))
         try:
@@ -471,7 +497,7 @@ class DeltaTab(ttk.Frame):
             delta_file = ""
             if delta_checked and old and out:
                 say("make_delta: запуск…")
-                cmd = [PY, MAKE_DELTA, "--old", old, "--new", new_file, "--out", out]
+                cmd = [PY, MAKE_DELTA, "--old", old, "--new", new_file, "--out", out, "--force"]
                 proc = subprocess.Popen(
                     cmd, stdout=subprocess.PIPE, stderr=subprocess.STDOUT,
                     text=True, encoding=enc, errors="replace", bufsize=1,
@@ -489,141 +515,23 @@ class DeltaTab(ttk.Frame):
                         proc.returncode, "\n".join(out_lines[-20:])))
                 say("make_delta: готово")
                 delta_file = out
-            elif delta_checked and old and out:
-                delta_file = out
 
             # 2) Публикация
-            notes = self.v_pub_notes.get().strip()
             result = publish_engine.publish_book(
                 token=gh_release.get_token(),
                 key=key,
                 new_file=new_file,
                 notes=notes,
                 delta_file=delta_file,
-                delta_from=0,
+                delta_from=prev_version,
                 log=say,
             )
-            self.q.put(("done", "Опубликовано: %s" % result["url"]))
-            self._update_pub_ver()
-            self._refresh_pub_keys()
+            self.q.put(("pub_done", "Опубликовано: %s" % result["url"]))
+            self.q.put(("pub_refresh", ""))
         except gh_release.GHError as e:
             self.q.put(("error", "GitHub: %s" % e.message[:300]))
         except Exception as e:
             self.q.put(("error", str(e)))
-
-    def set_busy(self, v):
-        uicommon.set_busy(self, v, (self.b_delta, self.b_catalog, self.b_apk_delta,
-                                     self.b_publish_book), self.prog)
-
-    def say(self, text):
-        uicommon.say(self.log, text)
-
-    def poll(self):
-        try:
-            while True:
-                kind, text = self.q.get_nowait()
-                if kind == "log":
-                    self.say(text)
-                elif kind == "done":
-                    self.set_busy(False)
-                    self.say(text)
-                elif kind == "error":
-                    self.set_busy(False)
-                    messagebox.showerror("Ошибка", text)
-                    self.say("ОШИБКА: " + text)
-        except queue.Empty:
-            pass
-        self.after(150, self.poll)
-
-    def _run_bg(self, cmd, label):
-        self.set_busy(True)
-        self.say(f"{label}: запуск…")
-        threading.Thread(target=self._run_subprocess, args=(cmd, label), daemon=True).start()
-
-    def _run_subprocess(self, cmd, label):
-        try:
-            enc = locale.getpreferredencoding(False) or "utf-8"
-            proc = subprocess.Popen(cmd, stdout=subprocess.PIPE, stderr=subprocess.STDOUT,
-                                    text=True, encoding=enc, errors="replace", bufsize=1,
-                                    creationflags=dbcommon.nowin())
-            out_lines = []
-            for line in proc.stdout:
-                line = line.rstrip("\n\r")
-                if line:
-                    out_lines.append(line)
-                    self.q.put(("log", line))
-            proc.wait()
-            if proc.returncode == 0:
-                self.q.put(("done", f"{label}: готово"))
-            else:
-                self.q.put(("error", f"{label}: код {proc.returncode}\n" + "\n".join(out_lines[-20:])))
-        except Exception as e:
-            self.q.put(("error", f"{label}: {e}"))
-
-    def run_make_delta(self):
-        old = self.v_delta_old.get().strip().strip('"').strip("'")
-        new = self.v_delta_new.get().strip().strip('"').strip("'")
-        out = self.v_delta_out.get().strip().strip('"').strip("'")
-        if not old or not new or not out:
-            missing = []
-            if not old:
-                missing.append("OLD")
-            if not new:
-                missing.append("NEW")
-            if not out:
-                missing.append("OUT")
-            messagebox.showwarning("Пустые поля",
-                "Вкладка «Δ Дельта БД».\n"
-                "Пусто: " + ", ".join(missing) + "\n\n"
-                "OLD: " + repr(self.v_delta_old.get().strip()) + "\n"
-                "NEW: " + repr(self.v_delta_new.get().strip()) + "\n"
-                "OUT: " + repr(self.v_delta_out.get().strip()) + "\n\n"
-                "(Поля на вкладке «Релиз» — отдельные, они не подставляются сюда.)")
-            return
-        if not os.path.exists(old):
-            messagebox.showerror("Нет файла", "OLD: " + old + "\nне найден")
-            return
-        if not os.path.exists(new):
-            messagebox.showerror("Нет файла", "NEW: " + new + "\nне найден")
-            return
-        out_dir = os.path.dirname(out) or "."
-        if not os.path.isdir(out_dir):
-            messagebox.showerror("Нет папки", "Папка для OUT не существует:\n" + out_dir)
-            return
-        _cfg_save({"delta_old": old, "delta_new": new, "delta_out": out})
-        cmd = [PY, MAKE_DELTA, "--old", old, "--new", new, "--out", out]
-        if self.v_delta_force.get():
-            cmd.append("--force")
-        self._run_bg(cmd, "make_delta")
-
-    def run_make_catalog(self):
-        src = self.v_cat_src.get().strip()
-        versions = self.v_cat_versions.get().strip()
-        out = self.v_cat_out.get().strip()
-        if not src or not versions or not out:
-            messagebox.showwarning("Пустые поля", "Укажите папку БД, versions.json и OUT")
-            return
-        if not os.path.exists(versions):
-            messagebox.showerror("Нет versions.json", f"Файл не найден: {versions}")
-            return
-        cmd = [PY, MAKE_CATALOG, "--src", src, "--versions", versions, "--out", out]
-        self._run_bg(cmd, "make_catalog")
-
-    def run_make_apk_delta(self):
-        old = self.v_apk_old.get().strip()
-        new = self.v_apk_new.get().strip()
-        out = self.v_apk_out.get().strip()
-        if not old or not new or not out:
-            messagebox.showwarning("Пустые поля", "Укажите OLD APK, NEW APK и OUT")
-            return
-        if os.path.exists(out) and not self.v_apk_force.get():
-            if not messagebox.askyesno("Файл существует", f"{out}\nПерезаписать?"):
-                return
-        cmd = [PY, MAKE_APK_DELTA, "--old", old, "--new", new, "--out", out]
-        if self.v_apk_force.get():
-            cmd.append("--force")
-        self._run_bg(cmd, "make_apk_delta")
-
 
 def test_imports():
     """Проверка импортов для бэкграундного запуска."""

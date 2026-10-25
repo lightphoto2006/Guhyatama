@@ -48,7 +48,8 @@ def test_guess_key():
     vdata = {
         "books": {
             "TestBook": {"title": "TestBook", "lang": "rus", "file": "TestBook.db",
-                         "version": 3, "url": "https://example.com/t.db"}
+                         "version": 3, "url": "https://example.com/t.db",
+                         "adopt": False, "auth": "manual"}
         },
         "audio": {}
     }
@@ -98,7 +99,8 @@ def test_publish_book_full():
         "books": {
             "TestBook": {
                 "title": "TestBook", "lang": "rus", "file": "TestBook.db",
-                "version": 3, "url": "https://example.com/old.db"
+                "version": 3, "url": "https://example.com/old.db",
+                "adopt": False, "auth": "manual"
             }
         },
         "audio": {}
@@ -235,6 +237,10 @@ def test_publish_book_full():
         check(entry["url"] != "", "versions: url непустой")
         check(entry["notes"] == "Тестовое обновление", "versions: notes ok")
         check("delta" not in entry, "versions: нет ключа delta (delta_file пуст)")
+        # Сохраняются посторонние поля
+        check(entry.get("adopt") is False, "versions: adopt сохранён False")
+        # prev_version
+        check(result.get("prev_version") == 3, "prev_version=3 (got %r)" % result.get("prev_version"))
 
         # Каталог обновлён
         with open(cat_path, encoding="utf-8") as f:
@@ -278,7 +284,7 @@ def test_delta_useless():
         "books": {
             "TestBook": {
                 "title": "TestBook", "lang": "rus", "file": "TestBook.db",
-                "version": 1, "url": ""
+                "version": 1, "url": "", "adopt": False
             }
         },
         "audio": {}
@@ -391,6 +397,7 @@ def test_delta_useless():
             updated = json.load(f)
         entry = updated["books"]["TestBook"]
         check("delta" not in entry, "versions: нет ключа delta (бесполезная)")
+        check(entry.get("adopt") is False, "versions: adopt сохранён False")
 
         # В логе есть «бесполезна»
         log_text = " ".join(log_lines)
@@ -426,7 +433,7 @@ def test_delta_useful():
         "books": {
             "TestBook": {
                 "title": "TestBook", "lang": "rus", "file": "TestBook.db",
-                "version": 1, "url": ""
+                "version": 1, "url": "", "adopt": True
             }
         },
         "audio": {}
@@ -542,6 +549,7 @@ def test_delta_useful():
         if "delta" in entry:
             check(entry["delta"]["url"] != "", "delta.url непустой")
             check(entry["delta"]["from"] == 1, "delta.from=1")
+        check(entry.get("adopt") is True, "versions: adopt сохранён True")
 
         # В логе нет «бесполезна»
         log_text = " ".join(log_lines)

@@ -171,7 +171,7 @@ def publish_book(token, key, new_file, notes, delta_file="", delta_from=0,
                  version=None, log=print):
     """Публикует книгу одной кнопкой.
 
-    Возвращает {"tag", "url", "size", "sha256", "delta_url", "version"}.
+    Возвращает {"tag", "url", "size", "sha256", "delta_url", "version", "prev_version"}.
     """
     # 1) Читаем versions.json, определяем секцию
     with open(VERSIONS, encoding="utf-8") as f:
@@ -187,8 +187,9 @@ def publish_book(token, key, new_file, notes, delta_file="", delta_from=0,
     meta = dict(versions_data[sec][key])
 
     # 2) Version и хэш
+    prev_version = int(meta.get("version", 0))
     if version is None:
-        version = int(meta.get("version", 0)) + 1
+        version = prev_version + 1
     new_file_abs = os.path.abspath(new_file)
     new_sha = _sha256(new_file_abs)
     new_size = os.path.getsize(new_file_abs)
@@ -237,24 +238,15 @@ def publish_book(token, key, new_file, notes, delta_file="", delta_from=0,
     gh_release.publish_release(token, gh_release.FILES_REPO, rid)
     log("релиз опубликован: https://github.com/%s/releases/tag/%s" % (gh_release.FILES_REPO, tag))
 
-    # 7) Обновляем versions.json
-    versions_data[sec][key] = {
-        "title": title,
-        "lang": lang,
-        "file": new_file_abs,
-        "version": version,
-        "url": full_url,
-        "notes": (notes or "").strip(),
-        "auth": "github",
-    }
+    # 7) Обновляем versions.json (обновляем существующую запись, сохраняя поля)
+    entry = versions_data[sec][key]
+    entry.update({"title": title, "lang": lang, "file": new_file_abs,
+                  "version": version, "url": full_url,
+                  "notes": (notes or "").strip(), "auth": "github"})
     if delta_ok:
-        versions_data[sec][key]["delta"] = {
-            "from": delta_from,
-            "file": delta_abs,
-            "url": delta_url,
-        }
+        entry["delta"] = {"from": delta_from, "file": delta_abs, "url": delta_url}
     else:
-        versions_data[sec][key].pop("delta", None)
+        entry.pop("delta", None)
 
     err = dbcommon.atomic_write_bytes(
         VERSIONS,
@@ -290,4 +282,5 @@ def publish_book(token, key, new_file, notes, delta_file="", delta_from=0,
         "sha256": new_sha,
         "delta_url": delta_url if delta_ok else "",
         "version": version,
+        "prev_version": prev_version,
     }
