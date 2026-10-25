@@ -213,20 +213,26 @@ class AppUpdater @Inject constructor(
     /** Запуск установки. false = нет права «установка из этого источника»:
      *  открыты системные настройки, после возврата нажать «Установить» ещё раз. */
     fun install(apk: File): Boolean {
-        if (!ctx.packageManager.canRequestPackageInstalls()) {
+        // canRequestPackageInstalls() появился только в API 26; на Android 7.0/7.1
+        // вызов несуществующего метода роняет приложение NoSuchMethodError.
+        if (Build.VERSION.SDK_INT >= 26 && !ctx.packageManager.canRequestPackageInstalls()) {
             ctx.startActivity(
                 Intent(Settings.ACTION_MANAGE_UNKNOWN_APP_SOURCES, Uri.parse("package:${ctx.packageName}"))
                     .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
             )
             return false
         }
-        val uri = FileProvider.getUriForFile(ctx, "${ctx.packageName}.provider", apk)
-        ctx.startActivity(
-            Intent(Intent.ACTION_VIEW).apply {
-                setDataAndType(uri, "application/vnd.android.package-archive")
-                addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION or Intent.FLAG_ACTIVITY_NEW_TASK)
-            }
-        )
-        return true
+        return try {
+            val uri = FileProvider.getUriForFile(ctx, "${ctx.packageName}.provider", apk)
+            ctx.startActivity(
+                Intent(Intent.ACTION_VIEW).apply {
+                    setDataAndType(uri, "application/vnd.android.package-archive")
+                    addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION or Intent.FLAG_ACTIVITY_NEW_TASK)
+                }
+            )
+            true
+        } catch (e: Exception) {
+            throw IllegalStateException("Не удалось открыть установщик: ${e.javaClass.simpleName}: ${e.message}")
+        }
     }
 }

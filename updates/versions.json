@@ -4,7 +4,7 @@
     "versionName": "1.3.13",
     "url": "https://github.com/lightphoto2006/Guhyatama/releases/download/v1.3.13/Guhyatama-1.3.13.apk",
     "file": "F:\\\\AI\\\\Development\\\\Guhyatama\\\\releases\\\\Guhyatama-1.3.13.apk",
-    "notes": "Пересборка APK (предыдущий v1.3.12 был битый, 77 КБ без dex)."
+    "notes": "Исправлена установка APK на Android 7 (canRequestPackageInstalls только с API 26; краш NoSuchMethodError устранён)."
   },
   "books": {
     "Prabhupada_rus": {
