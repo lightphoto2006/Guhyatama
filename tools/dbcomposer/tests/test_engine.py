@@ -331,6 +331,78 @@ check("llm_all: нормализация -> 4 уникальные главы",
       len(res_nr["chapters"]) == 4,
       len(res_nr["chapters"]))
 
+# явные номера: 7,8,9 -> 7,8,9
+def _mock_start_mid():
+    call_count = [0]
+    def chat_fn(msgs):
+        call_count[0] += 1
+        return {"chapters": [
+            {"heading": "Семь", "number": 7, "song": 1},
+            {"heading": "Восемь", "number": 8, "song": 1},
+            {"heading": "Девять", "number": 9, "song": 1},
+        ]}
+    return chat_fn
+
+mock_sm = _mock_start_mid()
+res_sm = ai.llm_find_headings_all(mock_sm, "Кн", "а" * 30000)
+nums_sm = [c["number"] for c in res_sm["chapters"]]
+check("llm_all: явные 7,8,9 -> 7,8,9", nums_sm == [7, 8, 9], nums_sm)
+
+# пропуск: 1,2,5 -> 1,2,5
+def _mock_gap():
+    call_count = [0]
+    def chat_fn(msgs):
+        call_count[0] += 1
+        return {"chapters": [
+            {"heading": "A", "number": 1, "song": 1},
+            {"heading": "B", "number": 2, "song": 1},
+            {"heading": "C", "number": 5, "song": 1},
+        ]}
+    return chat_fn
+
+mock_g = _mock_gap()
+res_g = ai.llm_find_headings_all(mock_g, "Кн", "а" * 30000)
+nums_g = [c["number"] for c in res_g["chapters"]]
+check("llm_all: пропуск 1,2,5 -> 1,2,5", nums_g == [1, 2, 5], nums_g)
+
+# без номеров (0,0,0) -> 1,2,3
+def _mock_no_nums():
+    call_count = [0]
+    def chat_fn(msgs):
+        call_count[0] += 1
+        return {"chapters": [
+            {"heading": "X", "number": 0, "song": 1},
+            {"heading": "Y", "number": 0, "song": 1},
+            {"heading": "Z", "number": 0, "song": 1},
+        ]}
+    return chat_fn
+
+mock_nn = _mock_no_nums()
+res_nn = ai.llm_find_headings_all(mock_nn, "Кн", "а" * 30000)
+nums_nn = [c["number"] for c in res_nn["chapters"]]
+check("llm_all: без номеров 0,0,0 -> 1,2,3", nums_nn == [1, 2, 3], nums_nn)
+
+# две песни: каждая 1,2 -> song1: 1,2; song2: 1,2
+def _mock_two_songs():
+    call_count = [0]
+    def chat_fn(msgs):
+        call_count[0] += 1
+        return {"chapters": [
+            {"heading": "S1-A", "number": 1, "song": 1},
+            {"heading": "S1-B", "number": 2, "song": 1},
+            {"heading": "S2-A", "number": 1, "song": 2},
+            {"heading": "S2-B", "number": 2, "song": 2},
+        ]}
+    return chat_fn
+
+mock_ts = _mock_two_songs()
+res_ts = ai.llm_find_headings_all(mock_ts, "Кн", "а" * 30000)
+nums_ts = [c["number"] for c in res_ts["chapters"]]
+songs_ts = [c["song"] for c in res_ts["chapters"]]
+check("llm_all: две песни song1:1,2 song2:1,2",
+      nums_ts == [1, 2, 1, 2] and songs_ts == [1, 1, 2, 2],
+      (nums_ts, songs_ts))
+
 # extract_json / chat_json-обвязка (без сервера — только разбор)
 import llama_client                                   # noqa: E402
 check("extract_json: ```json-забор",

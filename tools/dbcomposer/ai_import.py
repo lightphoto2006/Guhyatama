@@ -654,16 +654,15 @@ def llm_find_headings_all(chat_fn, book_title, text):
                 ch["number"] = number
                 ch["song"] = song
                 all_chapters.append(ch)
-    # нормализация номеров по каждому song: счётчик на song
+    # нормализация номеров по каждому song: сохраняем явные, лечим сбросы
     counters = {}
     for ch in all_chapters:
         song = ch["song"]
-        counters.setdefault(song, 0)
+        prev = counters.get(song, 0)
         n = ch["number"]
-        counters[song] += 1
-        ch["number"] = counters[song]
-        if n > 0:
-            counters[song] = max(counters[song], n)
+        number = n if n > prev else prev + 1
+        ch["number"] = number
+        counters[song] = number
     return {"book_title": book_title_out or book_title or "—", "chapters": all_chapters}
 
 
