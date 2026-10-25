@@ -71,13 +71,33 @@
     {
       "key": "Acharyi_rus",
       "title": "Книги ачарий (рус)",
-      "version": 6,
-      "url": "https://api.github.com/repos/lightphoto2006/Guhyatama-files/releases/assets/607505825",
-      "notes": "Транслит: ш вместо щ (кршна, шри, лакшми).",
+      "version": 7,
+      "url": "https://api.github.com/repos/lightphoto2006/Guhyatama-files/releases/assets/675276757",
+      "notes": "Collection: BG-SS (Shridhara Swami trans.), BS, GC (updated).",
       "lang": "rus",
       "auth": "github",
-      "size": 2969600,
-      "sha256": "c4ea0642d4b8c79d98026707e84a0e1d262e5fdcbae367e15f235df80aeb9dad"
+      "size": 6307840,
+      "sha256": "7fda03d78d66890761a6f03b662688a9988f5078b70808026fa56af7e798edf0",
+      "fp": [
+        {
+          "t": "bg-ss",
+          "g": 1,
+          "v": 649,
+          "vg": 649
+        },
+        {
+          "t": "bs",
+          "g": 2,
+          "v": 68,
+          "vg": 68
+        },
+        {
+          "t": "gc",
+          "g": 3,
+          "v": 743,
+          "vg": 743
+        }
+      ]
     }
   ],
   "audio": [
