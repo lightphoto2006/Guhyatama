@@ -394,10 +394,9 @@ class UpdateViewModel @Inject constructor(
                     busy = BookItem.Busy.Idle, note = note) else it
             }
         }
-        try {
-            // Дельта — своим с версии deltaFrom; новичкам и отставшим — полный файл
-            val useDelta = !isAudio && info.deltaUrl.isNotBlank() &&
-                    item.installed == info.deltaFrom && info.deltaFrom >= 0
+
+        // Выносим один проход в локальную suspend-функцию
+        suspend fun attempt(useDelta: Boolean, notePrefix: String): Unit {
             val url = if (useDelta) info.deltaUrl else info.url
             val sha = if (useDelta) info.deltaSha else info.sha256
             // Fail closed: каталог без контрольной суммы — не качаем и не импортируем
@@ -405,8 +404,6 @@ class UpdateViewModel @Inject constructor(
                 throw IllegalStateException("В каталоге нет контрольной суммы для «${info.title}» — пропущено")
             val total = if (useDelta) info.deltaSize else info.size
             val dir = File(updater.updatesDir(), "books").apply { mkdirs() }
-            // key приходит из каталога: белый список символов — из «../» не соберётся
-            // выход из папки обновлений (путь файла от ключа изолирован)
             val safeKey = key.replace(Regex("[^A-Za-z0-9._-]"), "_")
             val out = File(dir, "$safeKey-v${info.version}" + (if (useDelta) "-delta" else "") + ".db")
             // Прошлые версии той же книги больше не нужны — чтобы не копились
@@ -479,11 +476,26 @@ class UpdateViewModel @Inject constructor(
             if (res.failed.isEmpty()) {
                 try { out.delete() } catch (_: Exception) { }
             }
-        } catch (e: kotlinx.coroutines.CancellationException) {
-            // Отмена (уход с экрана) — не показываем как «Ошибка»
-            throw e
-        } catch (e: Exception) {
-            set(BookItem.Busy.Idle, "Ошибка: ${e.message}")
+            return
         }
+
+        // Дельта — своим с версии deltaFrom; новичкам и отставшим — полный файл
+        val useDelta = !isAudio && info.deltaUrl.isNotBlank() &&
+                item.installed == info.deltaFrom && info.deltaFrom >= 0
+        val attempts = if (useDelta) mutableListOf(true, false) else mutableListOf(false)
+        var lastError: Exception? = null
+        for ((i, withDelta) in attempts.withIndex()) {
+            try {
+                attempt(withDelta, if (withDelta) "дельта" else "полный файл")
+                lastError = null
+                break
+            } catch (e: kotlinx.coroutines.CancellationException) { throw e }
+            catch (e: Exception) {
+                lastError = e
+                if (i != attempts.lastIndex)
+                    set(BookItem.Busy.Idle, "Дельта не применилась (${e.message}) — качаю полный файл…")
+            }
+        }
+        lastError?.let { throw it }
     }
 }
