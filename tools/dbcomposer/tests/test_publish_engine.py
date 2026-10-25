@@ -574,6 +574,210 @@ def test_delta_useful():
 
 
 # ======================================================================
+# e) Новая книга (ключ отсутствует в versions.json)
+# ======================================================================
+def test_publish_book_new():
+    print("=== e) publish_book (новая книга) ===")
+    tmpdir = tempfile.mkdtemp(prefix="pubnew_")
+
+    # versions.json без ключа NewBook
+    ver_path = os.path.join(tmpdir, "versions.json")
+    vdata = {
+        "books": {
+            "ExistingBook": {
+                "title": "ExistingBook", "lang": "rus", "file": "ExistingBook.db",
+                "version": 1, "url": "https://example.com/e.db",
+                "adopt": False, "auth": "manual"
+            }
+        },
+        "audio": {}
+    }
+    with open(ver_path, "w", encoding="utf-8") as f:
+        json.dump(vdata, f)
+
+    # Новый .db файл
+    new_db = os.path.join(tmpdir, "NewBook.db")
+    with open(new_db, "wb") as f:
+        f.write(b"n" * 3000)
+
+    # updates/ для catalog.json
+    updates_dir = os.path.join(tmpdir, "updates")
+    os.makedirs(updates_dir, exist_ok=True)
+    cat_path = os.path.join(updates_dir, "catalog.json")
+    with open(cat_path, "w", encoding="utf-8") as f:
+        json.dump({"books": [{"key": "ExistingBook", "size": 0, "sha256": ""}],
+                    "audio": [], "apk": {}}, f)
+
+    root_cat = os.path.join(tmpdir, "catalog.json")
+    with open(root_cat, "w", encoding="utf-8") as f:
+        json.dump({"books": [{"key": "ExistingBook", "size": 0, "sha256": ""}],
+                    "audio": [], "apk": {}}, f)
+
+    old_versions = publish_engine.VERSIONS
+    old_catalog = publish_engine.CATALOG
+    old_root_catalog = publish_engine.ROOT_CATALOG
+    old_root = publish_engine.ROOT
+
+    publish_engine.VERSIONS = ver_path
+    publish_engine.CATALOG = cat_path
+    publish_engine.ROOT_CATALOG = root_cat
+    publish_engine.ROOT = tmpdir
+
+    # Моки gh_release
+    orig_next_tag = publish_engine.gh_release.next_db_tag
+    orig_create = publish_engine.gh_release.create_release
+    orig_upload = publish_engine.gh_release.upload_asset
+    orig_publish = publish_engine.gh_release.publish_release
+    orig_publish_catalog = publish_engine.gh_release.publish_catalog
+
+    def mock_next_tag(token, repo):
+        return "db-v99"
+
+    def mock_create_release(token, repo, tag, name, body):
+        return {"id": 99, "tag_name": tag}
+
+    def mock_upload_asset(token, repo, rid, path, name="", ctype="application/octet-stream"):
+        return {"id": 200, "name": os.path.basename(path),
+                "browser_download_url": "https://gh.com/asset-%s" % os.path.basename(path)}
+
+    def mock_publish_release(token, repo, rid):
+        pass
+
+    def mock_publish_catalog(token, path):
+        return "https://gh.com/catalog.json"
+
+    publish_engine.gh_release.next_db_tag = mock_next_tag
+    publish_engine.gh_release.create_release = mock_create_release
+    publish_engine.gh_release.upload_asset = mock_upload_asset
+    publish_engine.gh_release.publish_release = mock_publish_release
+    publish_engine.gh_release.publish_catalog = mock_publish_catalog
+
+    # Моки git_push и make_catalog
+    git_push_calls = []
+    orig_git_push = publish_engine._git_push
+
+    def mock_git_push(files, msg):
+        git_push_calls.append({"files": files, "msg": msg})
+
+    publish_engine._git_push = mock_git_push
+
+    orig_run_make = publish_engine._run_make_catalog
+
+    def mock_run_make_catalog(log):
+        import hashlib
+        h = hashlib.sha256()
+        with open(new_db, "rb") as f:
+            h.update(f.read())
+        cdata = {"books": [{"key": "ExistingBook", "size": 0, "sha256": ""},
+                            {"key": "NewBook", "size": os.path.getsize(new_db),
+                             "sha256": h.hexdigest(), "version": 1}],
+                  "audio": [], "apk": {}}
+        err = dbcommon.atomic_write_bytes(cat_path,
+                                          json.dumps(cdata, ensure_ascii=False, indent=2).encode("utf-8"))
+        if err:
+            raise RuntimeError(err)
+        log("make_catalog: ok")
+
+    publish_engine._run_make_catalog = mock_run_make_catalog
+    publish_engine._copy_catalog_root = lambda: None
+
+    try:
+        log_lines = []
+        result = publish_engine.publish_book(
+            token="fake",
+            key="NewBook",
+            new_file=new_db,
+            notes="Тест новой книги",
+            delta_file="",
+            delta_from=0,
+            log=log_lines.append,
+            title="Новая книга",
+            lang="rus",
+        )
+
+        # Проверки
+        check(result["tag"] == "db-v99", "tag=db-v99 (got %r)" % result.get("tag"))
+        check(result["version"] == 1, "version=1 для новой книги (got %d)" % result.get("version"))
+        check(result["size"] == 3000, "size=3000 (got %d)" % result.get("size"))
+        check(len(result["sha256"]) == 64, "sha256 64 chars")
+        check(result["url"] != "", "url непустой (got %r)" % result.get("url"))
+
+        # versions.json: запись создана
+        with open(ver_path, encoding="utf-8") as f:
+            updated_vdata = json.load(f)
+        check("NewBook" in updated_vdata["books"], "NewBook в books")
+        entry = updated_vdata["books"]["NewBook"]
+        check(entry["version"] == 1, "versions: version=1")
+        check(entry["url"] != "", "versions: url непустой")
+        check(entry["title"] == "Новая книга", "versions: title=Новая книга (got %r)" % entry.get("title"))
+        check(entry["lang"] == "rus", "versions: lang=rus (got %r)" % entry.get("lang"))
+        check(entry.get("auth") == "github", "versions: auth=github")
+
+        # Каталог обновлён
+        with open(cat_path, encoding="utf-8") as f:
+            cat = json.load(f)
+        cat_entry = [e for e in cat["books"] if e.get("key") == "NewBook"][0]
+        check(cat_entry["size"] == 3000, "catalog: size=3000")
+        check(cat_entry["sha256"] != "", "catalog: sha256 непустой")
+
+        # _git_push вызван
+        check(len(git_push_calls) == 1, "git_push вызван 1 раз")
+        if git_push_calls:
+            check("NewBook" in git_push_calls[0]["msg"], "git msg содержит NewBook")
+
+    finally:
+        publish_engine.VERSIONS = old_versions
+        publish_engine.CATALOG = old_catalog
+        publish_engine.ROOT_CATALOG = old_root_catalog
+        publish_engine.ROOT = old_root
+        publish_engine.gh_release.next_db_tag = orig_next_tag
+        publish_engine.gh_release.create_release = orig_create
+        publish_engine.gh_release.upload_asset = orig_upload
+        publish_engine.gh_release.publish_release = orig_publish
+        publish_engine.gh_release.publish_catalog = orig_publish_catalog
+        publish_engine._git_push = orig_git_push
+        publish_engine._run_make_catalog = orig_run_make
+        publish_engine._copy_catalog_root = lambda: None
+
+
+# ======================================================================
+# f) Новая книга без title → PublishError
+# ======================================================================
+def test_publish_book_new_no_title():
+    print("=== f) publish_book (новая книга, нет title) ===")
+    tmpdir = tempfile.mkdtemp(prefix="pubnewnotit_")
+
+    ver_path = os.path.join(tmpdir, "versions.json")
+    vdata = {"books": {}, "audio": {}}
+    with open(ver_path, "w", encoding="utf-8") as f:
+        json.dump(vdata, f)
+
+    new_db = os.path.join(tmpdir, "NoTitleBook.db")
+    with open(new_db, "wb") as f:
+        f.write(b"t" * 100)
+
+    old_versions = publish_engine.VERSIONS
+    publish_engine.VERSIONS = ver_path
+
+    try:
+        try:
+            publish_engine.publish_book(
+                token="fake",
+                key="NoTitleBook",
+                new_file=new_db,
+                notes="",
+                title=None,
+                log=lambda x: None,
+            )
+            check(False, "должна быть PublishError при title=None")
+        except publish_engine.PublishError as e:
+            check("нужно название" in str(e),
+                  "PublishError: «для новой книги нужно название» (got %r)" % str(e))
+    finally:
+        publish_engine.VERSIONS = old_versions
+
+
+# ======================================================================
 # main
 # ======================================================================
 def main():
@@ -581,6 +785,8 @@ def main():
     test_publish_book_full()
     test_delta_useless()
     test_delta_useful()
+    test_publish_book_new()
+    test_publish_book_new_no_title()
 
     print("")
     print("Итого проверок: %d, провалов: %d" % (checks, fails))

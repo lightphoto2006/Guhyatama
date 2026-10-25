@@ -119,9 +119,37 @@ class DeltaTab(ttk.Frame):
         row.pack(fill="x", pady=2)
         ttk.Label(row, text="Ключ:", width=8).pack(side="left")
         self.v_pub_key = tk.StringVar()
-        self.cmb_pub_key = ttk.Combobox(row, textvariable=self.v_pub_key, width=30)
+        self.cmb_pub_key = ttk.Combobox(row, textvariable=self.v_pub_key,
+                                        width=30, state="normal")
         self.cmb_pub_key.pack(side="left", padx=4)
         ttk.Button(row, text="Обновить", command=self._refresh_pub_keys).pack(side="left")
+
+        # Название книги (для новой книги)
+        row = ttk.Frame(pubf)
+        row.pack(fill="x", pady=2)
+        ttk.Label(row, text="Название:", width=8).pack(side="left")
+        self.v_pub_title = tk.StringVar()
+        ttk.Entry(row, textvariable=self.v_pub_title, width=40).pack(side="left", padx=4)
+
+        # Язык (для новой книги)
+        row = ttk.Frame(pubf)
+        row.pack(fill="x", pady=2)
+        ttk.Label(row, text="Язык:", width=8).pack(side="left")
+        self.v_pub_lang = tk.StringVar(value="rus")
+        ttk.Combobox(row, textvariable=self.v_pub_lang, width=6,
+                     values=("rus", "eng", "hin", "ben"), state="readonly").pack(side="left", padx=4)
+
+        # Подсказка
+        ttk.Label(
+            pubf,
+            text="Для новой книги: впиши ключ (напр. Chaitanya_Bhagavata), название и язык.",
+            foreground="blue",
+            wraplength=500,
+            justify="left",
+        ).pack(anchor="w", pady=(0, 2))
+
+        # Автоподстановка названия при уходе фокуса с поля ключа
+        self.cmb_pub_key.bind("<FocusOut>", self._on_pub_key_focusout)
 
         # Версия
         row = ttk.Frame(pubf)
@@ -185,7 +213,7 @@ class DeltaTab(ttk.Frame):
         ttk.Label(row, text="versions.json:", width=12).pack(side="left")
         self.v_cat_versions = tk.StringVar(value=os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(HERE))), "updates", "versions.json"))
         ttk.Entry(row, textvariable=self.v_cat_versions).pack(side="left", fill="x", expand=True, padx=4)
-        ttk.Button(row, text="Обзор…", command=lambda: self._pick(self.v_cat_versions, "versions.json", [("JSON", "*.json")])).pack(side="left")
+        ttk.Button(row, text="Обзор…", command=lambda: self._pick(self.v_cat_versions, "versions.json", [("JSON", "*.db")])).pack(side="left")
 
         row = ttk.Frame(t)
         row.pack(fill="x", pady=2)
@@ -434,6 +462,23 @@ class DeltaTab(ttk.Frame):
         out_f = self.v_delta_out.get().strip()
         self.v_pub_delta.set(bool(old and new_f and out_f))
 
+    def _on_pub_key_focusout(self, event=None):
+        """Автоподстановка названия из ключа (замена _ на пробелы)."""
+        key = self.v_pub_key.get().strip()
+        if key and not self.v_pub_title.get().strip():
+            self.v_pub_title.set(key.replace("_", " "))
+
+    def _key_exists(self, key):
+        """Проверка: есть ли ключ в versions.json (books или audio)."""
+        if not key:
+            return False
+        try:
+            with open(os.path.join(ROOT, "updates", "versions.json"), encoding="utf-8") as f:
+                data = json.load(f)
+            return key in data.get("books", {}) or key in data.get("audio", {})
+        except Exception:
+            return False
+
     def _publish_book(self):
         """Кнопка публикации книги в фоне."""
         if self.busy:
@@ -444,12 +489,13 @@ class DeltaTab(ttk.Frame):
         old = self.v_delta_old.get().strip()
         out = self.v_delta_out.get().strip()
 
+        # Автоподстановка названия из ключа
+        if key and key.strip() and not self.v_pub_title.get().strip():
+            self.v_pub_title.set(key.strip().replace("_", " "))
+
         # Проверки
         if not new or not os.path.exists(new):
             messagebox.showwarning("Нет NEW", "Укажите существующий NEW .db")
-            return
-        if not key:
-            messagebox.showwarning("Нет ключа", "Выберите ключ книги")
             return
         if delta_checked and (not old or not out):
             messagebox.showwarning("Нет дельты",
@@ -457,11 +503,19 @@ class DeltaTab(ttk.Frame):
                                    "Укажите OLD/OUT для сборки дельты.")
             return
 
+        # Для новой книги — требуем непустое название
+        is_new = not self._key_exists(key)
+        if is_new and not self.v_pub_title.get().strip():
+            messagebox.showwarning("Нет названия",
+                                   "Для новой книги укажите название.")
+            return
+
         # Сводка
         delta_info = " (будет собрана дельта)" if delta_checked else ""
-        summary = ("Книга: %s\n"
-                   "Версия: %s\n"
-                   "Файл: %s%s" % (key, self.v_pub_ver.cget("text"), new, delta_info))
+        new_book_label = " (НОВАЯ книга)" if is_new else ""
+        summary = ("Книга: %s%s\n"
+                    "Версия: %s\n"
+                    "Файл: %s%s" % (key, new_book_label, self.v_pub_ver.cget("text"), new, delta_info))
         if not messagebox.askyesno("Публиковать?", summary, parent=self):
             return
 
@@ -481,11 +535,12 @@ class DeltaTab(ttk.Frame):
         except Exception:
             prev_version = None
         notes = self.v_pub_notes.get().strip()
-        ver_text = self.v_pub_ver.cget("text")
-        threading.Thread(target=self._publish_worker, args=(new, key, delta_checked, old, out, notes, prev_version),
-                          daemon=True).start()
+        title = self.v_pub_title.get().strip()
+        lang = self.v_pub_lang.get()
+        threading.Thread(target=self._publish_worker, args=(new, key, delta_checked, old, out, notes, prev_version, title, lang),
+                           daemon=True).start()
 
-    def _publish_worker(self, new_file, key, delta_checked, old, out, notes, prev_version):
+    def _publish_worker(self, new_file, key, delta_checked, old, out, notes, prev_version, title, lang):
         def say(t):
             self.q.put(("log", str(t)))
         try:
@@ -525,6 +580,8 @@ class DeltaTab(ttk.Frame):
                 delta_file=delta_file,
                 delta_from=prev_version,
                 log=say,
+                title=title,
+                lang=lang,
             )
             self.q.put(("pub_done", "Опубликовано: %s" % result["url"]))
             self.q.put(("pub_refresh", ""))

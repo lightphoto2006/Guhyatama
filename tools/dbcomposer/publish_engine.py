@@ -168,8 +168,11 @@ def _git_push(files, msg):
 
 
 def publish_book(token, key, new_file, notes, delta_file="", delta_from=0,
-                 version=None, log=print):
+                 version=None, log=print, title=None, lang="rus", sec="books"):
     """Публикует книгу одной кнопкой.
+
+    Если ``key`` уже есть в ``sec`` — обновляет запись.
+    Если ``key`` отсутствует — создаёт новую запись (title обязателен).
 
     Возвращает {"tag", "url", "size", "sha256", "delta_url", "version", "prev_version"}.
     """
@@ -179,11 +182,19 @@ def publish_book(token, key, new_file, notes, delta_file="", delta_from=0,
 
     if key in versions_data.get("books", {}):
         sec = "books"
+        old_key = True
     elif key in versions_data.get("audio", {}):
         sec = "audio"
+        old_key = True
     else:
-        raise PublishError("ключ %s не найден в books или audio" % key)
-
+        # --- новая книга ---
+        if not title:
+            raise PublishError("для новой книги нужно название")
+        meta = {"title": title, "lang": lang, "file": "", "version": 0,
+                "url": "", "notes": "", "auth": "github"}
+        versions_data.setdefault(sec, {})[key] = meta
+        old_key = False
+        sec = "books"
     meta = dict(versions_data[sec][key])
 
     # 2) Version и хэш
@@ -258,6 +269,20 @@ def publish_book(token, key, new_file, notes, delta_file="", delta_from=0,
 
     # 8) make_catalog
     _run_make_catalog(log)
+
+    # 8.5) Для новой книги — создать запись в каталоге, если её нет
+    if not old_key:
+        with open(CATALOG, encoding="utf-8") as f:
+            catalog_data = json.load(f)
+        if not any(e.get("key") == key for e in catalog_data.get(sec, [])):
+            catalog_data.setdefault(sec, []).append(
+                {"key": key, "size": 0, "sha256": ""})
+            err = dbcommon.atomic_write_bytes(
+                CATALOG,
+                json.dumps(catalog_data, ensure_ascii=False, indent=2).encode("utf-8"),
+            )
+            if err:
+                raise PublishError("catalog.json создание: %s" % err)
 
     # 9) Patch catalog + copy to root
     _patch_catalog(key, sec, new_size, new_sha, delta_size, delta_sha)
