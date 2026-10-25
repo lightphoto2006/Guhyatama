@@ -1,22 +1,22 @@
 {
   "catalogVersion": 1,
   "apk": {
-    "versionCode": 57,
-    "versionName": "1.3.9",
-    "url": "https://github.com/lightphoto2006/Guhyatama/releases/download/v1.3.9/Guhyatama-1.3.9.apk",
-    "notes": "Что нового:\n- Кнопки настройки, закладка и удаление разметок теперь удобно нажимать пальцем (48dp).\n- Доступность: TalkBack озвучивает настройки, закладку и закрытие иллюстраций.\n- Импорт и бэкап: вместо падения — сообщение Нет доступа к файлу.\n- Векторная шестерёнка вместо эмодзи — одинаково на всех прошивках.\n- Диалог Приложение падало закрывается тапом вне окна (лог сохраняется).\n- Обновления: каталог читается из ассета релиза (кэш CDN больше не мешает), два резервных канала, при сетевой ошибке видна причина.\n- Дельта-обновление с v1.3.8 (патч 56->57).",
+    "versionCode": 58,
+    "versionName": "1.3.10",
+    "url": "https://github.com/lightphoto2006/Guhyatama/releases/download/v1.3.10/Guhyatama-1.3.10.apk",
+    "notes": "Что нового:`n- Исправлено: на старых Android (7.0/7.1) не скачивались книги и обновления — в системе нет корневого сертификата ISRG Root X1. Теперь он встроен в приложение, плюс разрешено доверие пользовательским сертификатам.`n- Скачивание идёт собственным загрузчиком: видны мегабайты и проценты, при сбое показывается конкретная причина.`n- Системный менеджер загрузок оставлен только как резервный путь.",
     "delta": {
-      "from": 56,
-      "file": "F:\\AI\\Development\\Guhyatama\\releases\\Guhyatama-delta-56-to-57.bsdiff",
-      "url": "https://github.com/lightphoto2006/Guhyatama/releases/download/v1.3.9/Guhyatama-delta-56-to-57.bsdiff"
+      "from": 57,
+      "url": "https://github.com/lightphoto2006/Guhyatama/releases/download/v1.3.10/Guhyatama-delta-57-to-58.bsdiff",
+      "file": "F:\\\\AI\\\\Development\\\\Guhyatama\\\\releases\\\\Guhyatama-delta-57-to-58.bsdiff"
     },
-    "file": "F:\\AI\\Development\\Guhyatama\\releases\\Guhyatama-1.3.9.apk",
-    "size": 6054690,
-    "sha256": "684f7edbde1e1e4ca1149ca6aa0db913fb85304251ef4b6895d71beee08863ec",
-    "deltaFrom": 56,
-    "deltaUrl": "https://github.com/lightphoto2006/Guhyatama/releases/download/v1.3.9/Guhyatama-delta-56-to-57.bsdiff",
-    "deltaSize": 6082370,
-    "deltaSha": "6715ce330b22a73a9bb1c903d35f7bf981b11baab38ca6eb8e59bfbfa82a823c"
+    "file": "F:\\\\AI\\\\Development\\\\Guhyatama\\\\releases\\\\Guhyatama-1.3.10.apk",
+    "size": 6056878,
+    "sha256": "a590c4cdd2f4a8c4e6ef29e7df75ea08bdeb144420085b35b246dac653c57bae",
+    "deltaFrom": 57,
+    "deltaUrl": "https://github.com/lightphoto2006/Guhyatama/releases/download/v1.3.10/Guhyatama-delta-57-to-58.bsdiff",
+    "deltaSize": 6080166,
+    "deltaSha": "f79536b0acd3f516a50a4ddf4fcdc8ba8b223960741f8279b015f744542d2c56"
   },
   "books": [
     {
