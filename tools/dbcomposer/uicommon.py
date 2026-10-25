@@ -70,6 +70,31 @@ def say(log_widget, text):
     log_widget.see("end")
 
 
+def install_clipboard_bindings(root):
+    """Ctrl+C/V/X/A по ФИЗИЧЕСКОМУ коду клавиши — работает и в русской раскладке."""
+    def handler(ev):
+        if not (ev.state & 0x4):  # Ctrl не нажат
+            return None
+        w = ev.widget
+        try:
+            key = int(ev.keycode)
+        except Exception:
+            return None
+        seq = {65: "<<SelectAll>>", 67: "<<Copy>>", 86: "<<Paste>>", 88: "<<Cut>>"}.get(key)
+        if seq is None:
+            return None
+        try:
+            w.event_generate(seq)
+        except Exception:
+            return None
+        return "break"
+    for cls in ("Entry", "TEntry", "Text", "TCombobox", "Spinbox", "TSpinbox"):
+        try:
+            root.bind_class(cls, "<Key>", handler, add="+")
+        except Exception:
+            pass
+
+
 def set_busy(owner, v, buttons=(), prog=None):
     """Блокировка/разблокировка кнопок и прогресс-бара."""
     owner.busy = v

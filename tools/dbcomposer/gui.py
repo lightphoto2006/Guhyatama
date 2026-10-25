@@ -207,6 +207,7 @@ class App(tk.Tk):
         self.nb.bind("<<NotebookTabChanged>>", self.on_tab)
         self.protocol("WM_DELETE_WINDOW", self.on_close)
 
+        uicommon.install_clipboard_bindings(self)
         self.after(150, self.poll)
         self.after(400, self.startup_scan)
 

@@ -450,6 +450,74 @@ check("hint: подсказка про «глава целиком» в notes",
       any("нет номеров стихов" in n for n in s_hint["notes"]),
       s_hint["notes"])
 
+# ============================================================ русские порядковые ---
+check("rus_ordinal_to_int: первая -> 1",
+      ai.rus_ordinal_to_int("первая") == 1,
+      ai.rus_ordinal_to_int("первая"))
+check("rus_ordinal_to_int: восемнадцатая -> 18",
+      ai.rus_ordinal_to_int("восемнадцатая") == 18,
+      ai.rus_ordinal_to_int("восемнадцатая"))
+check("rus_ordinal_to_int: двадцать первая -> 21",
+      ai.rus_ordinal_to_int("двадцать первая") == 21,
+      ai.rus_ordinal_to_int("двадцать первая"))
+check("rus_ordinal_to_int: тридцать вторая -> 32",
+      ai.rus_ordinal_to_int("тридцать вторая") == 32,
+      ai.rus_ordinal_to_int("тридцать вторая"))
+check("rus_ordinal_to_int: сорок вторая -> 42",
+      ai.rus_ordinal_to_int("сорок вторая") == 42,
+      ai.rus_ordinal_to_int("сорок вторая"))
+check("rus_ordinal_to_int: абракадабра -> None",
+      ai.rus_ordinal_to_int("абракадабра") is None,
+      ai.rus_ordinal_to_int("абракадабра"))
+check("rus_ordinal_to_int: пятая -> 5",
+      ai.rus_ordinal_to_int("пятая") == 5,
+      ai.rus_ordinal_to_int("пятая"))
+
+# ============================================================ regex + слова + СОДЕРЖАНИЕ ---
+regex_text = (
+    "Глава первая\n"
+    "Краткое изложение деяний\n"
+    "Текст главы 1.\n"
+    "\n"
+    "Глава вторая\n"
+    "Явление Шри Кришны\n"
+    "Текст главы 2.\n"
+    "\n"
+    "СОДЕРЖАНИЕ\n"
+    "Гл. 1 ...\n"
+    "Гл. 2 ...\n"
+)
+s_regex_words = ai.build_structure(
+    regex_text,
+    dict(ch_mode="regex", v_mode="para", prelude_intro=False, book_title="Т",
+         chapter_re=r"^Глава\s+(?P<chapter>[а-яё]+)$"))
+nums_words = [c["number"] for c in s_regex_words["chapters"]]
+titles_words = [c["title"] for c in s_regex_words["chapters"]]
+all_text_words = "\n".join(p for c in s_regex_words["chapters"] for p in c["paras"])
+check("regex+слова: 2 главы", len(s_regex_words["chapters"]) == 2,
+      len(s_regex_words["chapters"]))
+check("regex+слова: номера 1 и 2", nums_words == [1, 2], nums_words)
+check("regex+слова: названия", titles_words == ["Краткое изложение деяний", "Явление Шри Кришны"],
+      titles_words)
+check("regex+слова: СОДЕРЖАНИЕ не в главах", "СОДЕРЖАНИЕ" not in all_text_words,
+      "СОДЕРЖАНИЕ" in all_text_words)
+check("regex+слова: заметка про СОДЕРЖАНИЕ",
+      any("СОДЕРЖАНИЕ" in n for n in s_regex_words["notes"]),
+      s_regex_words["notes"])
+
+# ============================================================ прогресс LLM чанками ---
+progress_calls = []
+def _mock_chat_progress(msgs):
+    return {"chapters": [{"heading": "ГЛАВА", "number": 1}]}
+
+mock_progress = ai.llm_find_headings_all
+big_text = "x" * 60000
+mock_progress(_mock_chat_progress, "Кн", big_text,
+              on_progress=lambda i, n: progress_calls.append((i, n)))
+check("progress: 60k симв -> 3 чанка",
+      progress_calls == [(1, 3), (2, 3), (3, 3)],
+      progress_calls)
+
 print()
 if FAILED:
     print("FAILED %d: %s" % (len(FAILED), ", ".join(FAILED)))

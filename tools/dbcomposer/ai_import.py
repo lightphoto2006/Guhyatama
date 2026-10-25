@@ -108,8 +108,11 @@ SYSTEM_JSON = ("Ты — часть конвейера dbcomposer (сборка 
 
 #: автошаблоны границ глав (режим «Автошаблоны», пользовательский regex — выше)
 PRESET_CHAPTER_RES = (
-    r"^(?:Глава|ГЛАВА|CHAPTER|Chapter)\s+(?P<chapter>\d{1,4}|[IVXLCDM]{1,8}|первая|вторая|третья|четвёртая|пятая|шестая|седьмая|восьмая|девятая|десятая|одиннадцатая|двенадцатая|тринадцатая|четырнадцатая|пятнадцатая|шестнадцатая|семнадцатая|восемнадцатая|девятнадцатая|двадцатая)\s*[.:—–-]?\s*(?P<title>.*)$",
+    # «Глава первая» / «ГЛАВА ПЕРВАЯ» — слово + опциональный title
+    r"^(?:Глава|ГЛАВА|CHAPTER|Chapter)\s+(?P<chapter>[а-яё]+)\s*[.:—–-]?\s*(?P<title>.*)$",
+    # «Глава 1» / «Глава I» — число/римские + title
     r"^(?:Глава|ГЛАВА|CHAPTER|Chapter)\s+(?P<chapter>\d{1,4}|[IVXLCDM]{1,8})\s*[.:—–-]?\s*(?P<title>.*)$",
+    # «Раздел 1»
     r"^(?:Раздел|РАЗДЕЛ|SECTION|Section)\s+(?P<chapter>\d{1,4})\s*[.:—–-]?\s*(?P<title>.*)$",
     r"^===\s*(?P<chapter>\d{1,4})\s*===$",
     r"^(?P<chapter>\d{1,3})\s*\.\s+(?P<title>\S.*)$",
@@ -190,6 +193,31 @@ def _num(v):
         return None
 
 
+# Порядковые числительные русского языка (муж. род), 1–40
+RU_ORDINALS_TENS = {
+    20: "двадцать", 30: "тридцать", 40: "сорок",
+}
+
+
+def rus_ordinal_to_int(s):
+    """Преобразовать русское порядковое числительное (муж. род) в число.
+
+    Поддерживает: «первая»..«двадцатая», «двадцать первая»..«сорок вторая».
+    Возвращает int или None.
+    """
+    s = (s or "").strip().lower()
+    if s in RU_ORDINALS:
+        return RU_ORDINALS[s]
+    # «двадцать первая», «тридцать вторая», «сорок вторая»
+    for tens_val, tens_word in RU_ORDINALS_TENS.items():
+        prefix = tens_word + " "
+        if s.startswith(prefix):
+            ord_part = RU_ORDINALS.get(s[len(prefix):])
+            if ord_part is not None and 1 <= ord_part <= 9:
+                return tens_val + ord_part
+    return None
+
+
 def _first_line(p):
     return p.split("\n")[0].strip()
 
@@ -205,6 +233,36 @@ def split_chapters(paras, opts):
     mode = opts.get("ch_mode", "none")
     song_names = {}
     preface = []
+    notes = []
+
+    # --- отсечь блок СОДЕРЖАНИЕ/ОГЛАВЛЕНИЕ в конце книги ---
+    mid = len(paras) // 2
+    toc_idx = None
+    for i in range(mid, len(paras)):
+        first = paras[i].split("\n")[0].strip().lower()
+        if first in ("содержание", "оглавление"):
+            toc_idx = i
+            break
+    if toc_idx is not None:
+        notes.append("блок СОДЕРЖАНИЕ в конце отрезан")
+        paras = paras[:toc_idx]
+        # сдвигаем LLM-заголовки, если они есть
+        if mode == "llm":
+            heads = opts.get("llm_headings") or []
+            new_heads = []
+            for h in heads:
+                needle = h.get("heading") or ""
+                found = None
+                for j in range(len(paras)):
+                    if needle in paras[j]:
+                        found = j
+                        break
+                if found is not None:
+                    new_heads.append(h)
+            opts = dict(opts, llm_headings=new_heads)
+        # если режим llm и заголовков не осталось — вернуть ошибку
+        if mode == "llm" and not opts.get("llm_headings"):
+            return [], {}, ["LLM-заголовки не найдены в тексте (подстроки не совпали)"], []
 
     if mode == "llm":
         heads = opts.get("llm_headings") or []
@@ -235,6 +293,25 @@ def split_chapters(paras, opts):
             song = _num(str(h.get("song") or "1")) or 1
             number = _num(str(h.get("number") or "")) or (k + 1)
             title = (h.get("title") or h["heading"]).strip()
+            # --- название главы со следующей строки (LLM) ---
+            if not title or re.match(r"^глава\s+", title, re.I):
+                nxt = None
+                if rest:
+                    nxt = rest
+                elif idx + 1 < len(paras):
+                    nxt = _first_line(paras[idx + 1])
+                if nxt and len(nxt) < 120 and not nxt.rstrip().endswith((";", ".", "。")):
+                    title = nxt
+                    # удалить из тела
+                    if rest:
+                        rest = re.sub(re.escape(nxt) + r"\s*$", "", rest, count=1).strip()
+                        body = ([rest] if rest else []) + list(paras[idx + 1:end])
+                    else:
+                        next_para = paras[idx + 1]
+                        next_lines = next_para.split("\n")
+                        next_lines[0] = ""
+                        trimmed_next = "\n".join(next_lines).strip()
+                        body = (trimmed_next if trimmed_next else []) + list(paras[idx + 2:end])
             sname = str(h.get("song_name") or "").strip()
             if sname and not song_names.get(str(song)):
                 song_names[str(song)] = sname[:80]
@@ -264,7 +341,6 @@ def split_chapters(paras, opts):
     md_chapter = int(opts.get("md_chapter", 2) or 2)
 
     chapters = []
-    notes = []
     cur = None
     song_i = 0
     ch_i = 0
@@ -290,7 +366,7 @@ def split_chapters(paras, opts):
         cur = {"song": str(song), "number": number, "title": title, "paras": []}
         chapters.append(cur)
 
-    for p in paras:
+    for ci, p in enumerate(paras):
         line = _first_line(p)
         rest = p.split("\n", 1)[1].strip() if "\n" in p else ""
         if mode == "none":
@@ -370,8 +446,31 @@ def split_chapters(paras, opts):
                         title = title[len(_prefix):]
                         break
                 title = title.strip(" .:()-—–_\u2013\u2014")
+                # если после обработки осталась только метка (без слова) — очистить
+                if re.match(r"^(глава|chapter|раздел|section)\s*$", title, re.I):
+                    title = ""
             if not title:
                 title = "Глава %d" % n
+            # --- название главы со следующей строки ---
+            if not title or re.match(r"^глава\s+", title, re.I):
+                nxt = None
+                if rest:
+                    nxt = rest.split("\n")[0].strip()
+                elif ci < len(paras) - 1:
+                    nxt = _first_line(paras[ci + 1])
+                if nxt and len(nxt) < 120 and not nxt.rstrip().endswith((";", ".", "。")):
+                    title = nxt
+                    # удалить title из тела: из rest или из след. параграфа
+                    if rest:
+                        rest_lines = rest.split("\n")
+                        rest_lines[0] = ""
+                        rest = "\n".join(rest_lines).strip()
+                    elif ci < len(paras) - 1:
+                        # модифицируем след. параграф — цикл его обработает
+                        next_lines = paras[ci + 1].split("\n")
+                        next_lines[0] = ""
+                        paras[ci + 1] = "\n".join(next_lines).strip()
+            ci += 1
             new_chapter(s if s is not None else (song_i or cur_song()), n, title)
             if rest:
                 cur["paras"].append(rest)
@@ -653,7 +752,7 @@ def structure_messages(book_title, text):
     return _structure_prompt(book_title, body, footer)
 
 
-def llm_find_headings_all(chat_fn, book_title, text):
+def llm_find_headings_all(chat_fn, book_title, text, on_progress=None):
     """Детекция глав по ВСЕМУ тексту: чанки + сборка + дедуп (heading,number,song) + нормализация номеров."""
     chunks = structure_chunks(text)
     all_chapters = []
@@ -661,6 +760,8 @@ def llm_find_headings_all(chat_fn, book_title, text):
     book_title_out = None
     for i, chunk in enumerate(chunks, 1):
         resp = chat_fn(structure_messages_chunk(book_title, chunk, i, len(chunks)))
+        if on_progress:
+            on_progress(i, len(chunks))
         ch_list = resp.get("chapters", [])
         if book_title_out is None and resp.get("book_title"):
             book_title_out = resp["book_title"]
@@ -1395,7 +1496,8 @@ class AIImportTab(ttk.Frame):
 
             # Чанковая детекция глав по всему тексту
             self.q.put(("log", "LLM: детекция глав чанками…"))
-            res = llm_find_headings_all(_chat_fn, title, text)
+            res = llm_find_headings_all(_chat_fn, title, text,
+                                        on_progress=lambda i, n: self.q.put(("log", "LLM: чанк %d/%d…" % (i, n))))
             n = len((res or {}).get("chapters") or [])
             self.q.put(("log", "LLM: найдено глав %d" % n))
             struct = build_structure(text, opts, llm_result=res)
