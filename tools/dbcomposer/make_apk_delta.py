@@ -189,6 +189,8 @@ def build(old_path, new_path, out_path):
     print("new:    %d байт" % len(new))
     print("patch:  %d байт (raw BSDIFF40, без bzip2)" % len(raw))
     print("патч/полный APK: %.2f%% (полная замена — %d байт)" % (ratio, len(new)))
+    if ratio >= 98.0:
+        print("ВНИМАНИЕ: патч бесполезен (>=98%% от APK) — дельту публиковать не нужно, клиенту выгоднее полный APK.")
     print("Самопроверка: new воспроизведён байт-в-байт — OK")
     print("Записан: %s" % out_path)
 

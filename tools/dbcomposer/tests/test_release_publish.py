@@ -186,7 +186,41 @@ def test_patch_catalog_worker():
 
 
 # ======================================================================
-# d) Tk-тест (пропуск без дисплея)
+# d) delta_is_useless
+# ======================================================================
+def test_delta_is_useless():
+    print("=== d) delta_is_useless ===")
+    tmpdir = tempfile.mkdtemp(prefix="deltauseless_")
+
+    # 1) 1000 байт полный, 980 байт дельта, max_ratio=0.98 → True
+    fp_full = os.path.join(tmpdir, "full.bin")
+    fp_delta = os.path.join(tmpdir, "delta.bin")
+    with open(fp_full, "wb") as f:
+        f.write(b"x" * 1000)
+    with open(fp_delta, "wb") as f:
+        f.write(b"d" * 980)
+    check(release_gui.delta_is_useless(fp_delta, fp_full, max_ratio=0.98),
+          "1000/980 при max_ratio=0.98 → True")
+
+    # 2) 1000 байт полный, 500 байт дельта → False
+    with open(fp_delta, "wb") as f:
+        f.write(b"d" * 500)
+    check(not release_gui.delta_is_useless(fp_delta, fp_full, max_ratio=0.98),
+          "1000/500 при max_ratio=0.98 → False")
+
+    # 3) Файла нет → False
+    check(not release_gui.delta_is_useless("/nonexistent/delta.bin", fp_full),
+          "файла нет → False")
+
+    # 4) 1000/920 при max_ratio=0.9 → True
+    with open(fp_delta, "wb") as f:
+        f.write(b"d" * 920)
+    check(release_gui.delta_is_useless(fp_delta, fp_full, max_ratio=0.9),
+          "1000/920 при max_ratio=0.9 → True")
+
+
+# ======================================================================
+# e) Tk-тест (пропуск без дисплея)
 # ======================================================================
 def test_tk():
     print("=== d) Tk-тест ===")
@@ -230,6 +264,7 @@ def main():
     test_next_db_tag()
     test_resolve_file()
     test_patch_catalog_worker()
+    test_delta_is_useless()
     test_tk()
 
     print("")

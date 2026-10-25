@@ -14,6 +14,19 @@ import gh_release
 import dbcommon
 import uicommon
 
+DELTA_MAX_RATIO = 0.98
+
+
+def delta_is_useless(delta_path, full_path, max_ratio=DELTA_MAX_RATIO):
+    """True, если дельта почти не меньше полного файла — качать полный выгоднее."""
+    try:
+        d = os.path.getsize(delta_path)
+        f = os.path.getsize(full_path)
+    except OSError:
+        return False
+    return f > 0 and d >= f * max_ratio
+
+
 HERE = os.path.dirname(os.path.abspath(__file__))
 ROOT = os.path.dirname(os.path.dirname(HERE))
 UPDATES_DIR = os.path.join(ROOT, "updates")
@@ -622,14 +635,19 @@ class ReleaseTab(ttk.Frame):
             full_sha = self._sha256(fpath)
             say("ассет: %s" % full_url)
             delta_url, delta_size, delta_sha = "", 0, ""
+            delta_ok = False
             d = meta.get("delta") or {}
             if int(d.get("from") or 0) > 0:
                 dpath = self._resolve_file(d.get("file", ""))
-                up2 = gh_release.upload_asset(token, repo, rid, dpath)
-                delta_url = gh_release.asset_api_url(repo, up2["id"])
-                delta_size = up2.get("size") or os.path.getsize(dpath)
-                delta_sha = self._sha256(dpath)
-                say("дельта: %s" % delta_url)
+                if delta_is_useless(dpath, fpath):
+                    say("дельта бесполезна (%.1f%% от файла) — публикую без неё" % (100.0 * os.path.getsize(dpath) / max(1, os.path.getsize(fpath))))
+                else:
+                    up2 = gh_release.upload_asset(token, repo, rid, dpath)
+                    delta_url = gh_release.asset_api_url(repo, up2["id"])
+                    delta_size = up2.get("size") or os.path.getsize(dpath)
+                    delta_sha = self._sha256(dpath)
+                    delta_ok = True
+                    say("дельта: %s" % delta_url)
             gh_release.publish_release(token, repo, rid)
             say("релиз опубликован: %s" % gh_release.gh_release_url(repo, tag))
             # вписываем в versions.json ТОЛЬКО url/delta.url — поля шага 3 не трогаем
@@ -638,8 +656,12 @@ class ReleaseTab(ttk.Frame):
             if m is None:
                 raise RuntimeError("запись %s исчезла из versions.json" % key)
             m["url"] = full_url
-            if delta_url and isinstance(m.get("delta"), dict):
-                m["delta"]["url"] = delta_url
+            if delta_ok:
+                if isinstance(m.get("delta"), dict):
+                    m["delta"]["url"] = delta_url
+            elif isinstance(m.get("delta"), dict):
+                m.pop("delta", None)
+                say("versions.json: дельта убрана — поедет полный файл")
             err = save_versions(data)
             if err:
                 raise RuntimeError(err)
