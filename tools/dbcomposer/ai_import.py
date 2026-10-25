@@ -593,7 +593,7 @@ def _structure_prompt(book_title, body, footer):
           "Верни JSON:\n"
           '{"book_title": "<название по тексту или подсказке>",'
           '"chapters": [{"heading": "<ТОЧНАЯ строка-заголовок, скопированная из '
-          'текста БЕЗ изменений>", "number": <порядковый номер с 1>, '
+          'текста БЕЗ изменений>", "number": <номер главы, КАК НАПИСАНО в заголовке (целое); 0, если в заголовке номера нет>, '
           '"song": <раздел с 1, если есть>, '
           '"song_name": "<название раздела, только когда song новый>", '
           '"title": "<короткий титул>"}]}\n'
@@ -624,7 +624,7 @@ def structure_messages(book_title, text):
 
 
 def llm_find_headings_all(chat_fn, book_title, text):
-    """Детекция глав по ВСЕМУ тексту: чанки + сборка + дедупликация."""
+    """Детекция глав по ВСЕМУ тексту: чанки + сборка + дедуп (heading,number,song) + нормализация номеров."""
     chunks = structure_chunks(text)
     all_chapters = []
     seen = set()
@@ -636,11 +636,34 @@ def llm_find_headings_all(chat_fn, book_title, text):
             book_title_out = resp["book_title"]
         for ch in ch_list:
             heading = ch.get("heading", "")
+            if not heading:
+                continue
             number = ch.get("number", 0)
-            key = (heading, number)
-            if key not in seen and heading not in {c["heading"] for c in all_chapters}:
+            try:
+                number = int(number)
+            except (TypeError, ValueError):
+                number = 0
+            song = ch.get("song", 1)
+            try:
+                song = int(song)
+            except (TypeError, ValueError):
+                song = 1
+            key = (heading, number, song)
+            if key not in seen:
                 seen.add(key)
+                ch["number"] = number
+                ch["song"] = song
                 all_chapters.append(ch)
+    # нормализация номеров по каждому song: счётчик на song
+    counters = {}
+    for ch in all_chapters:
+        song = ch["song"]
+        counters.setdefault(song, 0)
+        n = ch["number"]
+        counters[song] += 1
+        ch["number"] = counters[song]
+        if n > 0:
+            counters[song] = max(counters[song], n)
     return {"book_title": book_title_out or book_title or "—", "chapters": all_chapters}
 
 

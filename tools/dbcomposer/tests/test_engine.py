@@ -270,6 +270,67 @@ check("llm_all: короткий текст -> 1 вызов", cc[0] == 1, cc[0])
 check("llm_all: короткий текст -> 1 глава", len(res3["chapters"]) == 1,
       res3["chapters"])
 
+# === новые тесты на дедуп по (heading,number,song) и нормализацию номеров ===
+
+# два чанка: один и тот же заголовок "Глава 1", разные song (1 и 2) -> 2 главы
+def _mock_same_heading_diff_song():
+    call_count = [0]
+    def chat_fn(msgs):
+        call_count[0] += 1
+        if call_count[0] == 1:
+            return {"chapters": [{"heading": "Глава 1", "number": 1, "song": 1}]}
+        return {"chapters": [{"heading": "Глава 1", "number": 1, "song": 2}]}
+    return chat_fn
+
+mock_sh = _mock_same_heading_diff_song()
+res_sh = ai.llm_find_headings_all(mock_sh, "Кн", "а" * 30000 + "б" * 30000)
+check("llm_all: одинаковый heading, разные song -> 2 главы",
+      len(res_sh["chapters"]) == 2,
+      [(c["heading"], c["song"], c["number"]) for c in res_sh["chapters"]])
+check("llm_all: song=1 и song=2 оба на месте",
+      set(c["song"] for c in res_sh["chapters"]) == {1, 2},
+      [c["song"] for c in res_sh["chapters"]])
+
+# перехлёст: идентичная тройка (heading, number, song) -> 1 глава
+def _mock_overlap_dup():
+    call_count = [0]
+    def chat_fn(msgs):
+        call_count[0] += 1
+        if call_count[0] == 1:
+            return {"chapters": [{"heading": "Глава 5", "number": 5, "song": 1}]}
+        return {"chapters": [{"heading": "Глава 5", "number": 5, "song": 1}]}
+    return chat_fn
+
+mock_od = _mock_overlap_dup()
+res_od = ai.llm_find_headings_all(mock_od, "Кн", "а" * 30000 + "б" * 30000)
+check("llm_all: дубль (heading,number,song) -> 1 глава",
+      len(res_od["chapters"]) == 1,
+      [c["heading"] for c in res_od["chapters"]])
+
+# нормализация номеров: чанк1 -> number=1, чанк2 (та же song) -> number=1 и 0
+# -> после нормализации: 1, 2, 3 без повторов
+def _mock_number_reset():
+    call_count = [0]
+    def chat_fn(msgs):
+        call_count[0] += 1
+        if call_count[0] == 1:
+            return {"chapters": [{"heading": "А", "number": 1, "song": 1},
+                                 {"heading": "Б", "number": 2, "song": 1}]}
+        # модель сбросила нумерацию: number=1 и number=0
+        return {"chapters": [{"heading": "В", "number": 1, "song": 1},
+                             {"heading": "Г", "number": 0, "song": 1}]}
+    return chat_fn
+
+mock_nr = _mock_number_reset()
+res_nr = ai.llm_find_headings_all(mock_nr, "Кн", "а" * 30000 + "б" * 30000)
+nums_nr = [c["number"] for c in res_nr["chapters"]]
+check("llm_all: нормализация номеров (сброс модели) -> 1,2,3",
+      nums_nr == [1, 2, 3, 4],
+      nums_nr)
+check("llm_all: нормализация -> 4 уникальные главы",
+      len(res_nr["chapters"]) == 4,
+      len(res_nr["chapters"]))
+
 # extract_json / chat_json-обвязка (без сервера — только разбор)
 import llama_client                                   # noqa: E402
 check("extract_json: ```json-забор",
