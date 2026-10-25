@@ -51,8 +51,12 @@ class AudioTab(ttk.Frame):
         self.stopping = False
         self.cfg = self._load()
 
+        pan = ttk.Panedwindow(self, orient="vertical")
+        pan.pack(fill="both", expand=True, padx=6, pady=6)
+
         # --- 1. пак ---
-        pk = ttk.LabelFrame(self, text="1. Пак audio.db из папки", padding=6)
+        pk = ttk.LabelFrame(pan, text="1. Пак audio.db из папки", padding=6)
+        pan.add(pk, weight=4)
         pk.pack(fill="x", padx=6, pady=4)
         self.e_dir = tk.StringVar(value=self.cfg.get("dir", ""))
         self.e_type = tk.StringVar(value=self.cfg.get("type", "SB"))
@@ -104,7 +108,8 @@ class AudioTab(ttk.Frame):
         self.e_ext.trace_add("write", lambda *a: self._auto_pat())
 
         # --- 2. сжатие ---
-        rc = ttk.LabelFrame(self, text="2. Сжатие (MP3 -> Opus 24k, ~x3 легче)", padding=6)
+        rc = ttk.LabelFrame(pan, text="2. Сжатие (MP3 -> Opus 24k, ~x3 легче)", padding=6)
+        pan.add(rc, weight=4)
         rc.pack(fill="x", padx=6, pady=4)
         self.e_rsrc = tk.StringVar(value=self.cfg.get("rsrc", ""))
         self.e_rdst = tk.StringVar(value=self.cfg.get("rdst", ""))
@@ -133,7 +138,8 @@ class AudioTab(ttk.Frame):
         rc.columnconfigure(1, weight=1)
 
         # --- 3. нарезка: отдельное приложение ---
-        sp = ttk.LabelFrame(self, text="3. Нарезка (отдельное приложение Audo Cut)", padding=6)
+        sp = ttk.LabelFrame(pan, text="3. Нарезка (отдельное приложение Audo Cut)", padding=6)
+        pan.add(sp, weight=4)
         sp.pack(fill="x", padx=6, pady=4)
         self.e_acut = tk.StringVar(value=self.cfg.get("acut", ""))
         ttk.Entry(sp, textvariable=self.e_acut, width=52).grid(
@@ -155,8 +161,12 @@ class AudioTab(ttk.Frame):
                   foreground="gray").grid(row=2, column=0, columnspan=5, sticky="w")
         sp.columnconfigure(0, weight=1)
 
-        self.log = tk.Text(self, height=10, wrap="word")
-        self.log.pack(fill="both", expand=True, padx=6, pady=(0, 6))
+        # --- лог ---
+        logf = ttk.Frame(pan, padding=(6, 0, 6, 6))
+        pan.add(logf, weight=1)
+        logf.pack(fill="x")
+        self.log = tk.Text(logf, height=10, wrap="word")
+        self.log.pack(side="left", fill="both", expand=True)
         self.log.bind("<Key>", uicommon.log_key)
         uicommon.attach_log_menu(self.log)
         self.after(150, self.poll)

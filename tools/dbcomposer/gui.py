@@ -112,7 +112,12 @@ class App(tk.Tk):
         build = ttk.Frame(self.nb)
         self.nb.add(build, text="Сборка")
 
-        top = ttk.Frame(build, padding=6)
+        pan = ttk.Panedwindow(build, orient="vertical")
+        pan.pack(fill="both", expand=True, padx=6, pady=6)
+        pan.add(self.nb, weight=4)
+
+        # --- контент вкладки «Сборка» ---
+        top = ttk.Frame(pan, padding=6)
         top.pack(fill="x")
         ttk.Button(top, text="+ Файлы .db", command=self.add_files).pack(side="left")
         ttk.Button(top, text="+ Папка", command=self.add_folder).pack(side="left", padx=4)
@@ -122,7 +127,7 @@ class App(tk.Tk):
         ttk.Button(top, text="Содержимое", command=self.open_content).pack(side="right", padx=4)
 
         cols = ("title", "type", "chapters", "verses", "junk", "file")
-        self.tv = ttk.Treeview(build, columns=cols, show="tree headings", selectmode="browse")
+        self.tv = ttk.Treeview(top, columns=cols, show="tree headings", selectmode="browse")
         self.tv.heading("#0", text="✓")
         self.tv.column("#0", width=36, stretch=False, anchor="center")
         for c, label, w, anchor in (
@@ -137,7 +142,7 @@ class App(tk.Tk):
         self.tv.bind("<Double-Button-1>", self.on_double)
         self.tv.bind("<<TreeviewSelect>>", self.on_select)
 
-        edit = ttk.LabelFrame(build, text="Выбранная книга (переименовать при сборке)", padding=6)
+        edit = ttk.LabelFrame(top, text="Выбранная книга (переименовать при сборке)", padding=6)
         edit.pack(fill="x", padx=6, pady=4)
         self.e_title = tk.StringVar()
         self.e_author = tk.StringVar()
@@ -151,7 +156,7 @@ class App(tk.Tk):
         ttk.Button(edit, text="Применить", command=self.apply_edit).grid(row=1, column=2, columnspan=2)
         edit.columnconfigure(1, weight=1)
 
-        opts = ttk.LabelFrame(build, text="Чистка", padding=6)
+        opts = ttk.LabelFrame(top, text="Чистка", padding=6)
         opts.pack(fill="x", padx=6, pady=4)
         self.v_err = tk.BooleanVar(value=True)
         self.v_empty = tk.BooleanVar(value=True)
@@ -165,7 +170,7 @@ class App(tk.Tk):
         ttk.Checkbutton(opts, text="📨 письма по темам (LTRS+LTR)",
                         variable=self.v_merge).pack(side="left")
 
-        out = ttk.Frame(build, padding=6)
+        out = ttk.Frame(top, padding=6)
         out.pack(fill="x")
         ttk.Label(out, text="Выход:").pack(side="left")
         self.e_out = tk.StringVar(value=os.path.join(os.path.expanduser("~"), "clean_library.db"))
@@ -181,8 +186,11 @@ class App(tk.Tk):
         self.prog.pack(side="left")
         ttk.Button(out, text="📋", command=self.copy_log).pack(side="left", padx=4)
 
-        self.log = tk.Text(build, height=9, wrap="word")
-        self.log.pack(fill="both", expand=False, padx=6, pady=(0, 6))
+        # --- лог (отдельная панель внизу) ---
+        logf = ttk.Frame(pan, padding=(6, 0, 6, 6))
+        logf.pack(fill="x")
+        self.log = tk.Text(logf, height=9, wrap="word")
+        self.log.pack(side="left", fill="both", expand=True)
         self.log.bind("<Key>", uicommon.log_key)
         uicommon.attach_log_menu(self.log)
 

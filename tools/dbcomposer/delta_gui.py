@@ -45,8 +45,10 @@ class DeltaTab(ttk.Frame):
         self.after(150, self.poll)
 
     def _build_ui(self):
-        nb = ttk.Notebook(self)
-        nb.pack(fill="both", expand=True, padx=6, pady=6)
+        pan = ttk.Panedwindow(self, orient="vertical")
+        pan.pack(fill="both", expand=True, padx=6, pady=6)
+        nb = ttk.Notebook(pan)
+        pan.add(nb, weight=4)
 
         # --- Дельта БД ---
         self._build_delta_db_tab(nb)
@@ -58,7 +60,7 @@ class DeltaTab(ttk.Frame):
         self._build_apk_delta_tab(nb)
 
         # Лог
-        logf = ttk.Frame(self, padding=(6, 0, 6, 6))
+        logf = ttk.Frame(pan, padding=(6, 0, 6, 6))
         logf.pack(fill="x")
         self.prog = ttk.Progressbar(logf, mode="indeterminate", length=100)
         self.prog.pack(side="left", padx=(0, 6))

@@ -72,27 +72,88 @@ def say(log_widget, text):
 
 def install_clipboard_bindings(root):
     """Ctrl+C/V/X/A по ФИЗИЧЕСКОМУ коду клавиши — работает и в русской раскладке."""
+    TAG = "ClipFix"
+    def _sel(w):
+        try:
+            return w.get("sel.first", "sel.last")
+        except Exception:
+            try:
+                return w.selection_get()
+            except Exception:
+                return ""
     def handler(ev):
-        if not (ev.state & 0x4):  # Ctrl не нажат
+        if not (ev.state & 0x4):
             return None
         w = ev.widget
+        k = int(getattr(ev, "keycode", 0) or 0)
         try:
-            key = int(ev.keycode)
-        except Exception:
-            return None
-        seq = {65: "<<SelectAll>>", 67: "<<Copy>>", 86: "<<Paste>>", 88: "<<Cut>>"}.get(key)
-        if seq is None:
-            return None
-        try:
-            w.event_generate(seq)
+            if k == 65:                      # A — выделить всё
+                if isinstance(w, tk.Text):
+                    w.tag_add("sel", "1.0", "end-1c")
+                else:
+                    w.selection_range(0, "end")
+            elif k == 67:                    # C — копировать
+                s = _sel(w)
+                if s:
+                    w.clipboard_clear()
+                    w.clipboard_append(s)
+            elif k == 88:                    # X — вырезать
+                s = _sel(w)
+                if s:
+                    w.clipboard_clear()
+                    w.clipboard_append(s)
+                    if isinstance(w, tk.Text):
+                        w.delete("sel.first", "sel.last")
+                    else:
+                        w.delete("sel.first", "sel.last")
+            elif k == 86:                    # V — вставить
+                try:
+                    data = w.clipboard_get()
+                except Exception:
+                    data = ""
+                if data:
+                    if isinstance(w, tk.Text):
+                        try:
+                            w.delete("sel.first", "sel.last")
+                        except Exception:
+                            pass
+                        w.insert("insert", data)
+                    else:
+                        try:
+                            w.delete("sel.first", "sel.last")
+                        except Exception:
+                            pass
+                        w.insert("insert", data)
+            else:
+                return None
         except Exception:
             return None
         return "break"
-    for cls in ("Entry", "TEntry", "Text", "TCombobox", "Spinbox", "TSpinbox"):
+    def ensure(w):
         try:
-            root.bind_class(cls, "<Key>", handler, add="+")
+            tags = w.bindtags()
+            if TAG not in tags:
+                w.bindtags((TAG,) + tuple(tags))
         except Exception:
             pass
+    def scan(w):
+        ensure(w)
+        try:
+            for ch in w.winfo_children():
+                scan(ch)
+        except Exception:
+            pass
+    root.bind_class(TAG, "<Control-Key>", handler)
+    root.bind_all("<FocusIn>", lambda e: ensure(e.widget), add="+")
+    scan(root)
+    # периодически досканировать новые окна (диалоги создаются позже)
+    def tick():
+        try:
+            scan(root)
+        except Exception:
+            pass
+        root.after(1500, tick)
+    tick()
 
 
 def set_busy(owner, v, buttons=(), prog=None):

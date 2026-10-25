@@ -63,8 +63,13 @@ class LecturesTab(ttk.Frame):
         cfg = load_cfg()
         self.last_folder = cfg.get("last_folder", "")
 
+        pan = ttk.Panedwindow(self, orient="vertical")
+        pan.pack(fill="both", expand=True, padx=6, pady=6)
+        cf = ttk.Frame(pan)
+        pan.add(cf, weight=4)
+
         # --- книга (одна на всю папку) ---
-        book = ttk.LabelFrame(self, text="Книга (одна на всю папку)", padding=6)
+        book = ttk.LabelFrame(cf, text="Книга (одна на всю папку)", padding=6)
         book.pack(fill="x", padx=6, pady=4)
         self.e_btitle = tk.StringVar(value=cfg.get("book_title", "Чайтанья Чаритамрита. Лекции"))
         self.e_bauthor = tk.StringVar(value=cfg.get("author", "Шьямакунда прабху"))
@@ -93,7 +98,7 @@ class LecturesTab(ttk.Frame):
             self.show_cover()
 
         # --- файлы ---
-        top = ttk.Frame(self, padding=6)
+        top = ttk.Frame(cf, padding=6)
         top.pack(fill="x")
         ttk.Button(top, text="+ Папка DOCX", command=self.add_folder).pack(side="left")
         ttk.Button(top, text="+ Файлы Word", command=self.add_files).pack(side="left", padx=4)
@@ -104,7 +109,7 @@ class LecturesTab(ttk.Frame):
         self.sum_label.pack(side="right", padx=8)
 
         cols = ("section", "chapter", "texts", "title", "words", "file")
-        self.tv = ttk.Treeview(self, columns=cols, show="tree headings", selectmode="browse")
+        self.tv = ttk.Treeview(cf, columns=cols, show="tree headings", selectmode="browse")
         self.tv.heading("#0", text="✓")
         self.tv.column("#0", width=36, stretch=False, anchor="center")
         for c, label, w, anchor in (
@@ -118,18 +123,18 @@ class LecturesTab(ttk.Frame):
         self.tv.bind("<space>", self.on_space)
         self.tv.bind("<<TreeviewSelect>>", self.on_select)
 
-        edit = ttk.Frame(self, padding=6)
+        edit = ttk.Frame(cf, padding=6)
         edit.pack(fill="x")
         ttk.Label(edit, text="Имя лекции:").pack(side="left")
         self.e_title = tk.StringVar()
         ttk.Entry(edit, textvariable=self.e_title, width=60).pack(
             side="left", fill="x", expand=True, padx=4)
         ttk.Button(edit, text="Применить", command=self.apply_title).pack(side="left")
-        self.info = ttk.Label(self, text="Порядок в книге — по столбцам Раздел/Глава/Тексты, не по именам файлов.",
+        self.info = ttk.Label(cf, text="Порядок в книге — по столбцам Раздел/Глава/Тексты, не по именам файлов.",
                               padding=(6, 0))
         self.info.pack(fill="x")
 
-        out = ttk.Frame(self, padding=6)
+        out = ttk.Frame(cf, padding=6)
         out.pack(fill="x")
         ttk.Label(out, text="Выход:").pack(side="left")
         self.e_out = tk.StringVar(
@@ -141,7 +146,7 @@ class LecturesTab(ttk.Frame):
         self.prog = ttk.Progressbar(out, mode="indeterminate", length=100)
         self.prog.pack(side="left")
 
-        phone = ttk.LabelFrame(self, text="На телефон", padding=6)
+        phone = ttk.LabelFrame(cf, text="На телефон", padding=6)
         phone.pack(fill="x", padx=6, pady=4)
         self.b_adb = ttk.Button(phone, text="📲 На телефон (adb push)", command=self.push_adb)
         self.b_adb.pack(side="left")
@@ -149,8 +154,10 @@ class LecturesTab(ttk.Frame):
         ttk.Label(phone, text="или вручную: приложение -> Настройки -> .db -> выбрать файл").pack(
             side="left", padx=8)
 
-        self.log = tk.Text(self, height=7, wrap="word")
-        self.log.pack(fill="both", expand=False, padx=6, pady=(0, 6))
+        logf = ttk.Frame(pan, padding=(6, 0, 6, 6))
+        pan.add(logf, weight=1)
+        logf.pack(fill="x")
+        self.log = tk.Text(logf, height=7, wrap="word")
         self.log.bind("<Key>", uicommon.log_key)
         uicommon.attach_log_menu(self.log)
         self.after(150, self.poll)

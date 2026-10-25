@@ -878,9 +878,16 @@ class AIImportTab(ttk.Frame):
         self._text_before_auto = None  # исходный текст до автоопределения
         self._btns = []
 
-        self._build_server_bar()
-        self._build_tools()
-        logf = ttk.Frame(self, padding=(6, 0, 6, 6))
+        pan = ttk.Panedwindow(self, orient="vertical")
+        pan.pack(fill="both", expand=True, padx=6, pady=6)
+        cf = ttk.Frame(pan)
+        pan.add(cf, weight=4)
+        self._build_server_bar(cf)
+        self._build_tools(cf)
+
+        # Лог
+        logf = ttk.Frame(pan, padding=(6, 0, 6, 6))
+        pan.add(logf, weight=1)
         logf.pack(fill="x")
         self.prog = ttk.Progressbar(logf, mode="indeterminate", length=100)
         self.prog.pack(side="left", padx=(0, 6))
@@ -891,8 +898,8 @@ class AIImportTab(ttk.Frame):
         self.after(150, self.poll)
 
     # ------------------------------------------------------- сервер --------
-    def _build_server_bar(self):
-        srv = ttk.LabelFrame(self, text="llama-server (HTTP API)", padding=6)
+    def _build_server_bar(self, parent):
+        srv = ttk.LabelFrame(parent, text="llama-server (HTTP API)", padding=6)
         srv.pack(fill="x")
 
         r0 = ttk.Frame(srv)
@@ -1834,8 +1841,8 @@ class AIImportTab(ttk.Frame):
         self.say("применено правок: %d" % n)
 
     # ------------------------------------------------------- сборка UI ------
-    def _build_tools(self):
-        self.nb = ttk.Notebook(self)
+    def _build_tools(self, parent):
+        self.nb = ttk.Notebook(parent)
         self.nb.pack(fill="both", expand=True, padx=6, pady=6)
         self._build_tab1(self.nb)
         self._build_tab2(self.nb)

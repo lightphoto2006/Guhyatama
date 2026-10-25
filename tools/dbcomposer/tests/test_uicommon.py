@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
-"""Тест контекстного меню лог-виджета: attach_log_menu, Копировать, Выделить всё."""
+"""Тест контекстного меню лог-виджета + Ctrl+C/V/X/A по keycode (любая раскладка)."""
 import sys
 
 try:
@@ -15,6 +15,7 @@ if DBCOMPOSER_DIR not in sys.path:
     sys.path.insert(0, DBCOMPOSER_DIR)
 
 import tkinter as tk
+from tkinter import ttk
 
 checks = 0
 fails = 0
@@ -77,8 +78,82 @@ def test_attach_log_menu():
         check(True, "Tk: нет дисплея (TclError) — пропущено")
 
 
+def test_clipboard_bindings():
+    """Ctrl+A/C/X/V по keycode — работает в любой раскладке."""
+    print("=== install_clipboard_bindings ===")
+    try:
+        root = tk.Tk()
+        root.withdraw()
+    except tk.TclError:
+        check(True, "Tk: нет дисплея (TclError) — пропущено")
+        return
+
+    try:
+        import uicommon
+
+        # --- Entry ---
+        ent = ttk.Entry(root)
+        ent.pack()
+        uicommon.install_clipboard_bindings(root)
+        root.update()
+
+        # Tест A — выделить всё
+        ent.delete(0, "end")
+        ent.insert(0, "hello world")
+        ent.event_generate("<Control-Key>", keycode=65, state=0x4, keysym="Cyrillic_ef")
+        root.update()
+        sel = ent.selection_get()
+        check(sel == "hello world", "Entry A (keycode=65): выделилось «hello world» (got %r)" % sel)
+
+        # Тест C — копировать
+        ent.event_generate("<Control-Key>", keycode=67, state=0x4, keysym="Cyrillic_ef")
+        root.update()
+        cb = ent.clipboard_get()
+        check(cb == "hello world", "Entry C (keycode=67): в буфере «hello world» (got %r)" % cb)
+
+        # Тест V — вставить в новое поле
+        ent2 = ttk.Entry(root)
+        ent2.pack()
+        root.update()
+        ent2.event_generate("<Control-Key>", keycode=86, state=0x4, keysym="Cyrillic_ef")
+        root.update()
+        cb2 = ent2.get()
+        check(cb2 == "hello world", "Entry V (keycode=86): вставилось «hello world» (got %r)" % cb2)
+
+        # --- Text ---
+        txt = tk.Text(root)
+        txt.pack()
+        root.update()
+        txt.insert("1.0", "text content here")
+        txt.event_generate("<Control-Key>", keycode=65, state=0x4, keysym="Cyrillic_ef")
+        root.update()
+        sel_txt = txt.get("sel.first", "sel.last")
+        check(sel_txt == "text content here", "Text A (keycode=65): выделилось (got %r)" % sel_txt)
+
+        txt.event_generate("<Control-Key>", keycode=67, state=0x4, keysym="Cyrillic_ef")
+        root.update()
+        cb_txt = txt.clipboard_get()
+        check(cb_txt == "text content here", "Text C (keycode=67): в буфере (got %r)" % cb_txt)
+
+        # Тест X — вырезать
+        txt.event_generate("<Control-Key>", keycode=88, state=0x4, keysym="Cyrillic_ef")
+        root.update()
+        remaining = txt.get("1.0", "end-1c")
+        check(remaining == "", "Text X (keycode=88): текст удалён (got %r)" % remaining)
+        cb_x = txt.clipboard_get()
+        check(cb_x == "text content here", "Text X: в буфере после вырезания (got %r)" % cb_x)
+
+        ent.destroy()
+        ent2.destroy()
+        txt.destroy()
+        root.destroy()
+    except tk.TclError:
+        check(True, "Tk: нет дисплея (TclError) — пропущено")
+
+
 def main():
     test_attach_log_menu()
+    test_clipboard_bindings()
 
     print("")
     print("Итого проверок: %d, провалов: %d" % (checks, fails))
