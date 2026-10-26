@@ -114,11 +114,10 @@ class App(tk.Tk):
 
         pan = ttk.Panedwindow(build, orient="vertical")
         pan.pack(fill="both", expand=True, padx=6, pady=6)
-        pan.add(self.nb, weight=4)
 
         # --- контент вкладки «Сборка» ---
         top = ttk.Frame(pan, padding=6)
-        top.pack(fill="x")
+        pan.add(top, weight=4)
         ttk.Button(top, text="+ Файлы .db", command=self.add_files).pack(side="left")
         ttk.Button(top, text="+ Папка", command=self.add_folder).pack(side="left", padx=4)
         ttk.Button(top, text="Очистить", command=self.clear_all).pack(side="left")
@@ -188,7 +187,7 @@ class App(tk.Tk):
 
         # --- лог (отдельная панель внизу) ---
         logf = ttk.Frame(pan, padding=(6, 0, 6, 6))
-        logf.pack(fill="x")
+        pan.add(logf, weight=1)
         self.log = tk.Text(logf, height=9, wrap="word")
         self.log.pack(side="left", fill="both", expand=True)
         self.log.bind("<Key>", uicommon.log_key)
