@@ -338,6 +338,35 @@ class UpdateViewModel @Inject constructor(
                         val ids = prefs.bookIds(info.key)
                         missing = ids.isNotEmpty() &&
                                 ids.any { db.library().book(it) == null }
+                        // После обновления базы книги могли получить новые gb-id —
+                        // сверяем по отпечатку каталога и пересохраняем актуальные id,
+                        // чтобы «книга удалена» не показывалась при живых книгах.
+                        if (missing && info.fp.isNotEmpty()) {
+                            val mineNow = db.library().booksAll()
+                            val cntNow = try {
+                                db.library().verseCountsByBook().associate { it.bookId to it.n }
+                            } catch (_: Exception) { emptyMap<String, Int>() }
+                            val hit = linkedSetOf<String>()
+                            for (f in info.fp) {
+                                val cand = mineNow.firstOrNull {
+                                    val m = BOOK_ID_RE.matchEntire(it.id) ?: return@firstOrNull false
+                                    m.groupValues[1].lowercase() == f.t &&
+                                            m.groupValues[2].toLongOrNull() == f.g &&
+                                            m.groupValues[3].lowercase() == info.lang
+                                }
+                                val n = cand?.let { cntNow[it.id] } ?: -1
+                                if (cand != null && (n == f.v || (f.vg >= 0 && n == f.vg))) {
+                                    hit += cand.id
+                                } else {
+                                    hit.clear()
+                                    break
+                                }
+                            }
+                            if (hit.size == info.fp.size) {
+                                prefs.setBookIds(info.key, hit)
+                                missing = false
+                            }
+                        }
                     } catch (_: Exception) { }
                 }
                 val hw = haveMap[info.key]
