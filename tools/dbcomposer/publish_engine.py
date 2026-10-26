@@ -416,6 +416,23 @@ def _sha256(path):
     return h.hexdigest()
 
 
+def _catalog_sha(key):
+    """sha256 опубликованной версии ключа из updates/catalog.json ('' если нет)."""
+    try:
+        with open(CATALOG, encoding="utf-8") as f:
+            data = json.load(f)
+        for sec in ("books", "audio"):
+            sec_data = data.get(sec) or []
+            if isinstance(sec_data, dict):
+                sec_data = sec_data.values()
+            for e in sec_data:
+                if e.get("key") == key and e.get("sha256"):
+                    return e["sha256"]
+    except Exception:
+        pass
+    return ""
+
+
 def _run_make_catalog(log):
     """Запускает make_catalog.py и возвращает результат."""
     cmd = [
@@ -543,6 +560,15 @@ def publish_book(token, key, new_file, notes, delta_file="", delta_from=0,
     new_size = os.path.getsize(new_file_abs)
     log("файл: %s, v%d, size=%d, sha=%s" % (
         os.path.basename(new_file_abs), version, new_size, new_sha[:12]))
+
+    # защита: файл не изменился — версия расти не должна (был случай: сборник
+    # опубликован без новой книги, sha совпал с прошлой версией)
+    if old_key:
+        prev_sha = _catalog_sha(key)
+        if prev_sha and prev_sha == new_sha:
+            raise PublishError(
+                "файл не изменился: sha256 совпадает с опубликованной v%d. "
+                "Публиковать нечего — проверь, что новая книга реально попала в базу." % prev_version)
 
     # 3) Тег и тело релиза
     tag = gh_release.next_db_tag(token, gh_release.FILES_REPO)

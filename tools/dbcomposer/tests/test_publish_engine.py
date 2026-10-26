@@ -1407,6 +1407,127 @@ def test_delta_size_based_unchanged():
 
 
 # ======================================================================
+# h2) Одинаковый sha256 — публикация запрещена
+# ======================================================================
+def test_publish_same_file_rejected():
+    print("=== h2) Одинаковый sha256 — публикация запрещена ===")
+    tmpdir = tempfile.mkdtemp(prefix="pubsame_")
+
+    ver_path = os.path.join(tmpdir, "versions.json")
+    vdata = {
+        "books": {
+            "TestBook": {
+                "title": "TestBook", "lang": "rus", "file": "TestBook.db",
+                "version": 3, "url": "https://example.com/old.db",
+                "adopt": False, "auth": "manual"
+            }
+        },
+        "audio": {}
+    }
+    with open(ver_path, "w", encoding="utf-8") as f:
+        json.dump(vdata, f)
+
+    # Файл с фиксированным содержимым
+    new_db = os.path.join(tmpdir, "TestBook.db")
+    with open(new_db, "wb") as f:
+        f.write(b"x" * 5000)
+
+    # Вычисляем sha256 файла
+    import hashlib
+    h = hashlib.sha256()
+    with open(new_db, "rb") as f:
+        h.update(f.read())
+    file_sha = h.hexdigest()
+
+    # catalog.json с НЕПУСТЫМ sha256, равным sha файла
+    updates_dir = os.path.join(tmpdir, "updates")
+    os.makedirs(updates_dir, exist_ok=True)
+    cat_path = os.path.join(updates_dir, "catalog.json")
+    with open(cat_path, "w", encoding="utf-8") as f:
+        json.dump({"books": [{"key": "TestBook", "size": 5000, "sha256": file_sha}],
+                    "audio": [], "apk": {}}, f)
+
+    root_cat = os.path.join(tmpdir, "catalog.json")
+    with open(root_cat, "w", encoding="utf-8") as f:
+        json.dump({"books": [{"key": "TestBook", "size": 5000, "sha256": file_sha}],
+                    "audio": [], "apk": {}}, f)
+
+    old_versions = publish_engine.VERSIONS
+    old_catalog = publish_engine.CATALOG
+    old_root_catalog = publish_engine.ROOT_CATALOG
+    old_root = publish_engine.ROOT
+
+    publish_engine.VERSIONS = ver_path
+    publish_engine.CATALOG = cat_path
+    publish_engine.ROOT_CATALOG = root_cat
+    publish_engine.ROOT = tmpdir
+
+    orig_next_tag = publish_engine.gh_release.next_db_tag
+    orig_create = publish_engine.gh_release.create_release
+    orig_upload = publish_engine.gh_release.upload_asset
+    orig_publish = publish_engine.gh_release.publish_release
+    orig_publish_catalog = publish_engine.gh_release.publish_catalog
+
+    def mock_next_tag(token, repo):
+        return "db-v42"
+
+    def mock_create_release(token, repo, tag, name, body):
+        return {"id": 999, "tag_name": tag}
+
+    def mock_upload_asset(token, repo, rid, path, name="", ctype="application/octet-stream"):
+        return {"id": 100, "name": os.path.basename(path)}
+
+    def mock_publish_release(token, repo, rid):
+        pass
+
+    def mock_publish_catalog(token, path):
+        return "https://github.com/test/catalog.json"
+
+    publish_engine.gh_release.next_db_tag = mock_next_tag
+    publish_engine.gh_release.create_release = mock_create_release
+    publish_engine.gh_release.upload_asset = mock_upload_asset
+    publish_engine.gh_release.publish_release = mock_publish_release
+    publish_engine.gh_release.publish_catalog = mock_publish_catalog
+
+    orig_git_push = publish_engine._git_push
+    publish_engine._git_push = lambda files, msg: None
+
+    orig_run_make = publish_engine._run_make_catalog
+    publish_engine._run_make_catalog = lambda log: None
+    publish_engine._copy_catalog_root = lambda: None
+
+    try:
+        log_lines = []
+        try:
+            publish_engine.publish_book(
+                token="t",
+                key="TestBook",
+                new_file=new_db,
+                notes="",
+                log=log_lines.append,
+            )
+            check(False, "FAIL: ожидалась PublishError")
+        except publish_engine.PublishError as e:
+            check("не изменился" in str(e),
+                  "PublishError: «не изменился» (got %r)" % str(e))
+            print("OK: отказ при неизменном файле")
+
+    finally:
+        publish_engine.VERSIONS = old_versions
+        publish_engine.CATALOG = old_catalog
+        publish_engine.ROOT_CATALOG = old_root_catalog
+        publish_engine.ROOT = old_root
+        publish_engine.gh_release.next_db_tag = orig_next_tag
+        publish_engine.gh_release.create_release = orig_create
+        publish_engine.gh_release.upload_asset = orig_upload
+        publish_engine.gh_release.publish_release = orig_publish
+        publish_engine.gh_release.publish_catalog = orig_publish_catalog
+        publish_engine._git_push = orig_git_push
+        publish_engine._run_make_catalog = orig_run_make
+        publish_engine._copy_catalog_root = lambda: None
+
+
+# ======================================================================
 # i) books_count
 # ======================================================================
 def test_books_count():
@@ -1697,6 +1818,7 @@ def main():
     test_publish_book_new_no_title()
     test_delta_disabled_by_composition_change()
     test_delta_size_based_unchanged()
+    test_publish_same_file_rejected()
     test_books_count()
     test_merge_dbs()
     test_db_composition_changed_addition()

@@ -173,14 +173,6 @@ class DeltaTab(ttk.Frame):
             variable=self.v_pub_delta,
         ).pack(anchor="w", pady=2)
 
-        # Галочка слияния
-        self.v_pub_merge = tk.BooleanVar(value=False)
-        ttk.Checkbutton(
-            pubf,
-            text="➕ Добавить в существующий сборник (слить с текущей базой)",
-            variable=self.v_pub_merge,
-        ).pack(anchor="w", pady=2)
-
         # Кнопка публикации
         self.b_publish_book = ttk.Button(
             pubf, text="🚀 Опубликовать книгу", command=self._publish_book
@@ -191,8 +183,9 @@ class DeltaTab(ttk.Frame):
         ttk.Label(
             pubf,
             text=(
-                "Достаточно указать OLD/NEW/OUT выше и примечание. "
-                "Версия, ссылки, каталог и git — автоматически."
+                "НОВАЯ книга: задай новый Ключ (например Madhurya_Kadambini), Название, "
+                "Язык и .db — она уйдет отдельным файлом и появится в каталоге.\n"
+                "Дельта — только для исправлений уже опубликованной книги (OLD/NEW/OUT)."
             ),
             foreground="gray",
             wraplength=500,
@@ -546,18 +539,23 @@ class DeltaTab(ttk.Frame):
 
         # Сводка
         delta_info = " (будет собрана дельта)" if delta_checked else ""
-        merge_info = ""
-        is_merge = self.v_pub_merge.get() and not is_new
-        if is_merge:
-            merge_info = "\n➕ Будет слито с текущей базой"
         new_book_label = " (НОВАЯ книга)" if is_new else ""
         summary = ("Книга: %s%s\n"
                     "Версия: %s\n"
                     "Книг в новой базе: %d\n"
-                    "Файл: %s%s%s" % (
+                    "Файл: %s%s" % (
                         key, new_book_label, self.v_pub_ver.cget("text"),
-                        new_n, new, delta_info, merge_info))
+                        new_n, new, delta_info))
         if not messagebox.askyesno("Публиковать?", summary, parent=self):
+            return
+
+        # ранняя проверка: файл не изменился — не гонять поток
+        import publish_engine
+        prev_sha = publish_engine._catalog_sha(key)
+        if prev_sha and prev_sha == publish_engine._sha256(new):
+            messagebox.showwarning("Файл не изменился",
+                "sha256 совпадает с опубликованной версией — публиковать нечего. "
+                "Проверь, что книга попала в базу.")
             return
 
         self.set_busy(True)
@@ -578,11 +576,11 @@ class DeltaTab(ttk.Frame):
         notes = self.v_pub_notes.get().strip()
         title = self.v_pub_title.get().strip()
         lang = self.v_pub_lang.get()
-        is_merge = self.v_pub_merge.get() and not is_new
-        threading.Thread(target=self._publish_worker, args=(new, key, delta_checked, old, out, notes, prev_version, title, lang, is_merge),
+
+        threading.Thread(target=self._publish_worker, args=(new, key, delta_checked, old, out, notes, prev_version, title, lang),
                            daemon=True).start()
 
-    def _publish_worker(self, new_file, key, delta_checked, old, out, notes, prev_version, title, lang, is_merge=False):
+    def _publish_worker(self, new_file, key, delta_checked, old, out, notes, prev_version, title, lang):
         def say(t):
             self.q.put(("log", str(t)))
         try:
@@ -590,21 +588,7 @@ class DeltaTab(ttk.Frame):
             import locale
             enc = locale.getpreferredencoding(False) or "utf-8"
 
-            # 1) Режим слияния: publish_addition (дельта строится автоматически)
-            if is_merge:
-                say("publish_addition: слияние с текущей базой…")
-                result = publish_engine.publish_addition(
-                    token=gh_release.get_token(),
-                    key=key,
-                    new_file=new_file,
-                    notes=notes,
-                    log=say,
-                )
-                self.q.put(("pub_done", "Опубликовано (слито): %s" % result["url"]))
-                self.q.put(("pub_refresh", ""))
-                return
-
-            # 2) Собрать дельту если нужно
+            # 1) Собрать дельту если нужно
             delta_file = ""
             if delta_checked and old and out:
                 say("make_delta: запуск…")
