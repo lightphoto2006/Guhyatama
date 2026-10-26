@@ -71,15 +71,11 @@
     {
       "key": "Acharyi_rus",
       "title": "Книги ачарий (рус)",
-      "version": 15,
-      "url": "https://api.github.com/repos/lightphoto2006/Guhyatama-files/releases/assets/677041985",
-      "notes": "",
+      "version": 14,
+      "url": "https://api.github.com/repos/lightphoto2006/Guhyatama-files/releases/assets/676024624",
+      "notes": "Полный файл: исправление после v13 (дельту заменил полный импорт). Состав: Гопала-чампу, БГ (Шридхар), Брахма-самхита, Шри Чайтанья-Бхагавата + обложки.",
       "lang": "rus",
       "auth": "github",
-      "deltaFrom": 14,
-      "deltaUrl": "https://api.github.com/repos/lightphoto2006/Guhyatama-files/releases/assets/677042308",
-      "deltaSize": 24576,
-      "deltaSha": "9ce5ab5e199741c02f8310f8d57197ee9811931f89191b02f90f536b580e7cf8",
       "size": 7839744,
       "sha256": "019839a9f841b1787b3bb15c02112e6cb9e695ea5c41c9e1e779a9ce7b30fccb",
       "fp": [
