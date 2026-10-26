@@ -112,18 +112,17 @@ class App(tk.Tk):
         build = ttk.Frame(self.nb)
         self.nb.add(build, text="Сборка")
 
-        pan = ttk.Panedwindow(build, orient="vertical")
-        pan.pack(fill="both", expand=True, padx=6, pady=6)
-
         # --- контент вкладки «Сборка» ---
-        top = ttk.Frame(pan, padding=6)
-        pan.add(top, weight=4)
-        ttk.Button(top, text="+ Файлы .db", command=self.add_files).pack(side="left")
-        ttk.Button(top, text="+ Папка", command=self.add_folder).pack(side="left", padx=4)
-        ttk.Button(top, text="Очистить", command=self.clear_all).pack(side="left")
-        ttk.Button(top, text="Выбрать все", command=lambda: self.set_all(True)).pack(side="right")
-        ttk.Button(top, text="Снять все", command=lambda: self.set_all(False)).pack(side="right", padx=4)
-        ttk.Button(top, text="Содержимое", command=self.open_content).pack(side="right", padx=4)
+        top = ttk.Frame(build, padding=6)
+        top.pack(fill="both", expand=True)
+        btnrow = ttk.Frame(top)
+        btnrow.pack(fill="x")
+        ttk.Button(btnrow, text="+ Файлы .db", command=self.add_files).pack(side="left")
+        ttk.Button(btnrow, text="+ Папка", command=self.add_folder).pack(side="left", padx=4)
+        ttk.Button(btnrow, text="Очистить", command=self.clear_all).pack(side="left")
+        ttk.Button(btnrow, text="Выбрать все", command=lambda: self.set_all(True)).pack(side="right")
+        ttk.Button(btnrow, text="Снять все", command=lambda: self.set_all(False)).pack(side="right", padx=4)
+        ttk.Button(btnrow, text="Содержимое", command=self.open_content).pack(side="right", padx=4)
 
         cols = ("title", "type", "chapters", "verses", "junk", "file")
         self.tv = ttk.Treeview(top, columns=cols, show="tree headings", selectmode="browse")
@@ -186,8 +185,8 @@ class App(tk.Tk):
         ttk.Button(out, text="📋", command=self.copy_log).pack(side="left", padx=4)
 
         # --- лог (отдельная панель внизу) ---
-        logf = ttk.Frame(pan, padding=(6, 0, 6, 6))
-        pan.add(logf, weight=1)
+        logf = ttk.Frame(build, padding=(6, 0, 6, 6))
+        logf.pack(fill="x", side="bottom")
         self.log = tk.Text(logf, height=9, wrap="word")
         self.log.pack(side="left", fill="both", expand=True)
         self.log.bind("<Key>", uicommon.log_key)

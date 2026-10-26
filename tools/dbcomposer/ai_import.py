@@ -879,17 +879,14 @@ class AIImportTab(ttk.Frame):
         self._text_before_auto = None  # исходный текст до автоопределения
         self._btns = []
 
-        pan = ttk.Panedwindow(self, orient="vertical")
-        pan.pack(fill="both", expand=True, padx=6, pady=6)
-        cf = ttk.Frame(pan)
-        pan.add(cf, weight=4)
+        cf = ttk.Frame(self, padding=6)
+        cf.pack(fill="both", expand=True)
         self._build_server_bar(cf)
         self._build_tools(cf)
 
         # Лог
-        logf = ttk.Frame(pan, padding=(6, 0, 6, 6))
-        pan.add(logf, weight=1)
-        logf.pack(fill="x")
+        logf = ttk.Frame(self, padding=(6, 0, 6, 6))
+        logf.pack(fill="x", side="bottom")
         self.prog = ttk.Progressbar(logf, mode="indeterminate", length=100)
         self.prog.pack(side="left", padx=(0, 6))
         self.log = tk.Text(logf, height=6, wrap="word")

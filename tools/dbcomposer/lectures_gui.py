@@ -63,10 +63,8 @@ class LecturesTab(ttk.Frame):
         cfg = load_cfg()
         self.last_folder = cfg.get("last_folder", "")
 
-        pan = ttk.Panedwindow(self, orient="vertical")
-        pan.pack(fill="both", expand=True, padx=6, pady=6)
-        cf = ttk.Frame(pan)
-        pan.add(cf, weight=4)
+        cf = ttk.Frame(self, padding=6)
+        cf.pack(fill="both", expand=True)
 
         # --- книга (одна на всю папку) ---
         book = ttk.LabelFrame(cf, text="Книга (одна на всю папку)", padding=6)
@@ -154,10 +152,10 @@ class LecturesTab(ttk.Frame):
         ttk.Label(phone, text="или вручную: приложение -> Настройки -> .db -> выбрать файл").pack(
             side="left", padx=8)
 
-        logf = ttk.Frame(pan, padding=(6, 0, 6, 6))
-        pan.add(logf, weight=1)
-        logf.pack(fill="x")
+        logf = ttk.Frame(self, padding=(6, 0, 6, 6))
+        logf.pack(fill="x", side="bottom")
         self.log = tk.Text(logf, height=7, wrap="word")
+        self.log.pack(side="left", fill="both", expand=True)
         self.log.bind("<Key>", uicommon.log_key)
         uicommon.attach_log_menu(self.log)
         self.after(150, self.poll)

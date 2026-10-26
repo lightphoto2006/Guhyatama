@@ -97,10 +97,8 @@ class ReleaseTab(ttk.Frame):
         self._refresh_publish_hint()
 
     def _build_ui(self):
-        pan = ttk.Panedwindow(self, orient="vertical")
-        pan.pack(fill="both", expand=True, padx=6, pady=6)
-        nb = ttk.Notebook(pan)
-        pan.add(nb, weight=4)
+        nb = ttk.Notebook(self)
+        nb.pack(fill="both", expand=True, padx=6, pady=6)
         self.nb = nb
 
         # --- Шаг 1: Подготовка ---
@@ -119,8 +117,8 @@ class ReleaseTab(ttk.Frame):
         self._build_step5(nb)
 
         # Лог
-        logf = ttk.Frame(pan, padding=(6, 0, 6, 6))
-        logf.pack(fill="x")
+        logf = ttk.Frame(self, padding=(6, 0, 6, 6))
+        logf.pack(fill="x", side="bottom")
         self.prog = ttk.Progressbar(logf, mode="indeterminate", length=100)
         self.prog.pack(side="left", padx=(0, 6))
         self.log = tk.Text(logf, height=6, wrap="word")
