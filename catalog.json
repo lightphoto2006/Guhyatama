@@ -1,13 +1,13 @@
 {
   "catalogVersion": 1,
   "apk": {
-    "versionCode": 66,
-    "versionName": "1.3.18",
-    "url": "https://github.com/lightphoto2006/Guhyatama/releases/download/v1.3.18/Guhyatama-1.3.18.apk",
-    "file": "F:\\\\AI\\\\Development\\\\Guhyatama\\\\releases\\\\Guhyatama-1.3.18.apk",
-    "notes": "Что нового:\n- Книги-проза: убран центрированный обрезок текста сверху на экране главы.\n- Выравнивание «по ширине» работает и на Android 7 (ручная доводка там, где системная недоступна); на Android 8+ и ColorOS — как было.\n- Тап по вкладкам из чтения больше не теряет стих: «назад» и 📚 возвращают к чтению.\n- Остальное как в 1.3.17.",
-    "size": 6056882,
-    "sha256": "c9f9a457e63b346b4d16fb5fc1a5a16b490b89bfdcbaf4988ca59bfb9ee486f4"
+    "versionCode": 67,
+    "versionName": "1.3.19",
+    "url": "https://github.com/lightphoto2006/Guhyatama/releases/download/v1.3.19/Guhyatama-1.3.19.apk",
+    "file": "F:\\\\AI\\\\Development\\\\Guhyatama\\\\releases\\\\Guhyatama-1.3.19.apk",
+    "notes": "Что нового:\n- Установленные книги с той же версией больше не предлагают «Скачать» (Прабхупада 150 МБ и др.).\n- При обновлении сборника из каталога убираются прежние копии книг с тем же типом, языком и названием — дубли («2 Брахма-самхиты», «2 БГ Шридхара») больше не появляются.\n- Остальное как в 1.3.18.",
+    "size": 6056878,
+    "sha256": "c12471b4b1d6ce1bb89b5b30cdc79d9cc796989bbe9950b1c2367f780d2917fb"
   },
   "books": [
     {
