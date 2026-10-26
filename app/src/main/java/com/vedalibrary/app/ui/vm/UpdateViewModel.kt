@@ -63,7 +63,9 @@ class UpdateViewModel @Inject constructor(
             data class Downloading(val done: Long, val total: Long) : Busy
             data class Importing(val label: String) : Busy
         }
-        val hasUpdate: Boolean get() = installed < info.version || missing
+        // Обновление — только по версии. missing — диагностика («нет в библиотеке»),
+        // но не повод предлагать перекачать установленную книгу (был баг: 150 МБ заново).
+        val hasUpdate: Boolean get() = installed < info.version
     }
 
     private val _state = MutableStateFlow<State>(State.Idle)
@@ -273,6 +275,10 @@ class UpdateViewModel @Inject constructor(
         val bookInfos = parseBookInfos(cat, "books")
         val audioInfos = parseBookInfos(cat, "audio")
         val packs = try { importer.audioPacks().map { it.name } } catch (_: Exception) { emptyList() }
+        // Файлы уже скачанных книг: наличие файла важнее старых id в prefs
+        val bookFiles = try {
+            java.io.File(updater.updatesDir(), "books").listFiles()?.map { it.name } ?: emptyList()
+        } catch (_: Exception) { emptyList() }
         val items = kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.IO) {
             // Усыновление — один проход по всем книгам
             val adopt = mutableMapOf<String, List<String>>()
@@ -334,10 +340,13 @@ class UpdateViewModel @Inject constructor(
                 val installed = prefs.bookVersion(info.key)
                 var missing = false
                 if (installed > 0) {
-                    try {
-                        val ids = prefs.bookIds(info.key)
-                        missing = ids.isNotEmpty() &&
-                                ids.any { db.library().book(it) == null }
+                    val safeKey = info.key.replace(Regex("[^A-Za-z0-9._-]"), "_")
+                    val hasFile = bookFiles.any {
+                        it.startsWith("$safeKey-v") && it.endsWith(".db")
+                    }
+                    val ids = prefs.bookIds(info.key)
+                    missing = !hasFile && ids.isNotEmpty() &&
+                            ids.any { db.library().book(it) == null }
                         // После обновления базы книги могли получить новые gb-id —
                         // сверяем по отпечатку каталога и пересохраняем актуальные id,
                         // чтобы «книга удалена» не показывалась при живых книгах.
@@ -367,7 +376,6 @@ class UpdateViewModel @Inject constructor(
                                 missing = false
                             }
                         }
-                    } catch (_: Exception) { }
                 }
                 val hw = haveMap[info.key]
                 BookItem(info, installed, missing,
