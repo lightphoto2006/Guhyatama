@@ -109,6 +109,32 @@ class LibraryDbImporter @Inject constructor(
                     // затирает чужую книгу целиком. Обновления (replace) — всегда по
                     // базовому id: версии одного файла — один и тот же труд.
                     val finalId = if (replace) bookId else resolveBookIdCollision(sq, gbId, bookId)
+                    // Обновление из каталога: тот же труд мог приехать под другим _id
+                    // (v14 переставила _id книг) — убираем прежнюю копию, иначе остаются
+                    // дубли («2 Брахма-самхиты», «2 БХ Шридхара»). Совпадение — тип+язык+название.
+                    if (replace) {
+                        try {
+                            val roomTitle = "$title [$type]"
+                            val typeLc = type.lowercase()
+                            for (old in db.library().booksAll()) {
+                                if (old.id == finalId) continue
+                                if (old.language != langHint) continue
+                                if (!old.id.startsWith("gb-$typeLc-")) continue
+                                val t = old.title.trim()
+                                if (t != roomTitle && t != title.trim()) continue
+                                db.library().deleteVersesOfBook(old.id)
+                                db.library().deleteChaptersOfBook(old.id)
+                                db.library().deleteIllustrationsOfBook(old.id)
+                                db.library().deleteRefsFrom(old.id, type.uppercase())
+                                db.library().deleteBookmarksOfBook(old.id)
+                                db.library().deleteBookRow(old.id)
+                                try {
+                                    File(ctx.filesDir, "illustrations/${old.id.replace(SAFE_DIR_RE, "_")}")
+                                        .let { if (it.exists()) it.deleteRecursively() }
+                                } catch (_: Exception) { }
+                            }
+                        } catch (_: Exception) { }
+                    }
                     // Пользовательское (закладки/заметки/вопросы/карточки/теги) — без FK,
                     // переимпорт его не трогает: verseId детерминированы и совпадают.
                     // Ссылки цитат: fromVerseId — цитируемый стих, toVerseId — цитирующий
