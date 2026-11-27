@@ -545,6 +545,10 @@ class UpdateViewModel @Inject constructor(
                     set(BookItem.Busy.Idle, "Дельта не применилась (${e.message}) — качаю полный файл…")
             }
         }
-        lastError?.let { throw it }
+        // Ошибку показываем в строке обновления, НЕ бросаем наружу: иначе
+        // viewModelScope-корутина роняет приложение (401 от GitHub и т.п.)
+        lastError?.let { e ->
+            set(BookItem.Busy.Idle, "Ошибка: " + ((e.message ?: e.javaClass.simpleName).take(200)))
+        }
     }
 }
