@@ -7,7 +7,7 @@
   ВНИМАНИЕ: Gradle 8.7 может не поддерживать JDK 25 — предыдущие сборки падали на конфигурации за 2-3 сек с сообщением «25.0.2». Решения: JDK 17/21 через org.gradle.java.home в gradle.properties, или обновить Gradle/AGP.
 - Android SDK: `C:\Users\light\AppData\Local\Android\Sdk` (прописан в local.properties: sdk.dir).
 - local.properties содержит githubFilesToken — НЕ коммитить (файл в .gitignore).
-- Версии: Gradle 8.7, AGP 8.6.0, Kotlin 2.0.21, KSP 2.0.21-1.0.25, приложение 1.3.15 (vc63), каталог vc63, сборник Acharyi_rus v9.
+- Версии: Gradle 8.7, AGP 8.6.0, Kotlin 2.0.21, KSP 2.0.21-1.0.25, приложение 1.3.28 (vc76), каталог vc76, сборник Acharyi_rus v18.
 - gradle.properties: org.gradle.jvmargs=-Xmx4g -Dfile.encoding=UTF-8.
 - Пример сборки (PowerShell):
   cd F:\AI\Development\Guhyatama
@@ -114,3 +114,7 @@
 - Сборка: v1.3.19 (vc67) debug, APK 19.3 MB, установлен на телефон 27.11.2026 09:43.
 - Устройство временами отваливается от adb — при `no devices` переподключить USB.
 - Релиз **v1.3.25 (vc73)** опубликован 27.11.2026: read-only токен книг в APK, каталог vc73, `docs/TOKENS.md`. Проверено: скачивание APK и книги `Acharyi_rus` этим токеном (200, `PK`/`SQLite`).
+- Релизы **v1.3.26–v1.3.28 (vc74–vc76)** и **`Acharyi_rus` v18** опубликованы 27.11.2026:
+  - Избранное (★, только для книг со стихами) и закладки (иконка ленты, удержание 1 сек для снятия) разделены и унифицированы (`StarIcons`, `BookmarkStar.kt`, `VerseShare.isVerseBook`).
+  - Докачка книг (`Downloader.fetchStream` с HTTP `Range` + `.part.meta`) и фоновая загрузка/импорт через `WorkManager` (`BookDownloadWorker`, `VedaApp` `HiltWorkerFactory`).
+  - Слоговые переносы слов на ColorOS (`Hyphenator.kt` + `JustifyTextView.onMeasure` `wrapWithHyphens`), цельное чтение глав прозы в `ChapterScreen.kt` и пересобранная «Гопала-чампу» из PDF в `Acharyi_rus` v18 (71 раздел, без разрывов слов).
