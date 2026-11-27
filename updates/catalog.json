@@ -1,13 +1,13 @@
 {
   "catalogVersion": 1,
   "apk": {
-    "versionCode": 76,
-    "versionName": "1.3.28",
-    "url": "https://github.com/lightphoto2006/Guhyatama/releases/download/v1.3.28/Guhyatama-1.3.28.apk",
-    "file": "F:\\AI\\Development\\Guhyatama\\releases\\Guhyatama-1.3.28.apk",
-    "notes": "Что нового:\n- ColorOS: автоматические слоговые переносы слов с дефисом для аккуратного выравнивания по ширине без гигантских пробелов.\n- Прозаические книги («Гопала-чампу», «Чайтанья-Бхагавата»): главы читаются целиком с выравниванием по ширине, без обрезания и проваливания в несуществующие стихи.\n- Склейка HTML-переносов (&shy;) при отображении.",
+    "versionCode": 77,
+    "versionName": "1.3.29",
+    "url": "https://github.com/lightphoto2006/Guhyatama/releases/download/v1.3.29/Guhyatama-1.3.29.apk",
+    "file": "F:\\AI\\Development\\Guhyatama\\releases\\Guhyatama-1.3.29.apk",
+    "notes": "Что нового:\n- Исправлен вылет (NPE) при открытии текста с ручным выравниванием на ColorOS.\n- Переносы по слогам на ColorOS теперь всегда переносятся на следующую строку (устранены «распоз- нать» на одной строке).",
     "size": 6157500,
-    "sha256": "7113adb228183557bde05f756d3557710a33eacda19c98432904233cae09302c"
+    "sha256": "12308b3dae9fd2d5a962531b13d82899afb61c4d4246b6e1c63ac4c0ad25ec0e"
   },
   "books": [
     {
@@ -93,13 +93,13 @@
     {
       "key": "Acharyi_rus",
       "title": "Книги ачарий (рус)",
-      "version": 18,
-      "url": "https://api.github.com/repos/lightphoto2006/Guhyatama-files/releases/assets/801253981",
-      "notes": "«Гопала-чампу» пересобрана напрямую из исходного PDF: убраны разрывы слов и искусственное деление глав на стихи (1 текст на главу), восстановлены пропущенные главы 21 (Пурва-чампу) и 34 (Уттара-чампу), добавлено Предисловие.",
+      "version": 19,
+      "url": "https://api.github.com/repos/lightphoto2006/Guhyatama-files/releases/assets/801496945",
+      "notes": "«Гопала-чампу»: точное разбиение глав по границам заголовков в PDF (устранены обрывы глав на полуслове, в т.ч. гл. 17–18, убраны хвостовые колонтитулы).",
       "lang": "rus",
       "auth": "github",
-      "size": 9924608,
-      "sha256": "fc85530fe1a7bf64446738a96b272efccff46d505492316546e0ed95cad05a2e",
+      "size": 9916416,
+      "sha256": "4ac1b998eb2fba5a8e044326d7155bc6ccf052968a53e24f2101c44f29093cfb",
       "fp": [
         {
           "t": "gc",

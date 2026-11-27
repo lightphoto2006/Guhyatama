@@ -534,11 +534,13 @@ private class JustifyTextView(ctx: android.content.Context) : android.widget.Tex
     private var wrappedWidth: Int = -1
     private var wrappedSize: Float = -1f
     private var isInternalSetText = false
+    private var softWrapNewlines: HashSet<Int>? = null
 
     override fun setText(text: CharSequence?, type: BufferType?) {
         if (!isInternalSetText) {
             rawSource = text
             wrappedWidth = -1
+            softWrapNewlines?.clear()
         }
         super.setText(text, type)
     }
@@ -627,9 +629,21 @@ private class JustifyTextView(ctx: android.content.Context) : android.widget.Tex
             pos = paraEnd + 1
         }
 
+        val set = softWrapNewlines ?: HashSet<Int>().also { softWrapNewlines = it }
+        set.clear()
         if (replacements.isEmpty()) return ssb
+        // Вставляем "-\n", чтобы StaticLayout гарантированно переносил строку
+        // (иначе «распоз- нать» могло остаться на одной строке). Индекс '\n'
+        // запоминаем в softWrapNewlines, чтобы lineSegs всё равно оправлял строку.
         for (k in replacements.indices.reversed()) {
-            ssb.insert(replacements[k], "- ")
+            ssb.insert(replacements[k], "-\n")
+        }
+        // Пересчитываем финальные индексы вставленных '\n' после всех сдвигов
+        var shift = 0
+        for (origPos in replacements) {
+            // origPos + shift = позиция '-'; '\n' стоит на +1
+            set.add(origPos + shift + 1)
+            shift += 2
         }
         return ssb
     }
@@ -676,7 +690,8 @@ private class JustifyTextView(ctx: android.content.Context) : android.widget.Tex
         if (line < 0 || line >= layout.lineCount) return null
         val sp = text as? android.text.Spanned ?: return null
         val le = layout.getLineEnd(line)
-        if (le <= 0 || le >= sp.length || sp[le - 1] == '\n') return null
+        if (le <= 0 || le >= sp.length) return null
+        if (sp[le - 1] == '\n' && softWrapNewlines?.contains(le - 1) != true) return null
         val ls = layout.getLineStart(line)
         val ve = layout.getLineVisibleEnd(line)
         if (ve <= ls) return null
