@@ -3,19 +3,28 @@
 package com.vedalibrary.app.ui.screens
 
 import android.content.Context
+import android.content.res.Configuration
 import android.content.Intent
 import android.net.Uri
+import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.gestures.detectHorizontalDragGestures
 import androidx.compose.foundation.gestures.scrollBy
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.text.BasicTextField
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Search
 import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.focus.FocusRequester
+import androidx.compose.ui.focus.focusRequester
+import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -58,25 +67,120 @@ fun VerseDetailScreen(
     val centerBlock = align == "center"
     val justifyBlock = align == "justify"
     fun go(id: String?) { if (id != null) onNavigateReplace(id) }
+    val land = androidx.compose.ui.platform.LocalConfiguration.current.orientation == Configuration.ORIENTATION_LANDSCAPE
+    // Лекции Шьямакунды: verse.text — служебное название лекции, а не текст для чтения
+    val lectureBook = remember(book?.id) { VerseShare.isLectureBook(book?.id) }
+    var findOpen by remember { mutableStateOf(false) }
+    var findQ by remember { mutableStateOf("") }
+    var findIdx by remember { mutableIntStateOf(0) }
+    val findFocus = remember { FocusRequester() }
+    LaunchedEffect(findOpen) { if (findOpen) try { findFocus.requestFocus() } catch (_: Exception) { } }
+    val hl = vm.highlight
+    val findQuery = findQ.trim()
+    val hlActive = if (findQuery.length >= 2) findQuery else hl
+    val matches = remember(v?.id, findQuery, san, tra, syn, trl, pur, book?.language, audioSrc != null) {
+        val verse = v
+        if (verse == null || findQuery.length < 2) emptyList()
+        else {
+            val gb = com.vedalibrary.app.ui.components.GbHtml
+            val rus = book?.language == "rus"
+            val texts = arrayOf(
+                if (san && !verse.sanskrit.isNullOrBlank()) gb.plain(verse.sanskrit) else null,
+                if (audioSrc != null) "" else null,
+                if (tra && verse.text.isNotBlank())
+                    (if (rus) gb.cyrillicTranslit(verse.text) else gb.plain(verse.text)) else null,
+                if (syn && !verse.synonyms.isNullOrBlank())
+                    gb.synonymLines(verse.synonyms).joinToString("\n") { line ->
+                        val (w, t) = gb.splitHead(line)
+                        (if (rus) com.vedalibrary.app.ui.components.IastCyrillic.convert(w) else w) + " " + t
+                    } else null,
+                if (trl && !verse.translation.isNullOrBlank())
+                    (if (rus) gb.cyrillicTerms(verse.translation) else gb.plain(verse.translation)) else null,
+                if (pur && !verse.purport.isNullOrBlank())
+                    (if (rus) gb.cyrillicTerms(verse.purport) else gb.plain(verse.purport)) else null
+            )
+            val needle = gb.foldDia(findQuery).lowercase()
+            val out = ArrayList<Pair<Int, Float>>()
+            var idx = 0
+            for (i in texts.indices) {
+                val t = texts[i] ?: continue
+                val folded = gb.foldDia(t).lowercase()
+                var at = folded.indexOf(needle)
+                while (at >= 0) {
+                    out += idx to (at.toFloat() / t.length).coerceIn(0f, 1f)
+                    at = folded.indexOf(needle, at + needle.length)
+                }
+                idx++
+            }
+            out
+        }
+    }
 
     Scaffold(
         topBar = {
-            Column(
-                Modifier.fillMaxWidth().padding(top = 2.dp, bottom = 2.dp),
-                horizontalAlignment = androidx.compose.ui.Alignment.CenterHorizontally
-            ) {
-                Text(
-                    VerseShare.cleanTitle(book?.title ?: VerseShare.bookCode(book)),
-                    maxLines = 2, overflow = TextOverflow.Ellipsis,
-                    textAlign = androidx.compose.ui.text.style.TextAlign.Center,
-                    style = MaterialTheme.typography.titleMedium
-                )
-                Text(
-                    v?.let { VerseShare.ref(book, it) } ?: "",
-                    textAlign = androidx.compose.ui.text.style.TextAlign.Center,
-                    style = MaterialTheme.typography.labelLarge
-                )
+            if (findOpen) {
                 Row(
+                    Modifier.fillMaxWidth().padding(start = 8.dp, end = 4.dp, top = if (land) 0.dp else 2.dp, bottom = if (land) 0.dp else 2.dp),
+                    verticalAlignment = androidx.compose.ui.Alignment.CenterVertically
+                ) {
+                    BasicTextField(
+                        value = findQ, onValueChange = { findQ = it; findIdx = 0 }, singleLine = true,
+                        textStyle = TextStyle(fontSize = 15.sp, lineHeight = 18.sp, color = MaterialTheme.colorScheme.onSurface),
+                        cursorBrush = SolidColor(MaterialTheme.colorScheme.primary),
+                        modifier = Modifier.weight(1f).focusRequester(findFocus)
+                            .border(1.dp, MaterialTheme.colorScheme.outlineVariant, RoundedCornerShape(4.dp))
+                            .padding(horizontal = 8.dp, vertical = 3.dp),
+                        decorationBox = { inner ->
+                            Box(contentAlignment = androidx.compose.ui.Alignment.CenterStart) {
+                                if (findQ.isEmpty()) Text("Поиск по тексту", fontSize = 15.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                                inner()
+                            }
+                        }
+                    )
+                    Text(
+                        when { findQuery.length < 2 -> ""; matches.isEmpty() -> "нет"; else -> "${findIdx.coerceIn(0, matches.size - 1) + 1}/${matches.size}" },
+                        fontSize = 11.sp, maxLines = 1, modifier = Modifier.padding(horizontal = 4.dp)
+                    )
+                    val canNav = matches.isNotEmpty()
+                    Box(Modifier.size(34.dp).clickable(enabled = canNav) { if (canNav) findIdx = (findIdx - 1 + matches.size) % matches.size },
+                        contentAlignment = androidx.compose.ui.Alignment.Center) {
+                        Text("‹", fontSize = 24.sp, color = if (canNav) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurface.copy(alpha = 0.38f))
+                    }
+                    Box(Modifier.size(34.dp).clickable(enabled = canNav) { if (canNav) findIdx = (findIdx + 1) % matches.size },
+                        contentAlignment = androidx.compose.ui.Alignment.Center) {
+                        Text("›", fontSize = 24.sp, color = if (canNav) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurface.copy(alpha = 0.38f))
+                    }
+                    Box(Modifier.size(34.dp).clickable { findOpen = false; findQ = ""; findIdx = 0 },
+                        contentAlignment = androidx.compose.ui.Alignment.Center) { Text("✕", fontSize = 18.sp) }
+                }
+            } else {
+                Column(
+                    Modifier.fillMaxWidth()
+                        .padding(top = if (land) 0.dp else 2.dp, bottom = if (land) 0.dp else 2.dp),
+                    horizontalAlignment = androidx.compose.ui.Alignment.CenterHorizontally
+                ) {
+                val titleTxt = VerseShare.cleanTitle(book?.title ?: VerseShare.bookCode(book))
+                val refTxt = v?.let { VerseShare.ref(book, it) } ?: ""
+                // «ЧЧ 3.4.96-132 Лекция №226» — номер лекции берём из служебного
+                // заголовка (verse.text), чтобы не занимать им отдельную строку
+                val lecNum = if (lectureBook) lectureNumber(v?.text) else null
+                val refLine = if (lecNum != null) "$refTxt Лекция №$lecNum" else refTxt
+                if (land) {
+                    Text(
+                        if (refLine.isBlank()) titleTxt else "$titleTxt  $refLine",
+                        maxLines = 1, overflow = TextOverflow.Ellipsis,
+                        textAlign = androidx.compose.ui.text.style.TextAlign.Center,
+                        style = MaterialTheme.typography.labelLarge
+                    )
+                } else {
+                    Text(titleTxt, maxLines = 2, overflow = TextOverflow.Ellipsis,
+                        textAlign = androidx.compose.ui.text.style.TextAlign.Center,
+                        style = MaterialTheme.typography.titleMedium)
+                    Text(refLine, textAlign = androidx.compose.ui.text.style.TextAlign.Center,
+                        style = MaterialTheme.typography.labelLarge)
+                }
+                Row(
+                    Modifier.offset(y = if (land) (-2).dp else 0.dp),
                     horizontalArrangement = Arrangement.Center,
                     verticalAlignment = androidx.compose.ui.Alignment.CenterVertically
                 ) {
@@ -86,30 +190,78 @@ fun VerseDetailScreen(
                     BookmarkStar(
                         active = v != null && bm?.verseId == v?.id,
                         style = MaterialTheme.typography.titleLarge,
+                        iconSize = if (land) 15.dp else 26.dp,
+                        modifier = if (land) Modifier.size(26.dp) else Modifier,
                         onSave = { vm.setBookmark() },
                         onRemove = { vm.removeBookmark() }
                     )
                     other?.let { (ov, ob) ->
-                        TextButton(onClick = { go(ov.id) }) {
-                            Text(if (ob?.language == "rus") "RU" else "EN")
+                        if (land) {
+                            Text(if (ob?.language == "rus") "RU" else "EN", fontSize = 11.sp,
+                                color = MaterialTheme.colorScheme.primary,
+                                modifier = Modifier.clickable { go(ov.id) }.padding(horizontal = 6.dp, vertical = 1.dp))
+                        } else {
+                            TextButton(onClick = { go(ov.id) }, contentPadding = PaddingValues(horizontal = 8.dp, vertical = 0.dp)) {
+                                Text(if (ob?.language == "rus") "RU" else "EN", fontSize = 14.sp)
+                            }
+                        }
+                    }
+                    if (land) {
+                        Box(Modifier.size(26.dp).clickable { findOpen = true }, contentAlignment = androidx.compose.ui.Alignment.Center) {
+                            Icon(Icons.Filled.Search, contentDescription = "Поиск по главе", modifier = Modifier.size(15.dp))
+                        }
+                    } else {
+                        IconButton(onClick = { findOpen = true }) {
+                            Icon(Icons.Filled.Search, contentDescription = "Поиск по главе", modifier = Modifier.size(26.dp))
                         }
                     }
                     // ⚙: тот же векторный значок и тот же размер, что у звезды —
                     // текстовый глиф и эмодзи по вертикали разъезжаются
-                    IconButton(onClick = onSettings) {
-                        Icon(
-                            Icons.Filled.Settings,
-                            contentDescription = "Настройки",
-                            modifier = Modifier.size(26.dp)
-                        )
+                    if (land) {
+                        Box(Modifier.size(26.dp).clickable { onSettings() }, contentAlignment = androidx.compose.ui.Alignment.Center) {
+                            Icon(Icons.Filled.Settings, contentDescription = "Настройки", modifier = Modifier.size(15.dp))
+                        }
+                    } else {
+                        IconButton(onClick = onSettings) {
+                            Icon(
+                                Icons.Filled.Settings,
+                                contentDescription = "Настройки",
+                                modifier = Modifier.size(26.dp)
+                            )
+                        }
                     }
                 }
             }
+        }
         },
         bottomBar = {
-            Row(Modifier.fillMaxWidth().padding(8.dp), horizontalArrangement = Arrangement.SpaceBetween) {
-                TextButton(onClick = { go(prevId) }, enabled = prevId != null) { Text("← Пред") }
-                TextButton(onClick = { go(nextId) }, enabled = nextId != null) { Text("След →") }
+            // Компактная строка «Пред/След»: TextButton занимал 48dp при тексте 14sp.
+            // В портрете — тот же приём, что в ландшафте: текст-ссылка с малым padding.
+            Row(
+                Modifier.fillMaxWidth().padding(
+                    horizontal = if (land) 2.dp else 8.dp,
+                    vertical = if (land) 0.dp else 1.dp
+                ),
+                horizontalArrangement = Arrangement.SpaceBetween
+            ) {
+                val prevColor = if (prevId != null) MaterialTheme.colorScheme.primary
+                    else MaterialTheme.colorScheme.onSurface.copy(alpha = 0.38f)
+                val nextColor = if (nextId != null) MaterialTheme.colorScheme.primary
+                    else MaterialTheme.colorScheme.onSurface.copy(alpha = 0.38f)
+                Text(
+                    "← Пред",
+                    fontSize = if (land) 12.sp else 14.sp,
+                    modifier = Modifier.clickable(enabled = prevId != null) { go(prevId) }
+                        .padding(horizontal = 8.dp, vertical = 2.dp),
+                    color = prevColor
+                )
+                Text(
+                    "След →",
+                    fontSize = if (land) 12.sp else 14.sp,
+                    modifier = Modifier.clickable(enabled = nextId != null) { go(nextId) }
+                        .padding(horizontal = 8.dp, vertical = 2.dp),
+                    color = nextColor
+                )
             }
         }
     ) { pad ->
@@ -122,7 +274,7 @@ fun VerseDetailScreen(
         val player = remember { com.vedalibrary.app.ui.audio.VerseAudioPlayer(ctx) }
         var playing by remember { mutableStateOf(false) }
         DisposableEffect(Unit) { onDispose { player.stop(); player.release() } }
-        LaunchedEffect(verse?.id) { player.stop(); playing = false }
+        LaunchedEffect(verse?.id) { player.stop(); playing = false; findQ = ""; findIdx = 0 }
         // Кнопки громкости — размер шрифта стиха (только пока открыт этот экран)
         val volOwner = remember { Any() }
         DisposableEffect(Unit) {
@@ -170,7 +322,6 @@ fun VerseDetailScreen(
         // frac — доля позиции совпадения внутри секции (0 = начало).
         // audioSrc в КЛЮЧАХ: появление аудио-строки сдвигает номера секций вниз —
         // без пересчёта цель уезжала на секцию выше
-        val hl = vm.highlight
         val hp = vm.highlightField
         val listState = androidx.compose.foundation.lazy.rememberLazyListState()
         val target = remember(verse?.id, hl, hp, san, tra, syn, trl, pur, book?.language, audioSrc != null) {
@@ -248,6 +399,21 @@ fun VerseDetailScreen(
                 }
             }
         }
+
+        LaunchedEffect(findIdx, matches, findOpen) {
+            if (!findOpen || matches.isEmpty()) return@LaunchedEffect
+            val (mi, mf) = matches[findIdx.coerceIn(0, matches.size - 1)]
+            try { listState.scrollToItem(mi) } catch (_: Exception) { return@LaunchedEffect }
+            var size = 0
+            for (attempt in 0 until 10) {
+                val info = listState.layoutInfo.visibleItemsInfo.firstOrNull { it.index == mi }
+                if (info != null) { size = info.size; break }
+                try { kotlinx.coroutines.delay(32) } catch (_: Exception) { }
+            }
+            val vh = listState.layoutInfo.viewportEndOffset - listState.layoutInfo.viewportStartOffset
+            val delta = size * mf - vh * 0.30f
+            if (size > 0 && vh > 0 && delta > 0f) { try { listState.scrollBy(delta) } catch (_: Exception) { } }
+        }
         if (verse == null) {
             Box(Modifier.padding(pad).fillMaxSize()) {
                 Text(
@@ -272,7 +438,7 @@ fun VerseDetailScreen(
             state = listState
         ) {
             if (san && !verse.sanskrit.isNullOrBlank()) item {
-                HtmlText(verse.sanskrit!!, Modifier.fillMaxWidth().padding(vertical = 12.dp), center = true, fontSizeSp = font + 2, onSaveNote = { vm.addNote(verse.id, it) }, onAsk = ::askIt, highlight = hl)
+                HtmlText(verse.sanskrit!!, Modifier.fillMaxWidth().padding(vertical = 12.dp), center = true, fontSizeSp = font + 2, onSaveNote = { vm.addNote(verse.id, it) }, onAsk = ::askIt, highlight = hlActive)
             }
             if (audioSrc != null) item {
                 Row(
@@ -317,11 +483,13 @@ fun VerseDetailScreen(
                     }
                 }
             }
-            if (tra && verse.text.isNotBlank()) item {
+            // У лекций в text лежит «Лекция №226 по стихам 96-132» — это шапка,
+            // уже показанная строкой «ЧЧ 3.4.96-132 Лекция №226» наверху
+            if (tra && verse.text.isNotBlank() && !lectureBook) item {
                 val translitHtml = remember(verse.id, book?.language) {
                     if (book?.language == "rus") GbHtml.cyrillicTranslit(verse.text) else verse.text
                 }
-                HtmlText(translitHtml, Modifier.fillMaxWidth().padding(vertical = 8.dp), center = true, fontSizeSp = font, onSaveNote = { vm.addNote(verse.id, it) }, onAsk = ::askIt, highlight = hl)
+                HtmlText(translitHtml, Modifier.fillMaxWidth().padding(vertical = 8.dp), center = true, fontSizeSp = font, onSaveNote = { vm.addNote(verse.id, it) }, onAsk = ::askIt, highlight = hlActive)
             }
             if (syn && !verse.synonyms.isNullOrBlank()) item {
                 // Привязка лекции («ЧЧ 1.4.73-82») — кнопка перехода к первому стиху,
@@ -330,16 +498,22 @@ fun VerseDetailScreen(
                     parseLectureRef(verse.synonyms!!, lecCtx)
                 }
                 if (lecRef != null) {
+                    // Для лекций ссылка «ЧЧ 3.4.96-132» дублирует шапку экрана —
+                    // вместо неё одна строка-действие: к первому стиху лекции
+                    val isLecture = lectureBook
                     Row(
                         Modifier.fillMaxWidth().clickable {
                             openRef(lecRef.code, lecRef.song, lecRef.ch, lecRef.txt)
-                        }.padding(vertical = 10.dp),
+                        }.padding(vertical = if (isLecture) 6.dp else 10.dp),
                         verticalAlignment = androidx.compose.ui.Alignment.CenterVertically
                     ) {
                         Text(
-                            verse.synonyms!!.trim(),
-                            fontWeight = androidx.compose.ui.text.font.FontWeight.Bold,
+                            if (isLecture) "Прочитать оригинальные стихи" else verse.synonyms!!.trim(),
+                            fontWeight = if (isLecture) androidx.compose.ui.text.font.FontWeight.Normal
+                                else androidx.compose.ui.text.font.FontWeight.Bold,
                             fontSize = font.sp,
+                            color = if (isLecture) MaterialTheme.colorScheme.primary
+                                else MaterialTheme.colorScheme.onSurface,
                             modifier = Modifier.weight(1f)
                         )
                         Text(
@@ -354,31 +528,34 @@ fun VerseDetailScreen(
                     // (−20% к прежним 3dp+темовому lineHeight — просят плотнее)
                     Column(Modifier.fillMaxWidth().padding(vertical = 8.dp)) {
                         synLines.forEach { line ->
-                            SynonymLine(line, font - 1, onWordClick = { w -> onWord(w, book?.language ?: "eng", book?.id?.split("-")?.getOrNull(1) ?: "") }, modifier = Modifier.fillMaxWidth().padding(vertical = 1.dp), cyrillic = book?.language == "rus", highlight = hl)
+                            SynonymLine(line, font - 1, onWordClick = { w -> onWord(w, book?.language ?: "eng", book?.id?.split("-")?.getOrNull(1) ?: "") }, modifier = Modifier.fillMaxWidth().padding(vertical = 1.dp), cyrillic = book?.language == "rus", highlight = hlActive)
                         }
                     }
                 }
             }
             if (trl && !verse.translation.isNullOrBlank()) item {
-                val translationHtml = remember(verse.id, book?.language) {
-                    if (book?.language == "rus") GbHtml.cyrillicTerms(verse.translation) else verse.translation!!
+                val translationHtml = remember(verse.id, book?.language, lectureBook) {
+                    val h = if (book?.language == "rus") GbHtml.cyrillicTerms(verse.translation) else verse.translation!!
+                    // «226 (3.4.96-132)» / «Лекция №226 …» в начале тела — служебная
+                    // шапка файла, уже показанная сверху
+                    if (lectureBook) stripLeadingLectureHeader(h) else h
                 }
-                val lectureBody = remember(book?.id) { VerseShare.isLectureBook(book?.id) }
                 val proseBody = remember(book?.id) { VerseShare.isProseBook(book?.id) }
-                HtmlText(translationHtml, Modifier.fillMaxWidth().padding(vertical = 8.dp), center = centerBlock && !proseBody, justify = justifyBlock, fontSizeSp = font, bold = !lectureBody && !proseBody, onSaveNote = { vm.addNote(verse.id, it) }, onAsk = ::askIt, highlight = hl, onVerseRef = ::openRef,
+                HtmlText(translationHtml, Modifier.fillMaxWidth().padding(top = 8.dp, bottom = if (land) 0.dp else 2.dp), center = centerBlock && !proseBody, justify = justifyBlock, fontSizeSp = font, bold = !lectureBook && !proseBody, onSaveNote = { vm.addNote(verse.id, it) }, onAsk = ::askIt, highlight = hlActive, onVerseRef = ::openRef,
                     refSong = lecCtx?.first, refCh = lecCtx?.second, refWork = lecCtx?.third)
             }
             if (pur && !verse.purport.isNullOrBlank()) item {
-                val purportHtml = remember(verse.id, book?.language) {
-                    if (book?.language == "rus") GbHtml.cyrillicTerms(verse.purport) else verse.purport!!
+                val purportHtml = remember(verse.id, book?.language, lectureBook) {
+                    val h = if (book?.language == "rus") GbHtml.cyrillicTerms(verse.purport) else verse.purport!!
+                    // «Файл: 226 (3.4.96-132).docx» — тоже техническая шапка
+                    if (lectureBook) stripLeadingFileLine(h) else h
                 }
                 val proseBody = remember(book?.id) { VerseShare.isProseBook(book?.id) }
-                HtmlText(purportHtml, Modifier.fillMaxWidth().padding(vertical = 8.dp), center = centerBlock && !proseBody, justify = justifyBlock, fontSizeSp = font, onSaveNote = { vm.addNote(verse.id, it) }, onAsk = ::askIt, highlight = hl, onVerseRef = ::openRef,
+                HtmlText(purportHtml, Modifier.fillMaxWidth().padding(top = 8.dp, bottom = if (land) 0.dp else 2.dp), center = centerBlock && !proseBody, justify = justifyBlock, fontSizeSp = font, onSaveNote = { vm.addNote(verse.id, it) }, onAsk = ::askIt, highlight = hlActive, onVerseRef = ::openRef,
                     refSong = lecCtx?.first, refCh = lecCtx?.second, refWork = lecCtx?.third)
             }
             item { RelatedSections(vm, onNavigate) }
             item { SimilarSection(vm, verse, onNavigate, font) }
-            item { Spacer(Modifier.height(24.dp)) }
         }
         // Диалог нехватки TTS: вести устанавливать движок / скачивать голос
         if (ttsDlg != null) {
@@ -410,6 +587,34 @@ fun VerseDetailScreen(
         }
     }
 }
+
+/** Номер лекции из служебного заголовка («Лекция №226 по стихам 96-132» -> «226»). */
+private val LEC_NUM_RE = Regex("""№\s*(\d+)""")
+private fun lectureNumber(text: String?): String? =
+    text?.let { LEC_NUM_RE.find(it)?.groupValues?.getOrNull(1) }
+
+/** Ведущая служебная шапка тела лекции: «226 (3.4.96-132)», «Лекция №226 …».
+ *  Убираем ТОЛЬКО в начале HTML — в середине текста это может быть по делу. */
+private val LEC_HEAD_P_RE = Regex(
+    """^\s*<p>\s*(?:\d+\s*\(\s*\d+\.\d+[^<]*?\)[.,]?|Лекция\s*№\s*\d+[^<]*)\s*</p>\s*""",
+    setOf(RegexOption.IGNORE_CASE)
+)
+private val FILE_LINE_P_RE = Regex(
+    """^\s*<p>\s*<i>\s*Файл:[^<]*?\.(?:docx?|txt)\s*</i>\s*</p>\s*""",
+    setOf(RegexOption.IGNORE_CASE)
+)
+
+private fun stripLeading(html: String, re: Regex): String {
+    var t = html
+    while (true) {
+        val m = re.find(t) ?: return t
+        if (m.range.first != 0) return t
+        t = t.removeRange(m.range)
+    }
+}
+
+private fun stripLeadingLectureHeader(html: String): String = stripLeading(html, LEC_HEAD_P_RE)
+private fun stripLeadingFileLine(html: String): String = stripLeading(html, FILE_LINE_P_RE)
 
 /** Привязка лекции («ЧЧ 1.4.73-82», «БГ 2.13», «ШБ 1.8.34») -> цель для openRef.
  *  Диапазон режется до первого стиха («73-82» -> «73»): ведут на первый стих ссылки */

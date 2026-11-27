@@ -53,6 +53,7 @@ fun VedaNavGraph() {
     // rememberSaveable: подсветка вкладки переживает поворот/восстановление
     // (remember стирался, а NavController стек восстанавливал — расходились)
     var selected by rememberSaveable { mutableStateOf(Routes.LIB) }
+    val land = androidx.compose.ui.platform.LocalConfiguration.current.orientation == android.content.res.Configuration.ORIENTATION_LANDSCAPE
     // Вкладки-картинки: крупные цветные эмодзи по центру, без подписей
     val tabs = listOf(
         Routes.LIB to "📚",
@@ -75,7 +76,7 @@ fun VedaNavGraph() {
             // в кнопочном — высота системной панели. UI адаптируется сам
             Column(Modifier.background(MaterialTheme.colorScheme.surfaceContainer)) {
                 NavigationBar(
-                    modifier = Modifier.height(60.dp),
+                    modifier = Modifier.height(if (land) 34.dp else 60.dp),
                     windowInsets = WindowInsets(0, 0, 0, 0)
                 ) {
                     tabs.forEach { (r, e) ->
@@ -100,7 +101,7 @@ fun VedaNavGraph() {
                                     }
                                 }
                             },
-                            icon = { Text(e, fontSize = 30.sp) }
+                            icon = { Text(e, fontSize = if (land) 16.sp else 30.sp) }
                         )
                     }
                 }
@@ -219,7 +220,7 @@ fun VedaNavGraph() {
                                 set("ask_quote", quote)
                             }
                             nav.navigate(Routes.ASK)
-                        }
+                        },
                     )
                 }
                 composable(Routes.DICT) {

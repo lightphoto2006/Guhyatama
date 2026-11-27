@@ -1,88 +1,88 @@
 {
-  "apk": {
-    "versionCode": 67,
-    "versionName": "1.3.19",
-    "url": "https://github.com/lightphoto2006/Guhyatama/releases/download/v1.3.19/Guhyatama-1.3.19.apk",
-    "file": "F:\\\\AI\\\\Development\\\\Guhyatama\\\\releases\\\\Guhyatama-1.3.19.apk",
-    "notes": "Что нового:\n- Установленные книги с той же версией больше не предлагают «Скачать» (Прабхупада 150 МБ и др.).\n- При обновлении сборника из каталога убираются прежние копии книг с тем же типом, языком и названием — дубли («2 Брахма-самхиты», «2 БГ Шридхара») больше не появляются.\n- Остальное как в 1.3.18."
+ "apk": {
+  "versionCode": 68,
+  "versionName": "1.3.20",
+  "url": "https://github.com/lightphoto2006/Guhyatama/releases/download/v1.3.20/Guhyatama-1.3.20.apk",
+  "file": "F:\\AI\\Development\\Guhyatama\\releases\\Guhyatama-1.3.20.apk",
+  "notes": "Что нового:\n- Экран лекции: «ЧЧ 3.4.96-132 Лекция №226» в шапке, без трёх дублирующих строк; вместо них ссылка «Прочитать оригинальные стихи».\n- Портрет: компактные «← Пред / След →» и меньше отступов — больше текста на экране.\n- Жирный и курсив из Word-документов снова отображаются в тексте книг-лекций.\n- Остальное как в 1.3.19."
+ },
+ "books": {
+  "Prabhupada_rus": {
+   "title": "Книги Шрилы Прабхупады (рус)",
+   "lang": "rus",
+   "file": "Prabhupada_rus.db",
+   "version": 1,
+   "url": "https://api.github.com/repos/lightphoto2006/Guhyatama-files/releases/assets/603137196",
+   "notes": "Первая публикация в каталоге. Полная русская библиотека.",
+   "auth": "github"
   },
-  "books": {
-    "Prabhupada_rus": {
-      "title": "Книги Шрилы Прабхупады (рус)",
-      "lang": "rus",
-      "file": "Prabhupada_rus.db",
-      "version": 1,
-      "url": "https://api.github.com/repos/lightphoto2006/Guhyatama-files/releases/assets/603137196",
-      "notes": "Первая публикация в каталоге. Полная русская библиотека.",
-      "auth": "github"
-    },
-    "Prabhupada_eng": {
-      "title": "Prabhupada books (eng)",
-      "lang": "eng",
-      "file": "Prabhupada_eng.db",
-      "version": 2,
-      "url": "https://api.github.com/repos/lightphoto2006/Guhyatama-files/releases/assets/607548569",
-      "notes": "Похудела вдвое: обложки ужаты (тексты те же).",
-      "auth": "github",
-      "adopt": false
-    },
-    "Acharyi_eng": {
-      "title": "Книги ачарьев (eng)",
-      "lang": "eng",
-      "file": "Acharyi_eng.db",
-      "version": 1,
-      "url": "https://api.github.com/repos/lightphoto2006/Guhyatama-files/releases/assets/605847835",
-      "notes": "Первая публикация в каталоге.",
-      "auth": "github"
-    },
-    "Syamakunda_CC": {
-      "title": "Лекции Шьямакунды прабху по ЧЧ (рус)",
-      "lang": "rus",
-      "file": "Syamakunda_CC.db",
-      "version": 4,
-      "url": "https://api.github.com/repos/lightphoto2006/Guhyatama-files/releases/assets/606200632",
-      "notes": "Техническое переимпортирование (файл тот же): лекции-дубли одного стиха больше не затирают друг друга.",
-      "auth": "github",
-      "adopt": false
-    },
-    "Syamakunda_BRS": {
-      "title": "Лекции Шьямакунды прабху по БРС (рус)",
-      "lang": "rus",
-      "file": "DB Final/Syamakunda_BRS.db",
-      "version": 4,
-      "url": "https://api.github.com/repos/lightphoto2006/Guhyatama-files/releases/assets/607134393",
-      "auth": "github",
-      "notes": "025 устроена по номеру; голые ссылки ищутся в БРС.",
-      "adopt": false
-    },
-    "Acharyi_rus": {
-      "title": "Книги ачарий (рус)",
-      "lang": "rus",
-      "file": "F:\\AI\\Development\\Book DB\\Acharyi_rus_v16.db",
-      "version": 16,
-      "url": "https://api.github.com/repos/lightphoto2006/Guhyatama-files/releases/assets/677258930",
-      "notes": "Полный файл: исправление дублей (2 Брахма-самхиты, 2 БГ Шридхара) — импортёр 1.3.19 убирает прежние копии по типу+языку+названию. Состав тот же: Гопала-чампу, БГ (Шридхар), Брахма-самхита, Шри Чайтанья-Бхагавата + обложки.",
-      "auth": "github"
-    }
+  "Prabhupada_eng": {
+   "title": "Prabhupada books (eng)",
+   "lang": "eng",
+   "file": "Prabhupada_eng.db",
+   "version": 2,
+   "url": "https://api.github.com/repos/lightphoto2006/Guhyatama-files/releases/assets/607548569",
+   "notes": "Похудела вдвое: обложки ужаты (тексты те же).",
+   "auth": "github",
+   "adopt": false
   },
-  "audio": {
-    "BG_Audio": {
-      "title": "Аудио: Бхагавад-гита",
-      "lang": "rus",
-      "file": "BG_Audio.db",
-      "version": 1,
-      "url": "https://api.github.com/repos/lightphoto2006/Guhyatama-files/releases/assets/605850731",
-      "notes": "Первая публикация в каталоге.",
-      "auth": "github"
-    },
-    "SBA_Canto1": {
-      "title": "Аудио: ШБ, Песнь 1",
-      "lang": "rus",
-      "file": "SBA Canto-1.db",
-      "version": 1,
-      "url": "https://api.github.com/repos/lightphoto2006/Guhyatama-files/releases/assets/605882974",
-      "notes": "Первая публикация в каталоге. Opus 24k.",
-      "auth": "github"
-    }
+  "Acharyi_eng": {
+   "title": "Книги ачарьев (eng)",
+   "lang": "eng",
+   "file": "Acharyi_eng.db",
+   "version": 1,
+   "url": "https://api.github.com/repos/lightphoto2006/Guhyatama-files/releases/assets/605847835",
+   "notes": "Первая публикация в каталоге.",
+   "auth": "github"
+  },
+  "Syamakunda_CC": {
+   "title": "Лекции Шьямакунды прабху по ЧЧ (рус)",
+   "lang": "rus",
+   "file": "F:\\AI\\Development\\Book DB\\Syamakunda_CC_v5.db",
+   "version": 5,
+   "url": "https://api.github.com/repos/lightphoto2006/Guhyatama-files/releases/assets/799518444",
+   "notes": "Жирный и курсив из исходных Word-документов снова отображаются в тексте лекций. Для 42 старых .doc-лекций при конвертации восстановлены потерянные абзацы.",
+   "auth": "github",
+   "adopt": false
+  },
+  "Syamakunda_BRS": {
+   "title": "Лекции Шьямакунды прабху по БРС (рус)",
+   "lang": "rus",
+   "file": "DB Final/Syamakunda_BRS.db",
+   "version": 4,
+   "url": "https://api.github.com/repos/lightphoto2006/Guhyatama-files/releases/assets/607134393",
+   "auth": "github",
+   "notes": "025 устроена по номеру; голые ссылки ищутся в БРС.",
+   "adopt": false
+  },
+  "Acharyi_rus": {
+   "title": "Книги ачарий (рус)",
+   "lang": "rus",
+   "file": "F:\\AI\\Development\\Book DB\\Acharyi_rus_v16.db",
+   "version": 16,
+   "url": "https://api.github.com/repos/lightphoto2006/Guhyatama-files/releases/assets/677258930",
+   "notes": "Полный файл: исправление дублей (2 Брахма-самхиты, 2 БГ Шридхара) — импортёр 1.3.19 убирает прежние копии по типу+языку+названию. Состав тот же: Гопала-чампу, БГ (Шридхар), Брахма-самхита, Шри Чайтанья-Бхагавата + обложки.",
+   "auth": "github"
   }
+ },
+ "audio": {
+  "BG_Audio": {
+   "title": "Аудио: Бхагавад-гита",
+   "lang": "rus",
+   "file": "BG_Audio.db",
+   "version": 1,
+   "url": "https://api.github.com/repos/lightphoto2006/Guhyatama-files/releases/assets/605850731",
+   "notes": "Первая публикация в каталоге.",
+   "auth": "github"
+  },
+  "SBA_Canto1": {
+   "title": "Аудио: ШБ, Песнь 1",
+   "lang": "rus",
+   "file": "SBA Canto-1.db",
+   "version": 1,
+   "url": "https://api.github.com/repos/lightphoto2006/Guhyatama-files/releases/assets/605882974",
+   "notes": "Первая публикация в каталоге. Opus 24k.",
+   "auth": "github"
+  }
+ }
 }

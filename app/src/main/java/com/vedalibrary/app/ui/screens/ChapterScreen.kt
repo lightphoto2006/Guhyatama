@@ -4,6 +4,7 @@ package com.vedalibrary.app.ui.screens
 
 import android.content.ClipData
 import android.content.ClipboardManager
+import android.content.res.Configuration
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.gestures.detectHorizontalDragGestures
@@ -47,6 +48,7 @@ fun ChapterScreen(
     val illus by vm.illustrations.collectAsState(emptyList())
     val bm by vm.bookmark.collectAsState(null)
     val ctx = LocalContext.current
+    val land = androidx.compose.ui.platform.LocalConfiguration.current.orientation == Configuration.ORIENTATION_LANDSCAPE
     val clipScope = rememberCoroutineScope()
     val fontL by vm.settings.fontList.collectAsState(15f)
     val align by vm.settings.paraAlign.collectAsState("justify")
@@ -104,21 +106,23 @@ fun ChapterScreen(
             Modifier.fillMaxWidth().padding(start = 12.dp, end = 12.dp, top = 8.dp),
             horizontalAlignment = androidx.compose.ui.Alignment.CenterHorizontally
         ) {
-            Text(
-                chapter?.title ?: "Глава",
-                maxLines = 3, overflow = TextOverflow.Ellipsis,
-                textAlign = androidx.compose.ui.text.style.TextAlign.Center,
-                style = MaterialTheme.typography.titleMedium
-            )
-            book?.title?.let { com.vedalibrary.app.ui.components.VerseShare.cleanTitle(it) }
-                ?.takeIf { it.isNotBlank() }?.let {
-                    Text(
-                        it,
-                        maxLines = 1, overflow = TextOverflow.Ellipsis,
-                        textAlign = androidx.compose.ui.text.style.TextAlign.Center,
-                        style = MaterialTheme.typography.labelLarge
-                    )
-                }
+            val chapTxt = chapter?.title ?: "Глава"
+            val bookTxt = book?.title?.let { com.vedalibrary.app.ui.components.VerseShare.cleanTitle(it) }?.takeIf { it.isNotBlank() }
+            if (land) {
+                Text(
+                    if (bookTxt == null) chapTxt else "$bookTxt  ·  $chapTxt",
+                    maxLines = 1, overflow = TextOverflow.Ellipsis,
+                    textAlign = androidx.compose.ui.text.style.TextAlign.Center,
+                    style = MaterialTheme.typography.labelLarge
+                )
+            } else {
+                Text(chapTxt, maxLines = 3, overflow = TextOverflow.Ellipsis,
+                    textAlign = androidx.compose.ui.text.style.TextAlign.Center,
+                    style = MaterialTheme.typography.titleMedium)
+                bookTxt?.let { Text(it, maxLines = 1, overflow = TextOverflow.Ellipsis,
+                    textAlign = androidx.compose.ui.text.style.TextAlign.Center,
+                    style = MaterialTheme.typography.labelLarge) }
+            }
             Row(
                 verticalAlignment = androidx.compose.ui.Alignment.CenterVertically,
                 horizontalArrangement = Arrangement.spacedBy(4.dp)

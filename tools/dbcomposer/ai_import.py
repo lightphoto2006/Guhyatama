@@ -517,7 +517,17 @@ def split_verses(paras, opts):
             s = re.sub(r"\[([^\]]*)\]\([^)]*\)", r"\1", s)
             s = re.sub(r"^\s{0,3}#{1,6}\s+", "", s, flags=re.M)
             s = re.sub(r"^\s*>\s?", "", s, flags=re.M)
-            s = re.sub(r"[*_`~]{1,3}", "", s)
+            # Markdown-выделение -> HTML: приложение рендерит тело через
+            # HtmlCompat, поэтому **жирный** / *курсив* не теряются, а
+            # становятся <b>/<i> (раньше все маркеры просто вырезались).
+            s = re.sub(r"\*\*\*(.+?)\*\*\*", r"<b><i>\1</i></b>", s)
+            s = re.sub(r"___(.+?)___", r"<b><i>\1</i></b>", s)
+            s = re.sub(r"\*\*(.+?)\*\*", r"<b>\1</b>", s)
+            s = re.sub(r"__(.+?)__", r"<b>\1</b>", s)
+            s = re.sub(r"(?<!\*)\*(?!\*)(.+?)(?<!\*)\*(?!\*)", r"<i>\1</i>", s)
+            s = re.sub(r"(?<![\w])_(.+?)_(?![\w])", r"<i>\1</i>", s)
+            # одиночные маркеры (код/зачёркивание/сломанная разметка)
+            s = s.replace("*", "").replace("`", "").replace("~", "")
         return re.sub(r"[ \t]+", " ", s).strip()
 
     if mode == "none":
@@ -605,8 +615,10 @@ def build_structure(text, opts, llm_result=None):
 
 # ============================================================ source-.db
 def _html(text):
-    return (text.replace("&", "&amp;").replace("<", "&lt;")
-            .replace(">", "&gt;"))
+    """Экранирование текста, но <b>/<i> (выделение из исходника) остаются тегами."""
+    t = text.replace("&", "&amp;").replace("<", "&lt;").replace(">", "&gt;")
+    # восстановить только наши теги выделения — остальные < > остаются текстом
+    return re.sub(r"&lt;(/?[bi])&gt;", r"<\1>", t)
 
 
 def write_source_db(struct, meta, out_path):

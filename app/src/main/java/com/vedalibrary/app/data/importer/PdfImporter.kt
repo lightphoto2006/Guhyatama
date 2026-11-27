@@ -20,6 +20,9 @@ class PdfImporter @Inject constructor(
 ) {
     suspend fun import(uri: Uri, titleHint: String? = null): String =
         withContext(Dispatchers.IO) {
+            // Инициализируем PDFBoxResourceLoader (нужен для pdfbox-android)
+            try { com.tom_roush.pdfbox.android.PDFBoxResourceLoader.init(ctx) } catch (_: Throwable) { }
+
             // Копируем в кэш (нужен seekable файл)
             val tmp = File.createTempFile("import", ".pdf", ctx.cacheDir)
             try {
@@ -27,22 +30,37 @@ class PdfImporter @Inject constructor(
                 inp.use { tmp.outputStream().use { inp.copyTo(it) } }
                 val text = try {
                     extractWithPdfBox(tmp)
-                } catch (_: Throwable) {
-                    ""
+                } catch (e: Throwable) {
+                    throw IllegalStateException("Не удалось прочитать PDF (${e.javaClass.simpleName}: ${e.message ?: "?"})")
+                }
+                // Заменяем null-символы на пробелы; если текста < 10 букв — бросаем, а не ставим заглушку
+                val cleaned = text.replace('\u0000', ' ')
+                val letterCount = cleaned.count { it.isLetter() }
+                if (letterCount < 10) {
+                    throw IllegalStateException("В PDF не найден текстовый слой — это скан, нужен OCR")
                 }
                 val title = titleHint ?: tmp.nameWithoutExtension.ifBlank { "Импорт PDF" }
-                txtImporter.importText(text.ifBlank { "Пустой PDF — возможно это скан. Нужен OCR." }, title)
+                txtImporter.importText(cleaned, title)
             } finally {
                 tmp.delete()
             }
         }
 
     private fun extractWithPdfBox(file: File): String {
-        // tom-roush pdfbox-android (пакет com.tom_roush, не org.apache)
         com.tom_roush.pdfbox.pdmodel.PDDocument.load(file).use { doc ->
-            val stripper = com.tom_roush.pdfbox.text.PDFTextStripper()
-            stripper.sortByPosition = true // чинит две колонки в большинстве лекций
-            return stripper.getText(doc)
+            val sb = StringBuilder()
+            for (p in 0 until doc.numberOfPages) {
+                try {
+                    val stripper = com.tom_roush.pdfbox.text.PDFTextStripper()
+                    stripper.sortByPosition = true
+                    stripper.startPage = p + 1
+                    stripper.endPage = p + 1
+                    sb.append(stripper.getText(doc))
+                } catch (_: Throwable) {
+                    // битую страницу пропускаем
+                }
+            }
+            return sb.toString()
         }
     }
 }

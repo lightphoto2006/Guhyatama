@@ -211,8 +211,37 @@ def read_doc_paragraphs(path):
     return out
 
 
+#: Выделение из Word едет в тексте HTML-тегами <b>/<i> — приложение рендерит
+#: HTML через HtmlCompat, поэтому начертание сохраняется. Служебные обёртки
+#: нужны и для анализа абзацев (заголовки/привязки) — там их снимаем.
+MARK_TAG_RE = re.compile(r"</?[bi]>")
+W_NS = "http://schemas.openxmlformats.org/wordprocessingml/2006/main"
+
+
+def strip_marks(s):
+    """Текст абзаца без служебных <b>/<i> — для сравнений и поиска."""
+    return MARK_TAG_RE.sub("", s or "")
+
+
+def escape_keep_marks(s):
+    """html.escape, но созданные нами <b>/<i> оставляем тегами."""
+    s = html.escape(s or "")
+    return re.sub(r"&lt;(/?[bi])&gt;", r"<\1>", s)
+
+
+def _run_flag(rpr, tag):
+    if rpr is None:
+        return False
+    e = rpr.find("{%s}%s" % (W_NS, tag))
+    if e is None:
+        return False
+    val = str(e.get("{%s}val" % W_NS) or "").lower()
+    return val not in ("0", "false", "off", "none")
+
+
 def read_docx_paragraphs(path):
-    """[(style, text)]; style = 'Heading1'..'Heading4' / 'Normal'. Без внешних зависимостей."""
+    """[(style, text)]; style = 'Heading1'..'Heading4' / 'Normal'. Без внешних зависимостей.
+    text сохраняет жирный/курсив Word как <b>/<i> (не теряем при сборке книги)."""
     if path.lower().endswith(".doc") and not path.lower().endswith(".docx"):
         try:
             return read_doc_paragraphs(path)
@@ -231,24 +260,63 @@ def read_docx_paragraphs(path):
     finally:
         z.close()
     ns = {"w": "http://schemas.openxmlformats.org/wordprocessingml/2006/main"}
+    w = "{%s}" % W_NS
     root = ET.fromstring(xml)
     out = []
     for p in root.findall(".//w:p", ns):
         style = "Normal"
         ps = p.find("w:pPr/w:pStyle", ns)
         if ps is not None:
-            v = ps.get("{http://schemas.openxmlformats.org/wordprocessingml/2006/main}val", "")
+            v = ps.get("{%s}val" % W_NS, "")
             if v.lower().startswith("heading"):
                 style = "Heading" + v[len("heading"):]
-        texts = []
-        for t in p.findall(".//w:t", ns):
-            texts.append(t.text or "")
-        # разрывы строк внутри абзаца
-        for br in p.findall(".//w:br", ns):
-            texts.append("\n")
-        text = "".join(texts).replace("\r", "").strip()
+        # сегменты (текст, жирный, курсив); соседние одинаковые склеиваем
+        segs = []
+        for r in p.iter(w + "r"):
+            rpr = r.find(w + "rPr")
+            bold = _run_flag(rpr, "b")
+            ital = _run_flag(rpr, "i")
+            if rpr is not None:
+                rs = rpr.find(w + "rStyle")
+                if rs is not None:
+                    sv = str(rs.get(w + "val") or "").lower()
+                    if "strong" in sv:
+                        bold = True
+                    if "emphasis" in sv or "italic" in sv:
+                        ital = True
+            buf = []
+            for e in r:
+                if e.tag == w + "t":
+                    buf.append(e.text or "")
+                elif e.tag == w + "tab":
+                    buf.append(" ")
+                elif e.tag in (w + "br", w + "cr"):
+                    buf.append("\n")
+            piece = "".join(buf)
+            if not piece:
+                continue
+            if segs and segs[-1][1] == bold and segs[-1][2] == ital:
+                segs[-1][0] += piece
+            else:
+                segs.append([piece, bold, ital])
+        # пробелы по краям абзаца — вне тегов, иначе после strip_marks
+        # в конце остаётся « ». (старый читатель strip-ал уже готовый текст)
+        if segs:
+            segs[0][0] = segs[0][0].lstrip()
+            segs[-1][0] = segs[-1][0].rstrip()
+            segs = [s for s in segs if s[0]]
+        text = ""
+        for piece, bold, ital in segs:
+            if bold:
+                piece = "<b>%s</b>" % piece
+            if ital:
+                piece = "<i>%s</i>" % piece
+            text += piece
+        # пробел перед закрывающими тегами в конце абзаца — убрать
+        text = re.sub(r"\s+(</[bi]>)+$", r"\1", text)
+        text = text.replace("\r", "").strip()
         # пустой абзац — граница (храним как пустой Normal для деления на абзацы)
-        if not text:
+        if not strip_marks(text).strip():
             out.append(("Normal", ""))
             continue
         out.append((style, text))
@@ -280,17 +348,18 @@ def parse_docx(path, defaults=None):
             chapters[(song, ch)] = "Глава %s" % ch
 
     for style, text in paras:
-        if not text:
+        plain = strip_marks(text)
+        if not plain.strip():
             if cur_lec is not None:
                 cur_lec[6].append("")  # граница абзаца
             continue
-        is_h1 = style == "Heading1" or RE_BOOK.match(text)
-        is_h2 = style == "Heading2" or RE_SONG.match(text)
-        is_h3 = style == "Heading3" or RE_CH.match(text)
-        is_h4 = style == "Heading4" or RE_LEC.match(text)
+        is_h1 = style == "Heading1" or RE_BOOK.match(plain)
+        is_h2 = style == "Heading2" or RE_SONG.match(plain)
+        is_h3 = style == "Heading3" or RE_CH.match(plain)
+        is_h4 = style == "Heading4" or RE_LEC.match(plain)
         if is_h1:
-            m = RE_BOOK.match(text)
-            raw = m.group(1) if m else text
+            m = RE_BOOK.match(plain)
+            raw = m.group(1) if m else plain
             title, meta = split_title_meta(raw)
             if title:
                 book_title = title
@@ -300,8 +369,8 @@ def parse_docx(path, defaults=None):
                 book_author = meta["AUTHOR"]
             continue
         if is_h2:
-            m = RE_SONG.match(text)
-            raw = m.group(1) if m else text
+            m = RE_SONG.match(plain)
+            raw = m.group(1) if m else plain
             title, meta = split_title_meta(raw)
             no = meta.get("SONG")
             if no is None:
@@ -313,11 +382,11 @@ def parse_docx(path, defaults=None):
             flush_lec()
             continue
         if is_h3:
-            m = RE_CH.match(text)
+            m = RE_CH.match(plain)
             if m:
                 num, rest = m.group(1), m.group(2).strip()
             else:
-                num, rest = str(len(chapters) + 1), text
+                num, rest = str(len(chapters) + 1), plain
             if cur_song is None:
                 cur_song = "1"
                 songs.setdefault("1", DEFAULT_SONGS.get(book_type, [(1, "")])[0][1]
@@ -327,11 +396,11 @@ def parse_docx(path, defaults=None):
             flush_lec()
             continue
         if is_h4:
-            m = RE_LEC.match(text)
+            m = RE_LEC.match(plain)
             if m:
                 num, rest = m.group(1), m.group(2).strip()
             else:
-                num, rest = str(len(lectures) + 1).zfill(3), text
+                num, rest = str(len(lectures) + 1).zfill(3), plain
             heading, meta = split_title_meta(rest)
             if cur_song is None:
                 cur_song = "1"
@@ -391,12 +460,15 @@ def parse_docx(path, defaults=None):
 
 
 def paras_to_html(paras):
-    """Абзацы -> HTML для texts.transl2 (экранируем, пустые строки схлопываем)."""
+    """Абзацы -> HTML для texts.transl2 (экранируем, пустые строки схлопываем).
+    <b>/<i> из Word остаются тегами — приложение показывает жирный/курсив.
+    Пробелы внутри тегов не схлопываем в ноль: re.sub идёт по тексту, теги
+    короткие и без пробелов, поэтому безопасно."""
     cleaned = []
     for p in paras:
         p = re.sub(r"\s+", " ", p).strip()
-        if p:
-            cleaned.append("<p>%s</p>" % html.escape(p))
+        if strip_marks(p).strip():
+            cleaned.append("<p>%s</p>" % escape_keep_marks(p))
     return "\n".join(cleaned)
 
 
@@ -711,7 +783,7 @@ def strip_decor_headers(paras):
     («SSS… Чайтанья Чаритамрита», «Бхакти расамрита синдху»). Возвращает новый список."""
     out = list(paras)
     while out:
-        t = (out[0] or "").strip()
+        t = strip_marks(out[0] or "").strip()
         if not t:
             out.pop(0)
             continue
@@ -732,9 +804,9 @@ def parse_body_binding(paras):
     в первых 30 абзацах (тема раскрывает именно этот стих; чисто тематические
     без ссылок честно едут в «Разное»).
     Возвращает (song, ch, txts, num, title) или None."""
-    body = [p for p in (paras or []) if (p or "").strip()]
+    body = [p for p in (paras or []) if strip_marks(p or "").strip()]
     for p in body[:12]:
-        t = p.strip()
+        t = strip_marks(p).strip()
         m = RE_BODY_BIND.search(t)
         if not m:
             continue
@@ -748,7 +820,7 @@ def parse_body_binding(paras):
         num = leading_num(t[:m.start()])
         return str(int(song)), str(int(ch)), txts, num, rest
     for p in body[:30]:
-        t = p.strip()
+        t = strip_marks(p).strip()
         m = (re.search(r"БРС\s*(\d+)\s*\.\s*(\d+)\s*\.\s*(\d+)", t) or
              re.search(r"(?:текст[а-я]*|стих[а-я]*)\s+(\d+)\s*\.\s*(\d+)\s*\.\s*(\d+)",
                        t, re.I))
@@ -787,7 +859,7 @@ def parse_single_lecture(path, book_type):
     paras = [t for _, t in read_docx_paragraphs(path)]
     # Мусорные титулы DOC-шрифтов в начале (SSS… + название) — не текст лекции
     paras = strip_decor_headers(paras)
-    body = [p for p in paras if p.strip()]
+    body = [p for p in paras if strip_marks(p).strip()]
     if not body:
         raise ValueError("пустой документ (нет текста)")
     stem = os.path.splitext(base)[0]

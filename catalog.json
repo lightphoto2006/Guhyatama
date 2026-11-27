@@ -1,13 +1,13 @@
 {
   "catalogVersion": 1,
   "apk": {
-    "versionCode": 67,
-    "versionName": "1.3.19",
-    "url": "https://github.com/lightphoto2006/Guhyatama/releases/download/v1.3.19/Guhyatama-1.3.19.apk",
-    "file": "F:\\\\AI\\\\Development\\\\Guhyatama\\\\releases\\\\Guhyatama-1.3.19.apk",
-    "notes": "Что нового:\n- Установленные книги с той же версией больше не предлагают «Скачать» (Прабхупада 150 МБ и др.).\n- При обновлении сборника из каталога убираются прежние копии книг с тем же типом, языком и названием — дубли («2 Брахма-самхиты», «2 БГ Шридхара») больше не появляются.\n- Остальное как в 1.3.18.",
-    "size": 6056878,
-    "sha256": "c12471b4b1d6ce1bb89b5b30cdc79d9cc796989bbe9950b1c2367f780d2917fb"
+    "versionCode": 68,
+    "versionName": "1.3.20",
+    "url": "https://github.com/lightphoto2006/Guhyatama/releases/download/v1.3.20/Guhyatama-1.3.20.apk",
+    "file": "F:\\AI\\Development\\Guhyatama\\releases\\Guhyatama-1.3.20.apk",
+    "notes": "Что нового:\n- Экран лекции: «ЧЧ 3.4.96-132 Лекция №226» в шапке, без трёх дублирующих строк; вместо них ссылка «Прочитать оригинальные стихи».\n- Портрет: компактные «← Пред / След →» и меньше отступов — больше текста на экране.\n- Жирный и курсив из Word-документов снова отображаются в тексте книг-лекций.\n- Остальное как в 1.3.19.",
+    "size": 6073262,
+    "sha256": "734169f2e018884a42874919fe241b3c3763e2d6f437bc23530ba10b446362a3"
   },
   "books": [
     {
@@ -47,14 +47,22 @@
     {
       "key": "Syamakunda_CC",
       "title": "Лекции Шьямакунды прабху по ЧЧ (рус)",
-      "version": 4,
-      "url": "https://api.github.com/repos/lightphoto2006/Guhyatama-files/releases/assets/606200632",
-      "notes": "Техническое переимпортирование (файл тот же): лекции-дубли одного стиха больше не затирают друг друга.",
+      "version": 5,
+      "url": "https://api.github.com/repos/lightphoto2006/Guhyatama-files/releases/assets/799518444",
+      "notes": "Жирный и курсив из исходных Word-документов снова отображаются в тексте лекций. Для 42 старых .doc-лекций при конвертации восстановлены потерянные абзацы.",
       "lang": "rus",
       "auth": "github",
       "adopt": false,
-      "size": 10469376,
-      "sha256": "fdf966fadd9d509faccf072e1530e5165334146f2fc7655140ffd28cd71d4bc1"
+      "size": 10883072,
+      "sha256": "33d1800c6a0d611b8eda8e8aec4a137d5697d3e9d6ca86cf28e40f9ff66dc057",
+      "fp": [
+        {
+          "t": "scc",
+          "g": 1,
+          "v": 180,
+          "vg": 180
+        }
+      ]
     },
     {
       "key": "Syamakunda_BRS",

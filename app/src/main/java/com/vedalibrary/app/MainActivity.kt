@@ -27,6 +27,8 @@ import dagger.hilt.android.AndroidEntryPoint
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+        // Читалка: экран не гаснет, пока приложение на переднем плане
+        window.addFlags(android.view.WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
         CrashLog.install(this)
         val crashAtStart = CrashLog.read(this)
         enableEdgeToEdge() // тренд 2026: edge-to-edge по умолчанию

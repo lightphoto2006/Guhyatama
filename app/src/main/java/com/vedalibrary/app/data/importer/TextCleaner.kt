@@ -15,9 +15,12 @@ class TextCleaner @Inject constructor() {
     private val multiSpace = Regex("""[ \t]{2,}""")
     private val hyphenBreak = Regex("""(\p{L})-\n(\p{L})""")
     private val blank3 = Regex("""\n{3,}""")
+    private val softBreak = Regex("\u00AD[ \t\u00A0]*(?:\r\n|\r|\n)?[ \t\u00A0]*(?=\\p{L})")
 
     fun clean(raw: String): String {
         var t = raw.replace("\r\n", "\n")
+        t = t.replace(softBreak, "")
+        t = t.replace("\u00AD", "")
         t = hyphenBreak.replace(t, "$1$2") // склейка переносов
         val lines = t.lineSequence()
             .map { it.trimEnd() }
