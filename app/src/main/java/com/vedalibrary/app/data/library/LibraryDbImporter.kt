@@ -285,6 +285,8 @@ class LibraryDbImporter @Inject constructor(
                 val title = when {
                     raw.isNullOrBlank() -> if (lang == "rus") "Глава $num" else "Chapter $num"
                     raw.first().isDigit() -> raw
+                    // «Глава 16» уже содержит номер — не превращаем в «16. Глава 16»
+                    Regex("(?i)^(глава|chapter)\\s*\\d+").containsMatchIn(raw) -> raw
                     num > 0 -> "$num. $raw"
                     else -> raw
                 }

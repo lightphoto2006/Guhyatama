@@ -5,20 +5,28 @@ package com.vedalibrary.app.ui.screens
 import android.content.ClipData
 import android.content.ClipboardManager
 import android.content.res.Configuration
+import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.gestures.detectHorizontalDragGestures
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.text.BasicTextField
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Search
 import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.focus.FocusRequester
+import androidx.compose.ui.focus.focusRequester
+import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.SpanStyle
+import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.buildAnnotatedString
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.withStyle
@@ -49,6 +57,31 @@ fun ChapterScreen(
     val bm by vm.bookmark.collectAsState(null)
     val ctx = LocalContext.current
     val land = androidx.compose.ui.platform.LocalConfiguration.current.orientation == Configuration.ORIENTATION_LANDSCAPE
+    // Проза (Гопала-чампу, Чайтанья-Бхагавата): глава — длинный текст,
+    // шапку показываем одной строкой «Произведение — Глава N»
+    val isProse = remember(book?.id) {
+        com.vedalibrary.app.ui.components.VerseShare.isProseBook(book?.id)
+    }
+    var findOpen by remember { mutableStateOf(false) }
+    var findQ by remember { mutableStateOf("") }
+    val findFocus = remember { FocusRequester() }
+    LaunchedEffect(findOpen) {
+        if (findOpen) try { findFocus.requestFocus() } catch (_: Exception) { }
+    }
+    val findQuery = findQ.trim()
+    // Поиск по видимому списку главы: тело стиха/абзаца + подпись.
+    // Диакритика и регистр не важны (GbHtml.foldDia).
+    val shownVerses = remember(verses, findQuery) {
+        if (findQuery.length < 2) verses
+        else {
+            val needle = com.vedalibrary.app.ui.components.GbHtml.foldDia(findQuery).lowercase()
+            verses.filter { v ->
+                com.vedalibrary.app.ui.components.GbHtml.foldDia(v.full).lowercase().contains(needle) ||
+                    com.vedalibrary.app.ui.components.GbHtml.foldDia(v.ref).lowercase().contains(needle)
+            }
+        }
+    }
+    val neighbors by vm.neighborChapters.collectAsState(null to null)
     val clipScope = rememberCoroutineScope()
     val fontL by vm.settings.fontList.collectAsState(15f)
     val align by vm.settings.paraAlign.collectAsState("justify")
@@ -100,56 +133,114 @@ fun ChapterScreen(
         }
     }
     Scaffold(topBar = {
-        // Две строки по центру (название + произведение) + ряд кнопок разделителем:
-        // длинное название влезает целиком, шапка отделена от списка стихов
-        Column(
-            Modifier.fillMaxWidth().padding(start = 12.dp, end = 12.dp, top = 8.dp),
-            horizontalAlignment = androidx.compose.ui.Alignment.CenterHorizontally
-        ) {
-            val chapTxt = chapter?.title ?: "Глава"
-            val bookTxt = book?.title?.let { com.vedalibrary.app.ui.components.VerseShare.cleanTitle(it) }?.takeIf { it.isNotBlank() }
-            if (land) {
-                Text(
-                    if (bookTxt == null) chapTxt else "$bookTxt  ·  $chapTxt",
-                    maxLines = 1, overflow = TextOverflow.Ellipsis,
-                    textAlign = androidx.compose.ui.text.style.TextAlign.Center,
-                    style = MaterialTheme.typography.labelLarge
-                )
-            } else {
-                Text(chapTxt, maxLines = 3, overflow = TextOverflow.Ellipsis,
-                    textAlign = androidx.compose.ui.text.style.TextAlign.Center,
-                    style = MaterialTheme.typography.titleMedium)
-                bookTxt?.let { Text(it, maxLines = 1, overflow = TextOverflow.Ellipsis,
-                    textAlign = androidx.compose.ui.text.style.TextAlign.Center,
-                    style = MaterialTheme.typography.labelLarge) }
-            }
+        if (findOpen) {
             Row(
-                verticalAlignment = androidx.compose.ui.Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.spacedBy(4.dp)
+                Modifier.fillMaxWidth().padding(start = 8.dp, end = 4.dp, top = 2.dp, bottom = 2.dp),
+                verticalAlignment = androidx.compose.ui.Alignment.CenterVertically
             ) {
-                // ★: тап — поставить/переставить на текущее место,
-                // удержание 1с — снять (вибро)
-                BookmarkStar(
-                    active = bm?.chapterId == vm.chapterId,
-                    style = MaterialTheme.typography.titleMedium,
-                    onSave = {
-                        vm.saveChapterBookmark(listState.firstVisibleItemIndex, listState.firstVisibleItemScrollOffset)
-                    },
-                    onRemove = { vm.removeChapterBookmark() }
+                BasicTextField(
+                    value = findQ, onValueChange = { findQ = it }, singleLine = true,
+                    textStyle = TextStyle(fontSize = 15.sp, lineHeight = 18.sp, color = MaterialTheme.colorScheme.onSurface),
+                    cursorBrush = SolidColor(MaterialTheme.colorScheme.primary),
+                    modifier = Modifier.weight(1f).focusRequester(findFocus)
+                        .border(1.dp, MaterialTheme.colorScheme.outlineVariant, RoundedCornerShape(4.dp))
+                        .padding(horizontal = 8.dp, vertical = 3.dp),
+                    decorationBox = { inner ->
+                        Box(contentAlignment = androidx.compose.ui.Alignment.CenterStart) {
+                            if (findQ.isEmpty()) Text("Поиск по главе", fontSize = 15.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                            inner()
+                        }
+                    }
                 )
-                // ⚙: тот же векторный значок, что и звезда, и тот же размер —
-                // иначе текстовый глиф и эмодзи по вертикали разъезжаются
-                IconButton(onClick = { onSettings() }) {
-                    Icon(
-                        Icons.Filled.Settings,
-                        contentDescription = "Настройки",
-                        modifier = Modifier.size(26.dp)
+                Text(
+                    when {
+                        findQuery.length < 2 -> ""
+                        shownVerses.isEmpty() -> "нет"
+                        else -> "${shownVerses.size}"
+                    },
+                    fontSize = 11.sp, maxLines = 1, modifier = Modifier.padding(horizontal = 4.dp)
+                )
+                Box(Modifier.size(34.dp).clickable { findOpen = false; findQ = "" },
+                    contentAlignment = androidx.compose.ui.Alignment.Center) {
+                    Text("✕", fontSize = 18.sp)
+                }
+            }
+        } else {
+            Column(
+                Modifier.fillMaxWidth().padding(start = 12.dp, end = 12.dp, top = 8.dp),
+                horizontalAlignment = androidx.compose.ui.Alignment.CenterHorizontally
+            ) {
+                val chapTxt = cleanChapterTitle(chapter?.title ?: "Глава")
+                val bookTxt = book?.title?.let { com.vedalibrary.app.ui.components.VerseShare.cleanTitle(it) }?.takeIf { it.isNotBlank() }
+                // Проза и ландшафт — одной строкой: «Гопала Чампу · Глава 16».
+                // У стихов портрет оставляет две строки: длинные названия глав.
+                if (land || isProse) {
+                    Text(
+                        if (bookTxt == null) chapTxt else "$bookTxt  ·  $chapTxt",
+                        maxLines = 1, overflow = TextOverflow.Ellipsis,
+                        textAlign = androidx.compose.ui.text.style.TextAlign.Center,
+                        style = MaterialTheme.typography.labelLarge
                     )
+                } else {
+                    Text(chapTxt, maxLines = 3, overflow = TextOverflow.Ellipsis,
+                        textAlign = androidx.compose.ui.text.style.TextAlign.Center,
+                        style = MaterialTheme.typography.titleMedium)
+                    bookTxt?.let { Text(it, maxLines = 1, overflow = TextOverflow.Ellipsis,
+                        textAlign = androidx.compose.ui.text.style.TextAlign.Center,
+                        style = MaterialTheme.typography.labelLarge) }
+                }
+                Row(
+                    verticalAlignment = androidx.compose.ui.Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(4.dp)
+                ) {
+                    // ★: тап — поставить/переставить на текущее место,
+                    // удержание 1с — снять (вибро)
+                    BookmarkStar(
+                        active = bm?.chapterId == vm.chapterId,
+                        style = MaterialTheme.typography.titleMedium,
+                        onSave = {
+                            vm.saveChapterBookmark(listState.firstVisibleItemIndex, listState.firstVisibleItemScrollOffset)
+                        },
+                        onRemove = { vm.removeChapterBookmark() }
+                    )
+                    IconButton(onClick = { findOpen = true }) {
+                        Icon(Icons.Filled.Search, contentDescription = "Поиск по главе",
+                            modifier = Modifier.size(26.dp))
+                    }
+                    // ⚙: тот же векторный значок, что у звезды, и тот же размер
+                    IconButton(onClick = { onSettings() }) {
+                        Icon(
+                            Icons.Filled.Settings,
+                            contentDescription = "Настройки",
+                            modifier = Modifier.size(26.dp)
+                        )
+                    }
                 }
             }
         }
+    }, bottomBar = {
+        Row(
+            Modifier.fillMaxWidth().padding(horizontal = 8.dp, vertical = 1.dp),
+            horizontalArrangement = Arrangement.SpaceBetween
+        ) {
+            val prev = neighbors.first
+            val next = neighbors.second
+            Text(
+                "← Пред", fontSize = 14.sp,
+                color = if (prev != null) MaterialTheme.colorScheme.primary
+                    else MaterialTheme.colorScheme.onSurface.copy(alpha = 0.38f),
+                modifier = Modifier.clickable(enabled = prev != null) { prev?.let(onChapterReplace) }
+                    .padding(horizontal = 8.dp, vertical = 2.dp)
+            )
+            Text(
+                "След →", fontSize = 14.sp,
+                color = if (next != null) MaterialTheme.colorScheme.primary
+                    else MaterialTheme.colorScheme.onSurface.copy(alpha = 0.38f),
+                modifier = Modifier.clickable(enabled = next != null) { next?.let(onChapterReplace) }
+                    .padding(horizontal = 8.dp, vertical = 2.dp)
+            )
+        }
     }) { pad ->
-        val neighbors by vm.neighborChapters.collectAsState(null to null)
         LazyColumn(
             Modifier.padding(pad).pointerInput(neighbors) {
                 var dx = 0f
@@ -194,7 +285,7 @@ fun ChapterScreen(
                 }
             }
             verseItems(
-                verses = verses,
+                verses = shownVerses,
                 fontSizeSp = fontL,
                 textAlign = listAlign,
                 onVerse = onVerse,
@@ -210,6 +301,12 @@ fun ChapterScreen(
             )
         }
     }
+}
+
+/** «16. Глава 16» из старых импортов -> «Глава 16»: номер уже есть в слове. */
+private fun cleanChapterTitle(t: String): String {
+    val m = Regex("""^\s*\d+\.\s*(?=(?:Глава|Chapter)\s*\d+)""", RegexOption.IGNORE_CASE).find(t)
+    return if (m != null) t.substring(m.range.last + 1).trim() else t
 }
 
 /** Общий список стихов главы: тап — детали, долгое нажатие — копировать/в избранное.

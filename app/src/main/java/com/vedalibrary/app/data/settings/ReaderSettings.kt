@@ -140,7 +140,7 @@ class ReaderSettings @Inject constructor(@ApplicationContext private val ctx: Co
                 "BG", "BG72", "SB", "CC", "ISO", "NOD", "NOI", "TLC", "KB", "TQK",
                 "LBG", "LSB" -> 1
                 "LTRS", "LTR", "TLKS" -> 2
-                "BS", "MA", "DG", "GA", "LM", "GC" -> 3
+                "BS", "MA", "DG", "GA", "LM", "GC", "AVC", "M" -> 3
                 else -> 4
             }
         }

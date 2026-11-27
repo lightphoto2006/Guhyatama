@@ -1,10 +1,10 @@
 {
  "apk": {
-  "versionCode": 70,
-  "versionName": "1.3.22",
-  "url": "https://github.com/lightphoto2006/Guhyatama/releases/download/v1.3.22/Guhyatama-1.3.22.apk",
-  "file": "F:\\AI\\Development\\Guhyatama\\releases\\Guhyatama-1.3.22.apk",
-  "notes": "Что нового:\n- Исправлено обновление книг: токен доступа к приватному репозиторию обновлён (старый истёк — был HTTP 401).\n- Ошибка скачивания книги больше не роняет приложение: показывается в строке обновления.\n- Остальное как в 1.3.21."
+  "versionCode": 71,
+  "versionName": "1.3.23",
+  "url": "https://github.com/lightphoto2006/Guhyatama/releases/download/v1.3.23/Guhyatama-1.3.23.apk",
+  "file": "F:\\AI\\Development\\Guhyatama\\releases\\Guhyatama-1.3.23.apk",
+  "notes": "Что нового:\n- Экран главы прозы (Гопала-чампу, Чайтанья-Бхагавата): шапка одной строкой, без дубля «16. Глава 16».\n- В главе снова есть поиск (лупа) и строка «← Пред / След →» внизу.\n- «Ананда Вриндавана Чампу» и «Молитвы» — в разделе «Книги Ачарий».\n- Включены исправления 1.3.22: обновлён токен книг, ошибка загрузки больше не роняет приложение."
  },
  "books": {
   "Prabhupada_rus": {
