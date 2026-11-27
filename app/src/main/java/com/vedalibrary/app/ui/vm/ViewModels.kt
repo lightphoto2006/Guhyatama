@@ -22,6 +22,25 @@ import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import javax.inject.Inject
 
+/** Переключает стих в «Избранное» (flashcards): если уже есть — удаляет, иначе добавляет. */
+private suspend fun toggleFavoriteVerse(db: AppDatabase, verseId: String) {
+    try {
+        val existing = db.library().flashcardIdFor(verseId)
+        if (existing != null) {
+            db.library().deleteFlashcard(existing)
+            return
+        }
+        val r = db.library().verseLight(verseId) ?: return
+        db.library().insertFlashcard(
+            com.vedalibrary.app.data.local.Flashcard(
+                verseId = r.id,
+                front = VerseShare.refLight(r.bookLang, r.bookId, r.chapterId, r.number),
+                back = GbHtml.plain(r.translation ?: r.text).take(1000)
+            )
+        )
+    } catch (_: Exception) { }
+}
+
 @HiltViewModel
 class LibraryViewModel @Inject constructor(
     private val db: AppDatabase,
@@ -457,19 +476,12 @@ class ReaderViewModel @Inject constructor(
             db.library().verseAtOffset(bookId, (0 until n).random())?.let { onOpen(it.id) }
         } catch (_: Exception) { }
     }
-    /** В избранное: номер (БГ 2.13) + перевод. Повторный тап дубль не плодит. */
+    val favoriteIds: StateFlow<Set<String>> = db.library().favoriteVerseIdsFlow()
+        .map { it.toSet() }
+        .stateIn(viewModelScope, SharingStarted.Lazily, emptySet())
+    /** Избранное: добавить или удалить (если уже в избранном). */
     fun toCards(verseId: String) = viewModelScope.launch {
-        try {
-            if (db.library().flashcardIdFor(verseId) != null) return@launch
-            val r = db.library().verseLight(verseId) ?: return@launch
-            db.library().insertFlashcard(
-                com.vedalibrary.app.data.local.Flashcard(
-                    verseId = r.id,
-                    front = VerseShare.refLight(r.bookLang, r.bookId, r.chapterId, r.number),
-                    back = com.vedalibrary.app.ui.components.GbHtml.plain(r.translation ?: r.text).take(1000)
-                )
-            )
-        } catch (_: Exception) { }
+        toggleFavoriteVerse(db, verseId)
     }
 }
 
@@ -533,19 +545,12 @@ class ChapterViewModel @Inject constructor(
             }
         }
     }.stateIn(viewModelScope, SharingStarted.Lazily, emptyList())
-    /** В избранное: номер (БГ 2.13) + перевод. Повторный тап дубль не плодит. */
+    val favoriteIds: StateFlow<Set<String>> = db.library().favoriteVerseIdsFlow()
+        .map { it.toSet() }
+        .stateIn(viewModelScope, SharingStarted.Lazily, emptySet())
+    /** Избранное: добавить или удалить (если уже в избранном). */
     fun toCards(verseId: String) = viewModelScope.launch {
-        try {
-            if (db.library().flashcardIdFor(verseId) != null) return@launch
-            val r = db.library().verseLight(verseId) ?: return@launch
-            db.library().insertFlashcard(
-                com.vedalibrary.app.data.local.Flashcard(
-                    verseId = r.id,
-                    front = VerseShare.refLight(r.bookLang, r.bookId, r.chapterId, r.number),
-                    back = com.vedalibrary.app.ui.components.GbHtml.plain(r.translation ?: r.text).take(1000)
-                )
-            )
-        } catch (_: Exception) { }
+        toggleFavoriteVerse(db, verseId)
     }
     /** Текст для копирования стиха (долгое нажатие): полный стих грузится один раз по тапу */
     fun copyVerse(verseId: String, put: (String) -> Unit) = viewModelScope.launch {
@@ -600,12 +605,12 @@ class ChapterViewModel @Inject constructor(
         } catch (_: Exception) { }
     }
 
-    /** Снять закладку главы (удержание ★ 1 секунду). Одна закладка на книгу —
-     *  удаляем, только если она стоит на ЭТОЙ главе, чужую не трогаем. */
+    /** Снять закладку главы (удержание 1 секунду). Одна закладка на книгу —
+     *  удаляем, только если она стоит на ЭТОЙ главе (и не на отдельном стихе). */
     fun removeChapterBookmark() = viewModelScope.launch {
         try {
             val b = bookmark.value ?: return@launch
-            if (b.chapterId == chapterId) db.library().deleteBookmarksOfBook(b.bookId)
+            if (b.verseId == null && b.chapterId == chapterId) db.library().deleteBookmarksOfBook(b.bookId)
         } catch (_: Exception) { }
     }
 }
@@ -742,6 +747,15 @@ class VerseDetailViewModel @Inject constructor(
         hit
     } catch (_: Exception) { null }
 
+    /** В избранном ли этот стих */
+    val isFavorite: StateFlow<Boolean> = db.library().isFavoriteFlow(verseId)
+        .stateIn(viewModelScope, SharingStarted.Lazily, false)
+
+    /** Звёздочка ★: добавить или удалить из избранного. */
+    fun toggleFavorite() = viewModelScope.launch {
+        toggleFavoriteVerse(db, verseId)
+    }
+
     /** Закладка книги (одна на книгу). Подсвечена, если стоит на этот стих. */
     val bookmark: StateFlow<com.vedalibrary.app.data.local.Bookmark?> =
         flow {
@@ -750,27 +764,21 @@ class VerseDetailViewModel @Inject constructor(
             else db.library().bookmarkFlow(v.bookId).collect { emit(it) }
         }.stateIn(viewModelScope, SharingStarted.Lazily, null)
 
-    /** Тап ★ — поставить/переставить закладку на ТЕКУЩИЙ стих (прыгнул по
-     *  закладке, читал дальше — один тап переносит её, без «снять+поставить»).
-     *  Позицию главы сохраняем, если закладка уже указывала на эту главу:
-     *  «текущее место» = стих, но список главы не должен при этом прыгать
-     *  наверх. */
+    /** Тап по закладке — поставить/переставить закладку на ТЕКУЩИЙ стих
+     *  (стирает предыдущую закладку в этой книге, в том числе на главе). */
     fun setBookmark() = viewModelScope.launch {
         try {
             val v = db.library().verse(verseId) ?: return@launch
-            val cur = db.library().bookmark(v.bookId)
-            val sameChapter = cur != null && cur.chapterId == v.chapterId
             db.library().replaceBookmark(
                 com.vedalibrary.app.data.local.Bookmark(
-                    bookId = v.bookId, verseId = verseId, chapterId = v.chapterId,
-                    scrollIndex = if (sameChapter) cur!!.scrollIndex else 0,
-                    scrollOffset = if (sameChapter) cur!!.scrollOffset else 0
+                    bookId = v.bookId, verseId = verseId, chapterId = null,
+                    scrollIndex = 0, scrollOffset = 0
                 )
             )
         } catch (_: Exception) { }
     }
 
-    /** Удержание ★ 1 секунду — снять (только если она на этом стихе) */
+    /** Удержание 1 секунду — снять (только если она на этом стихе) */
     fun removeBookmark() = viewModelScope.launch {
         try {
             val v = db.library().verse(verseId) ?: return@launch

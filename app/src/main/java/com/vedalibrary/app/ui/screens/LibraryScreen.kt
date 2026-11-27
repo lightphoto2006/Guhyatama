@@ -48,6 +48,7 @@ import kotlin.math.roundToInt
 import androidx.hilt.navigation.compose.hiltViewModel
 import coil.compose.AsyncImage
 import com.vedalibrary.app.data.local.Book
+import com.vedalibrary.app.ui.components.BookmarkIcons
 import com.vedalibrary.app.ui.vm.FavoritesViewModel
 import com.vedalibrary.app.ui.vm.LibraryViewModel
 import com.vedalibrary.app.ui.vm.NotesViewModel
@@ -349,14 +350,13 @@ private fun BookCard(
             }
         }
         } // конец Card
-        // Звезда закладки — поверх карточки справа вверху
+        // Иконка закладки — поверх карточки справа вверху
         if (bookmarked) {
-            Text(
-                "★",
-                color = androidx.compose.ui.graphics.Color(0xFFFFB300),
-                style = MaterialTheme.typography.titleLarge,
-                fontSize = 33.sp,
-                modifier = Modifier.align(Alignment.TopEnd).clickable { onBookmark() }.padding(8.dp)
+            Icon(
+                imageVector = BookmarkIcons.Filled,
+                contentDescription = "Закладка",
+                tint = androidx.compose.ui.graphics.Color(0xFFFFB300),
+                modifier = Modifier.align(Alignment.TopEnd).clickable { onBookmark() }.padding(6.dp).size(30.dp)
             )
         }
     }
@@ -417,11 +417,11 @@ private fun BookRow(
             modifier = Modifier.weight(1f)
         )
         if (bookmarked) {
-            Text(
-                "★",
-                color = androidx.compose.ui.graphics.Color(0xFFFFB300),
-                fontSize = 24.sp,
-                modifier = Modifier.padding(start = 8.dp).clickable { onBookmark() }
+            Icon(
+                imageVector = BookmarkIcons.Filled,
+                contentDescription = "Закладка",
+                tint = androidx.compose.ui.graphics.Color(0xFFFFB300),
+                modifier = Modifier.padding(start = 8.dp).clickable { onBookmark() }.size(24.dp)
             )
         }
         if (!book.isReady) {
@@ -453,9 +453,9 @@ private fun BookSpine(book: Book, spineW: Dp, spineH: Dp, bookmarked: Boolean, o
     }
     // Кегль под ширину торца: две строки обязаны поместиться в высоту текста
     val fs = ((spineW.value - 6f) / 2.6f).coerceIn(9f, 15f)
-    // Звезде — отдельная зона сверху: заголовок короче и смещён ниже,
-    // чтобы ★ не наезжала на текст
-    val starZone = if (bookmarked) 54.dp else 0.dp
+    // Закладке — отдельная зона сверху: заголовок короче и смещён ниже,
+    // чтобы иконка не наезжала на текст
+    val starZone = if (bookmarked) 42.dp else 0.dp
     Box(Modifier.fillMaxWidth().height(spineH)) {
         Box(
             Modifier.fillMaxSize()
@@ -493,11 +493,11 @@ private fun BookSpine(book: Book, spineW: Dp, spineH: Dp, bookmarked: Boolean, o
                 )
             }
             if (bookmarked) {
-                Text(
-                    "★",
-                    color = androidx.compose.ui.graphics.Color(0xFFFFB300),
-                    fontSize = 39.sp,
-                    modifier = Modifier.align(Alignment.TopCenter).padding(top = 3.dp).clickable { onBookmark() }
+                Icon(
+                    imageVector = BookmarkIcons.Filled,
+                    contentDescription = "Закладка",
+                    tint = androidx.compose.ui.graphics.Color(0xFFFFB300),
+                    modifier = Modifier.align(Alignment.TopCenter).padding(top = 6.dp).clickable { onBookmark() }.size(28.dp)
                 )
             }
             if (!book.isReady) {
@@ -575,7 +575,7 @@ fun FavoritesScreen(onVerse: (String) -> Unit = {}, vm: FavoritesViewModel = hil
     Scaffold(topBar = { TopAppBar(title = { Text("Избранное") }) }) { pad ->
         if (items.isEmpty()) {
             Box(Modifier.padding(pad).fillMaxSize().padding(16.dp)) {
-                Text("Пока пусто. Долгое нажатие на стих в главе → «В избранное».")
+                Text("Пока пусто. Нажмите ☆ при чтении стиха или долгое нажатие на стих в главе → «В избранное».")
             }
         } else {
             LazyColumn(Modifier.padding(pad)) {

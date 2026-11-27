@@ -401,6 +401,8 @@ interface LibraryDao {
     @Insert suspend fun insertFlashcard(f: Flashcard): Long
     /** Избранное: все карточки, новые сверху */
     @Query("SELECT * FROM flashcards ORDER BY id DESC") fun flashcardsFlow(): kotlinx.coroutines.flow.Flow<List<Flashcard>>
+    @Query("SELECT verseId FROM flashcards") fun favoriteVerseIdsFlow(): kotlinx.coroutines.flow.Flow<List<String>>
+    @Query("SELECT EXISTS(SELECT 1 FROM flashcards WHERE verseId = :verseId)") fun isFavoriteFlow(verseId: String): kotlinx.coroutines.flow.Flow<Boolean>
     @Query("SELECT id FROM flashcards WHERE verseId = :verseId LIMIT 1") suspend fun flashcardIdFor(verseId: String): Long?
     @Query("DELETE FROM flashcards WHERE id = :id") suspend fun deleteFlashcard(id: Long)
     @Insert(onConflict = OnConflictStrategy.REPLACE) suspend fun upsertIllustrations(i: List<Illustration>)

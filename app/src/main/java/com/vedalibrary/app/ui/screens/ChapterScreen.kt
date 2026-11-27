@@ -34,7 +34,7 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.hilt.navigation.compose.hiltViewModel
-import com.vedalibrary.app.ui.components.BookmarkStar
+import com.vedalibrary.app.ui.components.BookmarkButton
 import com.vedalibrary.app.ui.components.JustifiedPreviewText
 import com.vedalibrary.app.ui.util.VolumeFont
 import com.vedalibrary.app.ui.vm.ChapterViewModel
@@ -55,6 +55,7 @@ fun ChapterScreen(
     val verses by vm.verses.collectAsState(emptyList())
     val illus by vm.illustrations.collectAsState(emptyList())
     val bm by vm.bookmark.collectAsState(null)
+    val favoriteIds by vm.favoriteIds.collectAsState(emptySet())
     val ctx = LocalContext.current
     val land = androidx.compose.ui.platform.LocalConfiguration.current.orientation == Configuration.ORIENTATION_LANDSCAPE
     // Проза (Гопала-чампу, Чайтанья-Бхагавата): глава — длинный текст,
@@ -193,10 +194,10 @@ fun ChapterScreen(
                     verticalAlignment = androidx.compose.ui.Alignment.CenterVertically,
                     horizontalArrangement = Arrangement.spacedBy(4.dp)
                 ) {
-                    // ★: тап — поставить/переставить на текущее место,
+                    // Закладка: тап — поставить/переставить на текущее место,
                     // удержание 1с — снять (вибро)
-                    BookmarkStar(
-                        active = bm?.chapterId == vm.chapterId,
+                    BookmarkButton(
+                        active = bm != null && bm?.verseId == null && bm?.chapterId == vm.chapterId,
                         style = MaterialTheme.typography.titleMedium,
                         onSave = {
                             vm.saveChapterBookmark(listState.firstVisibleItemIndex, listState.firstVisibleItemScrollOffset)
@@ -288,6 +289,7 @@ fun ChapterScreen(
                 verses = shownVerses,
                 fontSizeSp = fontL,
                 textAlign = listAlign,
+                favoriteIds = favoriteIds,
                 onVerse = onVerse,
                 onCopy = { id ->
                     clipScope.launch {
@@ -316,6 +318,7 @@ fun androidx.compose.foundation.lazy.LazyListScope.verseItems(
     verses: List<com.vedalibrary.app.ui.vm.VerseItem>,
     fontSizeSp: Float = 0f,
     textAlign: TextAlign = TextAlign.Start,
+    favoriteIds: Set<String> = emptySet(),
     onVerse: (String) -> Unit,
     onCopy: (String) -> Unit,
     onCards: (String) -> Unit
@@ -403,15 +406,19 @@ fun androidx.compose.foundation.lazy.LazyListScope.verseItems(
                 }
             }
             if (showMenu) {
+                val isVerseBook = com.vedalibrary.app.ui.components.VerseShare.isVerseBook(item.row.bookId)
+                val inFav = item.row.id in favoriteIds
                 DropdownMenu(expanded = true, onDismissRequest = { showMenu = false }) {
                     DropdownMenuItem(
                         text = { Text("Скопировать") },
                         onClick = { showMenu = false; onCopy(item.row.id) }
                     )
-                    DropdownMenuItem(
-                        text = { Text("В избранное") },
-                        onClick = { showMenu = false; onCards(item.row.id) }
-                    )
+                    if (isVerseBook) {
+                        DropdownMenuItem(
+                            text = { Text(if (inFav) "Удалить из избранного" else "В избранное") },
+                            onClick = { showMenu = false; onCards(item.row.id) }
+                        )
+                    }
                 }
             }
         }

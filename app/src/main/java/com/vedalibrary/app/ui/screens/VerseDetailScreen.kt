@@ -29,7 +29,8 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.hilt.navigation.compose.hiltViewModel
-import com.vedalibrary.app.ui.components.BookmarkStar
+import com.vedalibrary.app.ui.components.BookmarkButton
+import com.vedalibrary.app.ui.components.FavoriteStarButton
 import com.vedalibrary.app.ui.components.GbHtml
 import com.vedalibrary.app.ui.components.HtmlText
 import com.vedalibrary.app.ui.components.SynonymLine
@@ -51,6 +52,7 @@ fun VerseDetailScreen(
     val book by vm.book.collectAsState(null)
     val other by vm.otherLang.collectAsState(null)
     val bm by vm.bookmark.collectAsState(null)
+    val isFavorite by vm.isFavorite.collectAsState(false)
     val audioSrc by vm.audio.collectAsState(null)
     val loaded by vm.loaded.collectAsState()
     val neighbors by vm.neighbors.collectAsState(null to null)
@@ -70,6 +72,7 @@ fun VerseDetailScreen(
     val land = androidx.compose.ui.platform.LocalConfiguration.current.orientation == Configuration.ORIENTATION_LANDSCAPE
     // Лекции Шьямакунды: verse.text — служебное название лекции, а не текст для чтения
     val lectureBook = remember(book?.id) { VerseShare.isLectureBook(book?.id) }
+    val isVerseBook = remember(book?.id) { VerseShare.isVerseBook(book?.id) }
     var findOpen by remember { mutableStateOf(false) }
     var findQ by remember { mutableStateOf("") }
     var findIdx by remember { mutableIntStateOf(0) }
@@ -184,10 +187,19 @@ fun VerseDetailScreen(
                     horizontalArrangement = Arrangement.Center,
                     verticalAlignment = androidx.compose.ui.Alignment.CenterVertically
                 ) {
-                    // ★: тап — поставить/переставить закладку на ТЕКУЩИЙ стих
-                    // (прыгнул по закладке, читал дальше — один тап переносит её,
-                    // без «снять+поставить»); удержание 1с — снять (вибро)
-                    BookmarkStar(
+                    // ★ Избранное — только на книгах со стихами; повторный тап снимает
+                    if (isVerseBook) {
+                        FavoriteStarButton(
+                            active = isFavorite,
+                            style = MaterialTheme.typography.titleLarge,
+                            iconSize = if (land) 15.dp else 26.dp,
+                            modifier = if (land) Modifier.size(26.dp) else Modifier,
+                            onToggle = { vm.toggleFavorite() }
+                        )
+                    }
+                    // Закладка: тап — поставить/переставить на ТЕКУЩИЙ стих;
+                    // удержание 1с — снять (вибро)
+                    BookmarkButton(
                         active = v != null && bm?.verseId == v?.id,
                         style = MaterialTheme.typography.titleLarge,
                         iconSize = if (land) 15.dp else 26.dp,

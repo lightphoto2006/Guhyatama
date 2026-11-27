@@ -1,5 +1,6 @@
 package com.vedalibrary.app.ui.components
 
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.gestures.awaitEachGesture
 import androidx.compose.foundation.gestures.awaitFirstDown
 import androidx.compose.foundation.layout.Box
@@ -19,19 +20,13 @@ import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import kotlinx.coroutines.withTimeoutOrNull
 
-/** ★ закладки в шапке главы/стиха. Один общий алгоритм вместо toggle:
+/** Кнопка закладки в шапке главы/стиха. Один общий алгоритм вместо toggle:
  *  - короткое нажатие — ПОСТАВИТЬ/переставить на текущее место (прыгнул по
  *    закладке, читал дальше — один тап, и она уже здесь, без «снять+поставить»);
  *  - удержание 1 секунду — СНЯТЬ (с вибро-откликом): снятие только явным
- *    долгим нажатием, случайный тап закладку не теряет.
- *  Свой жест вместо TextButton: дефолтный long-press (0.5с) для снятия легко
- *  задеть, а 1с даёт запас на «просто ткнул». Зона ≥48×40dp как у кнопки.
- *  Значок — векторный (Icons.Filled.Star / Icons.Outlined.Star), а не текстовый
- *  «★»: только так его можно поставить в один ряд с шестерёнкой (Settings) —
- *  у вектора одинаковые метрики, у текста и эмодзи разные, и по вертикали
- *  они разъезжаются. Размер тот же, что у соседних иконок. */
+ *    долгим нажатием, случайный тап закладку не теряет. */
 @Composable
-fun BookmarkStar(
+fun BookmarkButton(
     active: Boolean,
     style: TextStyle,
     onSave: () -> Unit,
@@ -78,8 +73,37 @@ fun BookmarkStar(
         contentAlignment = Alignment.Center
     ) {
         Icon(
-            imageVector = if (active) StarIcons.Filled else StarIcons.Outlined,
+            imageVector = if (active) BookmarkIcons.Filled else BookmarkIcons.Outlined,
             contentDescription = "Закладка",
+            tint = tint,
+            modifier = Modifier.size(iconSize)
+        )
+    }
+}
+
+/** Кнопка ★ «Избранное» в шапке стиха: любое нажатие переключает (добавить / убрать). */
+@Composable
+fun FavoriteStarButton(
+    active: Boolean,
+    style: TextStyle,
+    onToggle: () -> Unit,
+    modifier: Modifier = Modifier,
+    iconSize: Dp = 26.dp
+) {
+    val tint = if (style.color == androidx.compose.ui.graphics.Color.Unspecified) {
+        LocalContentColor.current
+    } else {
+        style.color
+    }
+    Box(
+        modifier
+            .defaultMinSize(minWidth = 48.dp, minHeight = 40.dp)
+            .clickable { onToggle() },
+        contentAlignment = Alignment.Center
+    ) {
+        Icon(
+            imageVector = if (active) StarIcons.Filled else StarIcons.Outlined,
+            contentDescription = if (active) "Удалить из избранного" else "В избранное",
             tint = tint,
             modifier = Modifier.size(iconSize)
         )

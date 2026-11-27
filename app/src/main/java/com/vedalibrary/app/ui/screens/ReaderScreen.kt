@@ -37,6 +37,7 @@ fun ReaderScreen(
     val illus by vm.illustrations.collectAsState(emptyList())
     val flatChapter by vm.flatChapter.collectAsState(null)
     val flatVerses by vm.flatVerses.collectAsState(emptyList())
+    val favoriteIds by vm.favoriteIds.collectAsState(emptySet())
     val fontL by vm.settings.fontList.collectAsState(15f)
     val align by vm.settings.paraAlign.collectAsState("justify")
     val listAlign = when (align) {
@@ -121,6 +122,7 @@ fun ReaderScreen(
                     verses = flatVerses,
                     fontSizeSp = fontL,
                     textAlign = listAlign,
+                    favoriteIds = favoriteIds,
                     onVerse = onVerse,
                     onCopy = { id ->
                         clipScope.launch {

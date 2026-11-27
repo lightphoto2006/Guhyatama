@@ -78,3 +78,60 @@ object StarIcons {
         }.build()
     }
 }
+
+
+/** Иконка закладки (лента-флажок с вырезом снизу):
+ *  - Filled — активная закладка (стоит на текущем месте или на книге в библиотеке);
+ *  - Outlined — неактивная закладка. */
+object BookmarkIcons {
+
+    val Filled: ImageVector by lazy {
+        ImageVector.Builder(
+            name = "BookmarkFilled",
+            defaultWidth = 24.dp,
+            defaultHeight = 24.dp,
+            viewportWidth = 24f,
+            viewportHeight = 24f
+        ).apply {
+            path(fill = SolidColor(Color.Black), pathFillType = PathFillType.NonZero) {
+                moveTo(17f, 3f)
+                lineTo(7f, 3f)
+                curveTo(5.9f, 3f, 5f, 3.9f, 5f, 5f)
+                lineTo(5f, 21f)
+                lineTo(12f, 18f)
+                lineTo(19f, 21f)
+                lineTo(19f, 5f)
+                curveTo(19f, 3.9f, 18.1f, 3f, 17f, 3f)
+                close()
+            }
+        }.build()
+    }
+
+    val Outlined: ImageVector by lazy {
+        ImageVector.Builder(
+            name = "BookmarkOutlined",
+            defaultWidth = 24.dp,
+            defaultHeight = 24.dp,
+            viewportWidth = 24f,
+            viewportHeight = 24f
+        ).apply {
+            path(fill = SolidColor(Color.Black), pathFillType = PathFillType.EvenOdd) {
+                moveTo(17f, 3f)
+                lineTo(7f, 3f)
+                curveTo(5.9f, 3f, 5f, 3.9f, 5f, 5f)
+                lineTo(5f, 21f)
+                lineTo(12f, 18f)
+                lineTo(19f, 21f)
+                lineTo(19f, 5f)
+                curveTo(19f, 3.9f, 18.1f, 3f, 17f, 3f)
+                close()
+                moveTo(17f, 18f)
+                lineTo(12f, 15.82f)
+                lineTo(7f, 18f)
+                lineTo(7f, 5f)
+                lineTo(17f, 5f)
+                close()
+            }
+        }.build()
+    }
+}

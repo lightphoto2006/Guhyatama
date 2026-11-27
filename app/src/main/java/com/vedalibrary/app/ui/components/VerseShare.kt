@@ -87,6 +87,10 @@ object VerseShare {
         )
     }
 
+    /** Книги со стихами (исключая лекции, письма/беседы, прозу и пользовательские файлы). */
+    fun isVerseBook(bookId: String?): Boolean =
+        !bookId.isNullOrBlank() && bookId.startsWith("gb-") && !isLectureLike(bookId) && !isProseBook(bookId)
+
     /** Сколько стихов в строке с номером: сдвоенные («23-24») раскрываются в 2.
      *  Мусор вида «1CC96» и пустое — 1. Диапазоны шире 500 — тоже 1 (опечатка, не стихи) */
     private val RANGE_RE = Regex("""^(\d+)\s*[-–—]\s*(\d+)$""")
