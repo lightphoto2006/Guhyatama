@@ -458,6 +458,13 @@ class UpdateViewModel @Inject constructor(
             ) {
                 try { out.delete() } catch (_: Exception) { }
                 set(BookItem.Busy.Downloading(0, total))
+                // Приватные книги качаются read-only токеном из local.properties.
+                // Пустой токен — не долбим GitHub 401-ми, показываем понятную причину.
+                if (info.auth == "github" &&
+                    com.vedalibrary.app.BuildConfig.GITHUB_FILES_TOKEN.isBlank()
+                ) {
+                    throw IllegalStateException("Токен доступа к книгам не настроен — обновление книг временно недоступно")
+                }
                 val headers = if (info.auth == "github" &&
                     com.vedalibrary.app.BuildConfig.GITHUB_FILES_TOKEN.isNotBlank()
                 ) {
