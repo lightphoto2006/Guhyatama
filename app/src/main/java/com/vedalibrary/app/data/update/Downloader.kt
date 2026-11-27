@@ -50,88 +50,143 @@ fun isSqliteFile(f: File): Boolean = try {
     }
 } catch (_: Exception) { false }
 
-/** Потоковый HTTP-загрузчик (собственный HttpURLConnection).
+/** Потоковый HTTP-загрузчик с поддержкой докачки (HTTP Range).
  *  Работает на старых/урезанных прошивках, где DownloadManager заморожен.
- *  Ручное следование редиректам: при смене хоста — убираем Authorization. */
+ *  Ручное следование редиректам: при смене хоста — убираем Authorization,
+ *  заголовок Range сохраняется. При обрыве связи .part-файл НЕ удаляется,
+ *  чтобы следующий запуск продолжил с того же байта. */
 suspend fun Downloader.fetchStream(
     url: String, out: File, title: String,
     onProgress: (done: Long, total: Long) -> Unit = { _, _ -> },
-    headers: Map<String, String> = emptyMap()
+    headers: Map<String, String> = emptyMap(),
+    expectedSha: String = ""
 ): File = withContext(Dispatchers.IO) {
     val sslFactory = ExtraTrust.socketFactory(ctx)
-    var conn: HttpURLConnection? = null
-    var redirectCount = 0
-    var currentUrl = url
-    var headersMap = headers.toMutableMap()
-    var part: File? = null
-    var result: File? = null
-    try {
-        out.parentFile?.mkdirs()
-        part = File(out.path + ".part")
+    out.parentFile?.mkdirs()
+    val part = File(out.path + ".part")
+    val meta = File(out.path + ".part.meta")
+    val metaValue = "$url\n$expectedSha"
+
+    var existing = 0L
+    if (part.exists() && part.length() > 0 && meta.exists()) {
+        val saved = try { meta.readText() } catch (_: Exception) { "" }
+        if (saved == metaValue) {
+            existing = part.length()
+        } else {
+            try { part.delete() } catch (_: Exception) { }
+            try { meta.delete() } catch (_: Exception) { }
+        }
+    } else {
         try { part.delete() } catch (_: Exception) { }
+        try { meta.delete() } catch (_: Exception) { }
+    }
+    try { meta.writeText(metaValue) } catch (_: Exception) { }
 
-        while (true) {
-            conn = URL(currentUrl).openConnection() as HttpURLConnection
-            conn.connectTimeout = 20_000
-            conn.readTimeout = 45_000
-            conn.instanceFollowRedirects = false
-            headersMap.forEach { (k, v) -> conn.setRequestProperty(k, v) }
-            conn.doInput = true
-            if (conn is javax.net.ssl.HttpsURLConnection) {
-                conn.sslSocketFactory = sslFactory
-            }
-            val code = conn.responseCode
-
-            if (code in 300..399) {
-                val location = conn.getHeaderField("Location")
-                conn.disconnect()
-                conn = null
-                if (location == null || redirectCount >= 5)
-                    throw IllegalStateException("Редирект без Location или >5 (HTTP $code)")
-                redirectCount++
-                val newHost = try { java.net.URL(location).host } catch (_: Exception) { null }
-                val oldHost = try { java.net.URL(currentUrl).host } catch (_: Exception) { null }
-                if (newHost != null && oldHost != null && newHost != oldHost) {
-                    headersMap = (headersMap - "Authorization").toMutableMap()
+    var retriedFull = false
+    while (true) {
+        var conn: HttpURLConnection? = null
+        var redirectCount = 0
+        var currentUrl = url
+        var headersMap = headers.toMutableMap()
+        if (existing > 0) {
+            headersMap["Range"] = "bytes=$existing-"
+        } else {
+            headersMap.remove("Range")
+        }
+        try {
+            while (true) {
+                conn = URL(currentUrl).openConnection() as HttpURLConnection
+                conn.connectTimeout = 20_000
+                conn.readTimeout = 45_000
+                conn.instanceFollowRedirects = false
+                headersMap.forEach { (k, v) -> conn.setRequestProperty(k, v) }
+                conn.doInput = true
+                if (conn is javax.net.ssl.HttpsURLConnection) {
+                    conn.sslSocketFactory = sslFactory
                 }
-                currentUrl = location
-                continue
-            }
+                val code = conn.responseCode
 
-            if (code != 200 && code != 206)
-                throw IllegalStateException("HTTP $code")
+                if (code in 300..399) {
+                    val location = conn.getHeaderField("Location")
+                    conn.disconnect()
+                    conn = null
+                    if (location == null || redirectCount >= 5)
+                        throw IllegalStateException("Редирект без Location или >5 (HTTP $code)")
+                    redirectCount++
+                    val newHost = try { URL(location).host } catch (_: Exception) { null }
+                    val oldHost = try { URL(currentUrl).host } catch (_: Exception) { null }
+                    if (newHost != null && oldHost != null && newHost != oldHost) {
+                        headersMap = (headersMap - "Authorization").toMutableMap()
+                    }
+                    currentUrl = location
+                    continue
+                }
 
-            val total = conn.getHeaderFieldLong("Content-Length", -1)
-            var done = 0L
+                if (code == 416 && existing > 0 && !retriedFull) {
+                    conn.disconnect()
+                    conn = null
+                    if (expectedSha.isNotBlank() && part.exists() && sha256hex(part) == expectedSha) {
+                        try { if (out.exists()) out.delete() } catch (_: Exception) { }
+                        if (!part.renameTo(out))
+                            throw IllegalStateException("Не удалось сохранить файл")
+                        try { meta.delete() } catch (_: Exception) { }
+                        return@withContext out
+                    }
+                    try { part.delete() } catch (_: Exception) { }
+                    existing = 0L
+                    retriedFull = true
+                    break
+                }
 
-            FileOutputStream(part!!).use { fos ->
-                conn.inputStream.use { ins ->
-                    val buf = ByteArray(65536)
-                    while (true) {
-                        val n = ins.read(buf)
-                        if (n < 0) break
-                        fos.write(buf, 0, n)
-                        done += n
-                        onProgress(done, total)
+                if (code != 200 && code != 206)
+                    throw IllegalStateException("HTTP $code")
+
+                val append = (code == 206 && existing > 0)
+                val contentLen = conn.getHeaderFieldLong("Content-Length", -1)
+                val total = if (append) {
+                    parseContentRangeTotal(conn.getHeaderField("Content-Range"))
+                        ?: if (contentLen > 0) existing + contentLen else -1L
+                } else {
+                    contentLen
+                }
+                var done = if (append) existing else 0L
+                if (done > 0) onProgress(done, total)
+
+                FileOutputStream(part, append).use { fos ->
+                    conn.inputStream.use { ins ->
+                        val buf = ByteArray(65536)
+                        while (true) {
+                            val n = ins.read(buf)
+                            if (n < 0) break
+                            fos.write(buf, 0, n)
+                            done += n
+                            onProgress(done, total)
+                        }
                     }
                 }
+
+                if (part.length() < 1024) {
+                    try { part.delete() } catch (_: Exception) { }
+                    try { meta.delete() } catch (_: Exception) { }
+                    throw IllegalStateException("Файл не докачался")
+                }
+                try { if (out.exists()) out.delete() } catch (_: Exception) { }
+                if (!part.renameTo(out))
+                    throw IllegalStateException("Не удалось сохранить файл")
+                try { meta.delete() } catch (_: Exception) { }
+                return@withContext out
             }
-
-            if (part!!.length() < 1024)
-                throw IllegalStateException("Файл не докачался")
-            if (!part!!.renameTo(out))
-                throw IllegalStateException("Не удалось сохранить файл")
-
-            result = out
-            break
+        } finally {
+            try { conn?.disconnect() } catch (_: Exception) { }
         }
-    } catch (e: Exception) {
-        try { part?.delete() } catch (_: Exception) { }
-        throw e
-    } finally {
-        try { conn?.disconnect() } catch (_: Exception) { }
     }
-    result!!
+    @Suppress("UNREACHABLE_CODE")
+    out
+}
+
+private fun parseContentRangeTotal(header: String?): Long? {
+    val raw = header?.substringAfterLast('/')?.trim() ?: return null
+    return if (raw == "*") null else raw.toLongOrNull()
 }
 
 private fun HttpURLConnection.getHeaderFieldLong(name: String, default: Long): Long =

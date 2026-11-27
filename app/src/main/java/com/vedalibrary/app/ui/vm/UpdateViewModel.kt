@@ -1,12 +1,21 @@
 package com.vedalibrary.app.ui.vm
 
+import android.content.Context
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import android.util.Log
+import androidx.work.Constraints
+import androidx.work.ExistingWorkPolicy
+import androidx.work.NetworkType
+import androidx.work.OneTimeWorkRequestBuilder
+import androidx.work.WorkInfo
+import androidx.work.WorkManager
+import androidx.work.workDataOf
 import com.vedalibrary.app.data.library.LibraryDbImporter
 import com.vedalibrary.app.data.local.AppDatabase
 import com.vedalibrary.app.data.update.ApkInfo
 import com.vedalibrary.app.data.update.AppUpdater
+import com.vedalibrary.app.data.update.BookDownloadWorker
 import com.vedalibrary.app.data.update.BookInfo
 import com.vedalibrary.app.data.update.Downloader
 import com.vedalibrary.app.data.update.fetchStream
@@ -15,6 +24,7 @@ import com.vedalibrary.app.data.update.parseApkInfo
 import com.vedalibrary.app.data.update.parseBookInfos
 import com.vedalibrary.app.data.update.sha256hex
 import dagger.hilt.android.lifecycle.HiltViewModel
+import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -26,6 +36,7 @@ import javax.inject.Inject
  *  диалог в NavGraph и секция в настройках смотрят в него же. */
 @HiltViewModel
 class UpdateViewModel @Inject constructor(
+    @ApplicationContext private val ctx: Context,
     private val updater: AppUpdater,
     private val downloader: Downloader,
     private val prefs: UpdatePrefs,
@@ -81,6 +92,76 @@ class UpdateViewModel @Inject constructor(
     private var lastInfo: ApkInfo? = null
     private var dlJob: Job? = null
     private var catalog: org.json.JSONObject? = null
+    private var workByKey: Map<String, WorkInfo> = emptyMap()
+
+    init {
+        viewModelScope.launch {
+            WorkManager.getInstance(ctx).getWorkInfosByTagFlow(BookDownloadWorker.TAG).collect { list ->
+                val byKey = HashMap<String, WorkInfo>()
+                for (wi in list) {
+                    val k = wi.tags.firstOrNull { it.startsWith("book_dl_") }
+                        ?.removePrefix("book_dl_")
+                        ?: wi.progress.getString(BookDownloadWorker.K_KEY)
+                        ?: wi.outputData.getString(BookDownloadWorker.K_KEY)
+                        ?: continue
+                    byKey[k] = wi
+                }
+                workByKey = byKey
+                applyWorkInfos()
+            }
+        }
+    }
+
+    private fun applyWorkInfos() {
+        fun updateList(src: List<BookItem>): List<BookItem> = src.map { item ->
+            val wi = workByKey[item.info.key] ?: return@map item
+            when (wi.state) {
+                WorkInfo.State.ENQUEUED, WorkInfo.State.RUNNING, WorkInfo.State.BLOCKED -> {
+                    val stage = wi.progress.getString(BookDownloadWorker.K_STAGE)
+                    if (stage == BookDownloadWorker.STAGE_IMPORTING) {
+                        val lbl = wi.progress.getString(BookDownloadWorker.K_LABEL) ?: "Импорт…"
+                        item.copy(busy = BookItem.Busy.Importing(lbl), note = null)
+                    } else {
+                        val done = wi.progress.getLong(BookDownloadWorker.K_DONE, 0L)
+                        val total = wi.progress.getLong(BookDownloadWorker.K_TOTAL, item.info.size)
+                        val partLen = if (done == 0L) partFileLength(item.info) else 0L
+                        val shownDone = if (done > 0L) done else partLen
+                        val note = if (wi.state == WorkInfo.State.ENQUEUED && shownDone > 0L)
+                            "Ожидание сети для докачки…" else null
+                        item.copy(busy = BookItem.Busy.Downloading(shownDone, total), note = note)
+                    }
+                }
+                WorkInfo.State.SUCCEEDED -> {
+                    val ver = wi.outputData.getInt(BookDownloadWorker.K_VERSION, item.installed)
+                    val note = wi.outputData.getString(BookDownloadWorker.K_NOTE)
+                    if (item.busy !is BookItem.Busy.Idle || ver > item.installed) {
+                        item.copy(
+                            installed = maxOf(item.installed, ver),
+                            missing = false,
+                            busy = BookItem.Busy.Idle,
+                            note = note ?: item.note
+                        )
+                    } else item
+                }
+                WorkInfo.State.FAILED -> {
+                    val err = wi.outputData.getString(BookDownloadWorker.K_ERROR)
+                    if (item.busy !is BookItem.Busy.Idle && !err.isNullOrBlank()) {
+                        item.copy(busy = BookItem.Busy.Idle, note = "Ошибка: $err")
+                    } else item
+                }
+                else -> item
+            }
+        }
+        _books.value = updateList(_books.value)
+        _audio.value = updateList(_audio.value)
+    }
+
+    private fun partFileLength(info: BookInfo): Long {
+        val safeKey = info.key.replace(Regex("[^A-Za-z0-9._-]"), "_")
+        val dir = File(updater.updatesDir(), "books")
+        val full = File(dir, "$safeKey-v${info.version}.db.part")
+        return if (full.exists()) full.length() else 0L
+    }
 
     /** Тихая автопроверка при старте (не чаще раза в сутки). Диалог — только если есть
      *  новая версия и её не пропускали. */
@@ -176,7 +257,8 @@ class UpdateViewModel @Inject constructor(
                             downloader.fetchStream(
                                 info.deltaUrl, pf, "Патч ${info.versionName}",
                                 onProgress = { d, t -> _state.value = State.Downloading(d, t) },
-                                headers = hdrs
+                                headers = hdrs,
+                                expectedSha = info.deltaSha
                             )
                         } catch (e: Exception) {
                             deltaErr1 = e
@@ -395,6 +477,7 @@ class UpdateViewModel @Inject constructor(
                 note = prev?.note, audio = true)
         }.sortedWith(
             compareByDescending<BookItem> { it.hasUpdate }.thenBy { it.info.title })
+        applyWorkInfos()
     }
 
     private fun fileNameFromUrl(url: String): String {
@@ -406,156 +489,52 @@ class UpdateViewModel @Inject constructor(
     /** id книги библиотеки: gb-ТИП-gbId-язык[-xN]; тип может содержать дефис/цифры (bg-ss, bg72) */
     private val BOOK_ID_RE = Regex("^gb-(.+)-(\\d+)-([a-z]+)(?:-x\\d+)?$")
 
-    /** Скачать файл книги/аудио и импортировать. Аудио едет тем же путём
-     *  (importFile сам видит verse_audio), имя пака — из ссылки (для манифеста). */
+    /** Запустить фоновое скачивание и импорт книги/аудио через WorkManager.
+     *  Переживает закрытие/обновление приложения и продолжает с места остановки. */
     fun downloadBook(key: String) = viewModelScope.launch {
         val item = (_books.value + _audio.value).firstOrNull { it.info.key == key } ?: return@launch
         if (item.busy !is BookItem.Busy.Idle) return@launch
         val info = item.info
-        val isAudio = item.audio
-        fun set(busy: BookItem.Busy, note: String? = null) {
-            _books.value = _books.value.map {
-                if (it.info.key == key) it.copy(busy = busy, note = note) else it
-            }
-            _audio.value = _audio.value.map {
-                if (it.info.key == key) it.copy(busy = busy, note = note) else it
-            }
+        val partLen = partFileLength(info)
+        _books.value = _books.value.map {
+            if (it.info.key == key) it.copy(busy = BookItem.Busy.Downloading(partLen, info.size), note = null) else it
         }
-        fun finish(installed: Int, missing: Boolean, note: String) {
-            _books.value = _books.value.map {
-                if (it.info.key == key) it.copy(installed = installed, missing = missing,
-                    busy = BookItem.Busy.Idle, note = note) else it
-            }
-            _audio.value = _audio.value.map {
-                if (it.info.key == key) it.copy(installed = installed, missing = missing,
-                    busy = BookItem.Busy.Idle, note = note) else it
-            }
+        _audio.value = _audio.value.map {
+            if (it.info.key == key) it.copy(busy = BookItem.Busy.Downloading(partLen, info.size), note = null) else it
         }
 
-        // Выносим один проход в локальную suspend-функцию
-        suspend fun attempt(useDelta: Boolean, notePrefix: String): Unit {
-            val url = if (useDelta) info.deltaUrl else info.url
-            val sha = if (useDelta) info.deltaSha else info.sha256
-            // Fail closed: каталог без контрольной суммы — не качаем и не импортируем
-            if (sha.isBlank())
-                throw IllegalStateException("В каталоге нет контрольной суммы для «${info.title}» — пропущено")
-            val total = if (useDelta) info.deltaSize else info.size
-            val dir = File(updater.updatesDir(), "books").apply { mkdirs() }
-            val safeKey = key.replace(Regex("[^A-Za-z0-9._-]"), "_")
-            val out = File(dir, "$safeKey-v${info.version}" + (if (useDelta) "-delta" else "") + ".db")
-            // До импорта: запоминаем id книг, приехавших с этим ключом ранее
-            val prevIds = prefs.bookIds(key)
-            // Прошлые версии той же книги больше не нужны — чтобы не копились
-            try {
-                val staleRe = Regex("^${Regex.escape(safeKey)}-v\\d+(-delta)?\\.db$")
-                for (old in dir.listFiles() ?: emptyArray()) {
-                    if (old.name != out.name && staleRe.matchEntire(old.name) != null) {
-                        try { old.delete() } catch (_: Exception) { }
-                    }
-                }
-            } catch (_: Exception) { }
-            if (!(out.exists() && out.length() > 1024 && sha256hex(out) == sha)
-            ) {
-                try { out.delete() } catch (_: Exception) { }
-                set(BookItem.Busy.Downloading(0, total))
-                // Приватные книги качаются read-only токеном из local.properties.
-                // Пустой токен — не долбим GitHub 401-ми, показываем понятную причину.
-                if (info.auth == "github" &&
-                    com.vedalibrary.app.BuildConfig.GITHUB_FILES_TOKEN.isBlank()
-                ) {
-                    throw IllegalStateException("Токен доступа к книгам не настроен — обновление книг временно недоступно")
-                }
-                val headers = if (info.auth == "github" &&
-                    com.vedalibrary.app.BuildConfig.GITHUB_FILES_TOKEN.isNotBlank()
-                ) {
-                    // Приватные релизы: без Accept API отдаст JSON-метаданные вместо байтов
-                    mapOf("Authorization" to
-                            "Bearer ${com.vedalibrary.app.BuildConfig.GITHUB_FILES_TOKEN}",
-                        "Accept" to "application/octet-stream")
-                } else emptyMap()
-                var bookErr1: Exception? = null
-                try {
-                    downloader.fetchStream(url, out,
-                        info.title + (if (useDelta) " (обновление)" else ""), { d, t ->
-                        set(BookItem.Busy.Downloading(d, t))
-                    }, headers)
-                } catch (e: Exception) {
-                    bookErr1 = e
-                    set(BookItem.Busy.Idle, "fetchStream упал, DownloadManager…")
-                    try {
-                        downloader.fetch(url, out,
-                            info.title + (if (useDelta) " (обновление)" else ""), { d, t ->
-                            set(BookItem.Busy.Downloading(d, t))
-                        }, headers)
-                    } catch (e2: Exception) {
-                        val msg = "Не скачалось: ${bookErr1!!.javaClass.simpleName}: ${bookErr1.message}; fallback: ${e2.javaClass.simpleName}: ${e2.message}"
-                        set(BookItem.Busy.Idle, "Ошибка: ${msg.take(200)}")
-                        throw IllegalStateException(msg.take(200))
-                    }
-                }
-                if (sha256hex(out) != sha) {
-                    try { out.delete() } catch (_: Exception) { }
-                    throw IllegalStateException("Контрольная сумма не сошлась — файл битый")
-                }
-            }
-            // Скачанный файл должен быть SQLite: JSON/HTML-ошибка сервера под видом
-            // книги не должна уходить в импорт (глюк-диагноз вместо SQL-исключения)
-            if (!com.vedalibrary.app.data.update.isSqliteFile(out))
-                throw IllegalStateException("Файл не похож на базу SQLite — обновление отменено")
-            set(BookItem.Busy.Importing("Импорт…"))
-            val packName = if (isAudio) fileNameFromUrl(info.url) else null
-            val res = importer.importFile(out, info.lang, replace = true, packName = packName, delta = useDelta) { d, t, label ->
-                set(BookItem.Busy.Importing("$label ($d/$t)"))
-            }
-            if (res.failed.isNotEmpty() && res.bookIds.isEmpty())
-                throw IllegalStateException(res.failed.first())
-            // Полный файл: удаляем книги, которые ставились этим же ключом,
-            // но отсутствуют в новом файле (и не принадлежат другим ключам)
-            var removed = 0
-            if (!useDelta) {
-                val stale = prevIds - res.bookIds.toSet() - prefs.allBookIdsExcept(key)
-                for (id in stale) {
-                    try { db.library().deleteBookCascade(id); removed++ } catch (_: Exception) { }
-                }
-            }
-            prefs.setBookVersion(key, info.version)
-            prefs.setBookIds(key, res.bookIds)
-            val note = if (isAudio) "Готово: ${res.verses} записей"
-            else if (useDelta) "Готово: обновлено ${res.verses} стихов" +
-                    (if (res.failed.isNotEmpty()) " · пропущено: ${res.failed.size}" else "")
-            else "Готово: ${res.bookIds.size} кн., ${res.verses} стихов" +
-                    (if (removed > 0) " · убрано старых книг: $removed" else "") +
-                    (if (res.failed.isNotEmpty()) " · пропущено: ${res.failed.size}" else "")
-            finish(info.version, false, note)
-            // Импорт прошёл целиком — скачанный файл больше не нужен, убираем молча.
-            // При частичных пропаданиях (res.failed непуст) файл оставляем для разбора
-            if (res.failed.isEmpty()) {
-                try { out.delete() } catch (_: Exception) { }
-            }
-            return
-        }
+        val req = OneTimeWorkRequestBuilder<BookDownloadWorker>()
+            .addTag(BookDownloadWorker.TAG)
+            .addTag(BookDownloadWorker.uniqueName(key))
+            .setConstraints(
+                Constraints.Builder()
+                    .setRequiredNetworkType(NetworkType.CONNECTED)
+                    .build()
+            )
+            .setInputData(
+                workDataOf(
+                    BookDownloadWorker.K_KEY to info.key,
+                    BookDownloadWorker.K_TITLE to info.title,
+                    BookDownloadWorker.K_URL to info.url,
+                    BookDownloadWorker.K_SHA to info.sha256,
+                    BookDownloadWorker.K_SIZE to info.size,
+                    BookDownloadWorker.K_VERSION to info.version,
+                    BookDownloadWorker.K_LANG to info.lang,
+                    BookDownloadWorker.K_AUTH to info.auth,
+                    BookDownloadWorker.K_DELTA_URL to info.deltaUrl,
+                    BookDownloadWorker.K_DELTA_SHA to info.deltaSha,
+                    BookDownloadWorker.K_DELTA_SIZE to info.deltaSize,
+                    BookDownloadWorker.K_DELTA_FROM to info.deltaFrom,
+                    BookDownloadWorker.K_IS_AUDIO to item.audio,
+                    BookDownloadWorker.K_INSTALLED to item.installed
+                )
+            )
+            .build()
 
-        // Дельта — своим с версии deltaFrom; новичкам и отставшим — полный файл
-        val useDelta = !isAudio && info.deltaUrl.isNotBlank() &&
-                item.installed == info.deltaFrom && info.deltaFrom >= 0
-        val attempts = if (useDelta) mutableListOf(true, false) else mutableListOf(false)
-        var lastError: Exception? = null
-        for ((i, withDelta) in attempts.withIndex()) {
-            try {
-                attempt(withDelta, if (withDelta) "дельта" else "полный файл")
-                lastError = null
-                break
-            } catch (e: kotlinx.coroutines.CancellationException) { throw e }
-            catch (e: Exception) {
-                lastError = e
-                if (i != attempts.lastIndex)
-                    set(BookItem.Busy.Idle, "Дельта не применилась (${e.message}) — качаю полный файл…")
-            }
-        }
-        // Ошибку показываем в строке обновления, НЕ бросаем наружу: иначе
-        // viewModelScope-корутина роняет приложение (401 от GitHub и т.п.)
-        lastError?.let { e ->
-            set(BookItem.Busy.Idle, "Ошибка: " + ((e.message ?: e.javaClass.simpleName).take(200)))
-        }
+        WorkManager.getInstance(ctx).enqueueUniqueWork(
+            BookDownloadWorker.uniqueName(key),
+            ExistingWorkPolicy.KEEP,
+            req
+        )
     }
 }

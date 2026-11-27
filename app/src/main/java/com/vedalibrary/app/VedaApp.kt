@@ -1,9 +1,17 @@
 package com.vedalibrary.app
 
 import android.app.Application
+import androidx.hilt.work.HiltWorkerFactory
+import androidx.work.Configuration
 import dagger.hilt.android.HiltAndroidApp
+import javax.inject.Inject
 
-/** Канал «Стих дня» (daily-verse) удалён: уведомления нигде не отправляются,
- *  вместе с каналом убрано разрешение POST_NOTIFICATIONS. */
 @HiltAndroidApp
-class VedaApp : Application()
+class VedaApp : Application(), Configuration.Provider {
+    @Inject lateinit var workerFactory: HiltWorkerFactory
+
+    override val workManagerConfiguration: Configuration
+        get() = Configuration.Builder()
+            .setWorkerFactory(workerFactory)
+            .build()
+}
