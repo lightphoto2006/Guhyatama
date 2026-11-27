@@ -5,13 +5,16 @@
 ## Стек (тренды 2026)
 - **Kotlin + Jetpack Compose + Material 3 Expressive** (dynamic color, edge-to-edge, dark/night mode)
 - **Adaptive**: NavigationSuiteScaffold (phone / foldable / tablet, List-Detail)
-- **Offline-first**: Room + FTS5, Paging3, DataStore, WorkManager, Coil, R8 + Baseline Profiles
+- **Offline-first**: Room + FTS4, Paging3, DataStore, WorkManager, Coil, R8 + Baseline Profiles
 - **DI**: Hilt; **Навигация**: Navigation-Compose type-safe; **TTS**: android.speech.tts + Media3; **PDF**: pdfbox-android + PdfRenderer fallback
 
-## Возможности (21)
+## Возможности
 | Раздел | Реализация |
 |---|---|
-| Search all books (sanskrit/verse/purport) | `VerseFts` (FTS4/5) + `searchFts()` + scope-фильтр в `SearchScreen` |
+| Search all books (sanskrit/verse/purport) | `VerseFts` (FTS4) + `searchFts()` + scope-фильтр в `SearchScreen` |
+| Поиск по открытому тексту | лупа в шапке стиха: строка поиска вместо шапки, подсветка, счётчик N/M + ‹ › |
+| Компактный ландшафт | «произведение + глава/стих» одной строкой, сжатые шапка и «Пред/След», нижние вкладки 34dp |
+| Экран не гаснет при чтении | `FLAG_KEEP_SCREEN_ON` в `MainActivity` |
 | Dictionary tab | `dictionaryLookup()` — все стихи со словом |
 | Comparing translations | `Verse.sanskrit/text/purport` + side-by-side в Reader (TODO: второй слот перевода) |
 | Highlights & notes | `Highlight`, `GeneralNote` + Reader-кнопки |
@@ -34,7 +37,7 @@
 
 ## Импорт лекций/произведений (гибрид)
 - **TXT/MD**: SAF-picker → `TxtImporter` → `TextCleaner.clean()` (мусор, колонтитулы, переносы) → `ChapterSplitter` (маркеры Глава/Лекция/## или чанки 4000 симв.) → batch-вставки по 500.
-- **PDF**: SAF-picker → копия в cache → `PdfImporter` (pdfbox `sortByPosition=true` чинит 2 колонки) → тот же pipeline. Сканы без текстового слоя → сообщение «нужен OCR».
+- **PDF**: SAF-picker → копия в cache → `PdfImporter` (`PDFBoxResourceLoader.init` + постраничный разбор; `sortByPosition=true` чинит 2 колонки) → тот же pipeline. Если текстового слоя нет (<10 букв) — понятная ошибка «нужен OCR», книга-заглушка не создаётся.
 - **Пакеты**: `PackageInstaller.installFromZip()` (.gbpkg = zip{manifest.json, library.db}).
 
 ## Структура
@@ -49,8 +52,8 @@ app/src/main/java/com/vedalibrary/app/
 ```
 
 ## Сборка
-1. Открыть `F:\AI\тест2` в Android Studio Ladybug+.
-2. Sync Gradle, `Run ▶`. minSdk 26, target 35.
+1. Открыть `F:\AI\Development\Guhyatama` в Android Studio Ladybug+.
+2. Sync Gradle, `Run ▶`. minSdk 24, target 35.
 3. Тест импорта: Библиотека → FAB `TXT`/`PDF` → выбрать транскрипт лекции.
 
 ## Следующие шаги (по приоритету)
@@ -60,3 +63,10 @@ app/src/main/java/com/vedalibrary/app/
 4. Flashcards UI + SM-2 review loop + уведомления.
 5. On-device AI-индекс (MediaPipe LLM / embeddings) для тематического поиска.
 6. Baseline Profile generator + Macrobenchmark.
+
+## Последние изменения (27.11.2026)
+- Ландшафт чтения: одна строка «произведение + стих/глава», компактные шапка и кнопки, нижняя панель вкладок вдвое ниже.
+- Поиск по слову внутри открытого стиха/лекции (не по главе): строка вместо шапки, подсветка, N/M, ‹ ›.
+- Мягкие переносы U+00AD в текстах книг склеиваются.
+- PDF-импорт: инициализация PDFBox, постраничный разбор, без книги-заглушки.
+- Экран не гаснет при чтении.

@@ -90,16 +90,26 @@
 
 | файл | маска | тип | Guhyatama (app) | Guhyatama-files | примечание |
 |---|---|---|---|---|---|
-| `C:\Users\light\.secrets\github_pat.txt` | github_p… | fine-grained PAT | admin/maintain/push/pull/triage — все true | все true | владелец lightphoto2006; рабочий; самый широкий |
-| `C:\Users\light\.secrets\github_pat_catalog.txt` | github_p… | fine-grained PAT | admin/maintain/push/pull/triage — все true | нет доступа (404 на GET репо — репозиторий для него не виден) | владелец lightphoto2006; рабочий; только для каталога/app-репо |
-| `C:\Users\light\.secrets\github_pat_ro.txt` | github_p… | fine-grained PAT | 401 | 401 | НЕДЕЙСТИВЕН (просрочен/отозван); ничего не может |
-| `githubFilesToken` в `F:\AI\Development\Guhyatama\local.properties` | github_p… | fine-grained PAT | все true | все true | владелец lightphoto2006; НЕ совпадает ни с одним ключом из .secrets; ⚠ через BuildConfig попадает в собранный APK (см. ниже) |
+| `C:\Users\light\.secrets\github_pat.txt` | github_p… | fine-grained PAT, read-only | ok (read) | ok (read) | владелец lightphoto2006; запись запрещена (проверка ref → 403) |
+| `C:\Users\light\.secrets\github_pat_catalog.txt` | github_p… | — | 401 | 401 | НЕДЕЙСТВИТЕЛЕН (просрочен/отозван) |
+| `C:\Users\light\.secrets\Github toked for releases.txt` | github_p… | fine-grained PAT, write | ok | ok | рабочий; запись разрешена (проверка ref → 422); имя файла с опечаткой |
+| `githubFilesToken` в `F:\AI\Development\Guhyatama\local.properties` | github_p… | fine-grained PAT, **read-only** | read | read | владелец lightphoto2006; вшивается в APK через BuildConfig (см. ниже); запись запрещена (проверка 403). Как выпустить/проверить — `docs/TOKENS.md` |
 | `C:\Users\light\.secrets\filebase.json` | access: `4D5B4D43…` (20), secret: `B8bWutVm…` (40) | Filebase S3 (не GitHub) | — | — | endpoint `https://…` (22 симв.); используется tools/dbcomposer/s3filebase.py; значения в файлах репо не найдены |
 
 - Пуш приложения делается через Credential Manager (GCM OAuth gho_…, scopes repo) — git push работает без явного токена. Релизы — тем же GCM-токеном через API (git credential fill).
-- Все 4 GitHub-ключа маскируются одинаково (github_p…), различаются только именем файла; первые 17 символов у всех четырёх совпадают.
+- Все GitHub-ключи маскируются одинаково (github_p…), различаются только именем файла; первые 17 символов у всех совпадают. Проверялись 2026-11-27: `github_pat.txt` и токен из `local.properties` — read-only (запись 403), `Github toked for releases.txt` — пишет (422 на заведомо плохой ref), `github_pat_catalog.txt` — 401.
 - Ни одно значение из `.secrets\*` и `githubFilesToken` не встречается в исходниках/доках репозитория (проверено поиском по значениям). Ссылки на путь `C:\Users\light\.secrets\` (без значений) есть в `tools/dbcomposer/s3filebase.py` (CREDS) и `docs/CORRECTION_PLAN.md`.
-- ⚠ build-артефакты содержат githubFilesToken (он вшивается в BuildConfig): `.gradle\8.7\executionHistory\executionHistory.bin`, `app\build\**` (BuildConfig.java/.class, classes.dex release). Всё это покрыто `.gitignore` (проверено `git check-ignore`), но токен физически внутри релизного APK — при случае его стоит ротировать/ограничить (CORRECTION_PLAN.md называл это «плохим токеном»; хардкода в UpdateCatalog.kt уже нет — проверено).
+- ⚠ build-артефакты содержат githubFilesToken (он вшивается в BuildConfig): `.gradle\8.7\executionHistory\executionHistory.bin`, `app\build\**` (BuildConfig.java/.class, classes.dex release). Всё это покрыто `.gitignore` (проверено `git check-ignore`). Начиная с 1.3.25 в APK едет **read-only** токен (Contents: Read-only на `Guhyatama-files`); в 1.3.19–1.3.21 был admin PAT, в 1.3.24 — пустой. Ротация — `docs/TOKENS.md`.
 - ⚠ `docs/AUDIT.md` содержит 17-символьный префикс живых токенов (первые 17 симв. совпадают у всех четырёх) — это не значение целиком, но при публичном репо фрагмент лучше убрать.
 - Каталог `.secrets` лежит вне репозитория (в домашней папке), в `.gitignore` упоминаний значений нет; `local.properties` в `.gitignore` включён.
 
+
+## Сессия 2026-11-27 — UX читалки (ландшафт, поиск, PDF, экран)
+- Подробности: docs/SESSION_2026-11-27.md.
+- Ландшафт: в карточке стиха и на экране главы «произведение + глава/стих» одной строкой; компактные шапка/«Пред-След»; нижняя панель вкладок 34dp/16sp. Отрицательный offset шапки убран (срезал строку).
+- Текст: мягкий перенос U+00AD + пробел склеивается в GbHtml.rich и TextCleaner.
+- PDF: PdfImporter инициализирует PDFBoxResourceLoader, разбирает постранично, при отсутствии текста бросает ошибку (книга-заглушка не создаётся).
+- Поиск: лупа в карточке стиха открывает строку поиска вместо шапки; ищет только в открытом тексте, счётчик N/M и ‹ ›, подсветка и прокрутка. Поиска по главе больше нет (код удалён).
+- Экран не гаснет: FLAG_KEEP_SCREEN_ON в MainActivity.
+- Сборка: v1.3.19 (vc67) debug, APK 19.3 MB, установлен на телефон 27.11.2026 09:43.
+- Устройство временами отваливается от adb — при `no devices` переподключить USB.
