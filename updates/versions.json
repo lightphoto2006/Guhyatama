@@ -1,10 +1,10 @@
 {
  "apk": {
-  "versionCode": 68,
-  "versionName": "1.3.20",
-  "url": "https://github.com/lightphoto2006/Guhyatama/releases/download/v1.3.20/Guhyatama-1.3.20.apk",
-  "file": "F:\\AI\\Development\\Guhyatama\\releases\\Guhyatama-1.3.20.apk",
-  "notes": "Что нового:\n- Экран лекции: «ЧЧ 3.4.96-132 Лекция №226» в шапке, без трёх дублирующих строк; вместо них ссылка «Прочитать оригинальные стихи».\n- Портрет: компактные «← Пред / След →» и меньше отступов — больше текста на экране.\n- Жирный и курсив из Word-документов снова отображаются в тексте книг-лекций.\n- Остальное как в 1.3.19."
+  "versionCode": 69,
+  "versionName": "1.3.21",
+  "url": "https://github.com/lightphoto2006/Guhyatama/releases/download/v1.3.21/Guhyatama-1.3.21.apk",
+  "file": "F:\\AI\\Development\\Guhyatama\\releases\\Guhyatama-1.3.21.apk",
+  "notes": "Что нового:\n- Русские книги «Ананда Вриндавана Чампу», «Мангала Арати», «Приветствие Божеств в 7 утра», «Гаура Арати в 7 вечера», «Молитвы», «Мантры перед лекцией» перенесены из англ. сборника в русский.\n- Исправлено обновление сборника: книга с тем же id, но другим автором/названием больше не затирает чужую (VCT-ШБ и ШБ Прабхупады).\n- Остальное как в 1.3.20."
  },
  "books": {
   "Prabhupada_rus": {
@@ -29,10 +29,10 @@
   "Acharyi_eng": {
    "title": "Книги ачарьев (eng)",
    "lang": "eng",
-   "file": "Acharyi_eng.db",
-   "version": 1,
-   "url": "https://api.github.com/repos/lightphoto2006/Guhyatama-files/releases/assets/605847835",
-   "notes": "Первая публикация в каталоге.",
+   "file": "F:\\AI\\Development\\Book DB\\Acharyi_eng_v2.db",
+   "version": 2,
+   "url": "https://api.github.com/repos/lightphoto2006/Guhyatama-files/releases/assets/799557741",
+   "notes": "Русские книги «Ананда Вриндавана Чампу», «Мангала Арати», «Приветствие Божеств в 7 утра», «Гаура Арати в 7 вечера», «Молитвы», «Мантры перед лекцией» перенесены в русский сборник.",
    "auth": "github"
   },
   "Syamakunda_CC": {
@@ -58,10 +58,10 @@
   "Acharyi_rus": {
    "title": "Книги ачарий (рус)",
    "lang": "rus",
-   "file": "F:\\AI\\Development\\Book DB\\Acharyi_rus_v16.db",
-   "version": 16,
-   "url": "https://api.github.com/repos/lightphoto2006/Guhyatama-files/releases/assets/677258930",
-   "notes": "Полный файл: исправление дублей (2 Брахма-самхиты, 2 БГ Шридхара) — импортёр 1.3.19 убирает прежние копии по типу+языку+названию. Состав тот же: Гопала-чампу, БГ (Шридхар), Брахма-самхита, Шри Чайтанья-Бхагавата + обложки.",
+   "file": "F:\\AI\\Development\\Book DB\\Acharyi_rus_v17.db",
+   "version": 17,
+   "url": "https://api.github.com/repos/lightphoto2006/Guhyatama-files/releases/assets/799557900",
+   "notes": "Добавлены русские книги: «Ананда Вриндавана Чампу», «Мангала Арати», «Приветствие Божеств в 7 утра», «Гаура Арати в 7 вечера», «Молитвы», «Мантры перед лекцией».",
    "auth": "github"
   }
  },

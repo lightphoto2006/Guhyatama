@@ -106,9 +106,14 @@ class LibraryDbImporter @Inject constructor(
                     } catch (_: Exception) { }
                     // Коллизия id: та же книга из другого файла (main SB vs выборка VCT
                     // под одним gb-sb-3-eng) — разным книгам разные id, иначе импорт
-                    // затирает чужую книгу целиком. Обновления (replace) — всегда по
-                    // базовому id: версии одного файла — один и тот же труд.
-                    val finalId = if (replace) bookId else resolveBookIdCollision(sq, gbId, bookId)
+                    // затирает чужую книгу целиком. При обновлении (replace) базовый id
+                    // берём только если там ТОТ ЖЕ труд (автор+название); иначе — коллизия
+                    // (Acharyi_eng v2: SB ВЧТ не должен затереть основную ШБ Прабхупады).
+                    val finalId = when {
+                        !replace -> resolveBookIdCollision(sq, gbId, bookId)
+                        delta -> bookId
+                        else -> resolveReplaceId(sq, gbId, bookId, title, author, type)
+                    }
                     // Обновление из каталога: тот же труд мог приехать под другим _id
                     // (v14 переставила _id книг) — убираем прежнюю копию, иначе остаются
                     // дубли («2 Брахма-самхиты», «2 БХ Шридхара»). Совпадение — тип+язык+название.
@@ -204,6 +209,23 @@ class LibraryDbImporter @Inject constructor(
                 Result(bookIds, totalVerses, 0, failed, perBook)
             } finally { sq.close() }
         }
+
+    /** id при обновлении из каталога: базовый — только если под ним лежит тот же
+     *  труд (название+автор). Иначе это коллизия (например, VCT-ШБ и основная ШБ
+     *  Прабхупады обе претендуют на gb-sb-3-eng) — уходим в resolveBookIdCollision,
+     *  чтобы не затереть чужую книгу. Дельту всегда кладём в базовый id. */
+    private suspend fun resolveReplaceId(
+        sq: android.database.sqlite.SQLiteDatabase, gbId: Long, bookId: String,
+        title: String, author: String?, type: String
+    ): String {
+        val ex = try { db.library().book(bookId) } catch (_: Exception) { null } ?: return bookId
+        if (!ex.isReady) return bookId
+        val roomTitle = "$title [$type]"
+        val sameTitle = ex.title.trim() == roomTitle || ex.title.trim() == title.trim()
+        val sameAuthor = (ex.author ?: "").trim() == (author ?: "").trim()
+        return if (sameTitle && sameAuthor) bookId
+        else resolveBookIdCollision(sq, gbId, bookId)
+    }
 
     /** Коллизия app-id: один gb-TYPE-gbId-lang из разных файлов — разные книги
      *  (main SB 13248 стихов vs выборка VCT 741 под тем же gb-sb-3-eng).
