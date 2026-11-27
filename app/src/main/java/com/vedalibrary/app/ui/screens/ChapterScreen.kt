@@ -329,9 +329,12 @@ fun androidx.compose.foundation.lazy.LazyListScope.verseItems(
         val isLecture = remember(item.row.id) {
             com.vedalibrary.app.ui.components.VerseShare.isLectureBook(item.row.bookId)
         }
-        val full = remember(item.full) {
+        val isProse = remember(item.row.id) {
+            com.vedalibrary.app.ui.components.VerseShare.isProseBook(item.row.bookId)
+        }
+        val full = remember(item.full, isProse) {
             val t = item.full
-            if (t.length > 800) t.take(800).trimEnd() + "… (открыть)" else t
+            if (!isProse && t.length > 800) t.take(800).trimEnd() + "… (открыть)" else t
         }
         val lectureRef = remember(item.row.id) {
             // Введение (номер 000): подписи нет — заголовка достаточно
@@ -340,9 +343,6 @@ fun androidx.compose.foundation.lazy.LazyListScope.verseItems(
             else ""
         }
         var showMenu by remember(item.row.id) { mutableStateOf(false) }
-        val isProse = remember(item.row.id) {
-            com.vedalibrary.app.ui.components.VerseShare.isProseBook(item.row.bookId)
-        }
         // Box-якорь: иначе DropdownMenu в LazyColumn всплывает вверху экрана
         androidx.compose.foundation.layout.Box {
             // Вместо ListItem: у M3-ListItem нет contentPadding (внутренние 16dp
@@ -351,7 +351,7 @@ fun androidx.compose.foundation.lazy.LazyListScope.verseItems(
             Column(
                 Modifier.fillMaxWidth()
                     .combinedClickable(
-                        onClick = { onVerse(item.row.id) },
+                        onClick = { if (!isProse) onVerse(item.row.id) },
                         onLongClick = { showMenu = true }
                     )
                     .padding(horizontal = 8.dp, vertical = 8.dp)
@@ -392,7 +392,6 @@ fun androidx.compose.foundation.lazy.LazyListScope.verseItems(
                         )
                     }
                     val listSize = if (fontSizeSp > 0) fontSizeSp.sp else MaterialTheme.typography.bodyMedium.fontSize
-                    val proseAlign = if (isProse) TextAlign.Start else textAlign
                     // На ColorOS Compose-Justify молча не работает — там бокс
                     // переключается на ручную доводку (JustifyTextView), на остальном
                     // — ровно этот Compose Text, что был
@@ -400,7 +399,7 @@ fun androidx.compose.foundation.lazy.LazyListScope.verseItems(
                         full,
                         modifier = Modifier.fillMaxWidth(),
                         fontSizeSp = listSize.value,
-                        align = proseAlign,
+                        align = textAlign,
                         color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
                 }

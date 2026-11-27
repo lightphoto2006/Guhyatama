@@ -53,11 +53,14 @@ object GbHtml {
      *  «бес численным» -> «бесчисленным» (дефис не сохраняем, это не
      *  составное слово, а перенос строки). */
     private val softHyphenBreakRe = Regex("\u00AD[ \t\u00A0]*(?:\r\n|\r|\n)?[ \t\u00A0]*(?=\\p{L})")
+    private val shyEntityRe = Regex("&shy;|&#173;|&#x0*AD;", RegexOption.IGNORE_CASE)
 
     fun rich(raw: String?): String {
         if (raw == null) return ""
         // Мусор навигации сайта (разделители между ссылками цитат) — режем
         var t = raw.replace(navBarRe, "</a>")
+        // Декодируем мягкие переносы до склейки, чтобы «сло­ во» склеилось в «слово»
+        t = t.replace(shyEntityRe, "\u00AD")
         // Мягкий перенос U+00AD + пробел/перевод строки — артефакт выгрузки: «бес численным» -> «бесчисленным»
         t = t.replace(softHyphenBreakRe, "")
         t = t.replace("\u00AD", "")
@@ -527,6 +530,126 @@ private class JustifyTextView(ctx: android.content.Context) : android.widget.Tex
     var justifyManual: Boolean = false
     var eraseArgb: Int = android.graphics.Color.BLACK
 
+    private var rawSource: CharSequence? = null
+    private var wrappedWidth: Int = -1
+    private var wrappedSize: Float = -1f
+    private var isInternalSetText = false
+
+    override fun setText(text: CharSequence?, type: BufferType?) {
+        if (!isInternalSetText) {
+            rawSource = text
+            wrappedWidth = -1
+        }
+        super.setText(text, type)
+    }
+
+    override fun onMeasure(widthMeasureSpec: Int, heightMeasureSpec: Int) {
+        if (justifyManual) {
+            val avail = MeasureSpec.getSize(widthMeasureSpec) - compoundPaddingLeft - compoundPaddingRight
+            val src = rawSource
+            if (avail > 40 && src != null && (avail != wrappedWidth || textSize != wrappedSize)) {
+                wrappedWidth = avail
+                wrappedSize = textSize
+                val wrapped = wrapWithHyphens(src, avail.toFloat())
+                isInternalSetText = true
+                try {
+                    super.setText(wrapped, BufferType.SPANNABLE)
+                } finally {
+                    isInternalSetText = false
+                }
+            }
+        }
+        super.onMeasure(widthMeasureSpec, heightMeasureSpec)
+    }
+
+    /** Расставляет переносы слов по слогам (Hyphenator) под точную ширину [availW],
+     *  заменяя выбранную точку переноса на «- » (дефис + пробел), чтобы StaticLayout
+     *  разбивал строку именно там и дорисовывал дефис. */
+    private fun wrapWithHyphens(src: CharSequence, availW: Float): CharSequence {
+        val ssb = android.text.SpannableStringBuilder(src)
+        val n = ssb.length
+        if (n < 5) return ssb
+        val spaceW = paint.measureText(" ")
+        val hyphenW = paint.measureText("-")
+        val tp = paint
+        val replacements = ArrayList<Int>() // позиции внутри src, куда вставить "- "
+
+        var pos = 0
+        while (pos < n) {
+            // Один абзац до '\n'
+            var paraEnd = pos
+            while (paraEnd < n && ssb[paraEnd] != '\n') paraEnd++
+
+            var lineW = 0f
+            var wordsOnLine = 0
+            var i = pos
+            while (i < paraEnd) {
+                while (i < paraEnd && ssb[i] == ' ') i++
+                if (i >= paraEnd) break
+                val wStart = i
+                while (i < paraEnd && ssb[i] != ' ') i++
+                val wEnd = i
+
+                val wordW = measureSpanWord(ssb, wStart, wEnd, tp)
+                val needSpace = if (wordsOnLine > 0) spaceW else 0f
+                if (lineW + needSpace + wordW <= availW) {
+                    lineW += needSpace + wordW
+                    wordsOnLine++
+                } else {
+                    // Пробуем разбить слово по слогам
+                    val wordStr = ssb.subSequence(wStart, wEnd).toString()
+                    val bps = hyphenBreakPointsForToken(wordStr)
+                    var brokeAt = -1
+                    for (bp in bps.reversed()) {
+                        val prefixW = measureSpanWord(ssb, wStart, wStart + bp, tp)
+                        if (lineW + needSpace + prefixW + hyphenW <= availW) {
+                            brokeAt = wStart + bp
+                            break
+                        }
+                    }
+                    if (brokeAt > wStart) {
+                        replacements.add(brokeAt)
+                        // Остаток слова переходит на новую строку
+                        val remW = measureSpanWord(ssb, brokeAt, wEnd, tp)
+                        lineW = remW
+                        wordsOnLine = 1
+                    } else if (wordsOnLine == 0) {
+                        // Слово шире всей строки и не бьётся — оставляем как есть
+                        lineW = wordW
+                        wordsOnLine = 1
+                    } else {
+                        // Переносим слово целиком на новую строку
+                        lineW = wordW
+                        wordsOnLine = 1
+                    }
+                }
+            }
+            pos = paraEnd + 1
+        }
+
+        if (replacements.isEmpty()) return ssb
+        for (k in replacements.indices.reversed()) {
+            ssb.insert(replacements[k], "- ")
+        }
+        return ssb
+    }
+
+    private fun measureSpanWord(sp: android.text.Spanned, s: Int, e: Int, fallback: android.text.TextPaint): Float {
+        val tp = wordPaint(sp, s, e)
+        return tp.measureText(sp, s, e)
+    }
+
+    /** Точки переноса для токена (учитывает возможную пунктуацию по краям, напр. «возможно,»). */
+    private fun hyphenBreakPointsForToken(token: String): List<Int> {
+        var s = 0
+        var e = token.length
+        while (s < e && !token[s].isLetter()) s++
+        while (e > s && !token[e - 1].isLetter()) e--
+        if (e - s < 5) return emptyList()
+        val core = token.substring(s, e)
+        return Hyphenator.breakPoints(core).map { s + it }
+    }
+
     /** Одно слово строки с уже применёнными span-ами (подсветка, ссылки, курсив). */
     private fun wordPaint(sp: android.text.Spanned, s: Int, e: Int): android.text.TextPaint {
         val tp = android.text.TextPaint(paint)
@@ -577,11 +700,18 @@ private class JustifyTextView(ctx: android.content.Context) : android.widget.Tex
         // на пробел меньше нужного, и оправленная строка не доходила до
         // правого поля (ColorOS 16: замер gapInk == spaceW на всех строках).
         val wordW = FloatArray(ranges.size)
+        val hasSoftHyphen = BooleanArray(ranges.size)
         var inkW = spaceW * (ranges.size - 1)
         for (i in ranges.indices) {
             val (s, e) = ranges[i]
-            wordW[i] = wordPaint(sp, s, e).measureText(sp, s, e)
-            inkW += wordW[i]
+            val tp = wordPaint(sp, s, e)
+            val endsShy = (i == ranges.lastIndex && e > s && sp[e - 1] == '\u00AD')
+            hasSoftHyphen[i] = endsShy
+            // Мягкий дефис в конце строки StaticLayout рисует как «-»
+            val w = tp.measureText(sp, s, if (endsShy) e - 1 else e) +
+                if (endsShy) tp.measureText("-") else 0f
+            wordW[i] = w
+            inkW += w
         }
         val extra = targetW - inkW
         if (extra < 1f) return null
@@ -601,13 +731,16 @@ private class JustifyTextView(ctx: android.content.Context) : android.widget.Tex
             val (s, e) = ranges[i]
             val w = wordW[i]
             val stockX = try { layout.getPrimaryHorizontal(s) } catch (_: Exception) { 0f }
-            segs.add(Seg(s, e, x, x + w, stockX))
+            segs.add(Seg(s, e, x, x + w, stockX, hasSoftHyphen[i]))
             x += w + spaceW + add
         }
         return segs
     }
 
-    data class Seg(val s: Int, val e: Int, val x0: Float, val x1: Float, val stockX0: Float)
+    data class Seg(
+        val s: Int, val e: Int, val x0: Float, val x1: Float, val stockX0: Float,
+        val trailingHyphen: Boolean = false
+    )
 
     /** Позиция символа в РИСОВАННЫХ координатах оправляемой строки (фон выделения) */
     private fun selX(segs: List<Seg>, off: Int): Float {
@@ -709,7 +842,14 @@ private class JustifyTextView(ctx: android.content.Context) : android.widget.Tex
                 canvas.drawRect(from.x0, top, to.x1, bottom, bp)
             }
             for (sg in segs) {
-                canvas.drawText(sp, sg.s, sg.e, sg.x0, baseline, wordPaint(sp, sg.s, sg.e))
+                val tp = wordPaint(sp, sg.s, sg.e)
+                if (sg.trailingHyphen && sg.e > sg.s) {
+                    canvas.drawText(sp, sg.s, sg.e - 1, sg.x0, baseline, tp)
+                    val hw = tp.measureText("-")
+                    canvas.drawText("-", sg.x1 - hw, baseline, tp)
+                } else {
+                    canvas.drawText(sp, sg.s, sg.e, sg.x0, baseline, tp)
+                }
             }
         }
         canvas.restore()
